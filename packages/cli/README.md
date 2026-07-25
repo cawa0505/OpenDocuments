@@ -28,7 +28,7 @@ OpenDocuments connects your scattered documents and answers questions with AI:
 - **10+ data sources** — GitHub, Notion, Google Drive, Confluence, S3, Swagger, web pages
 - **12+ file formats** — PDF, DOCX, Excel, HTML, Jupyter, code, email, PowerPoint
 - **Local or cloud AI** — Ollama (data stays local) or OpenAI, Claude, Gemini, Grok
-- **Korean + English** — cross-lingual search finds docs regardless of language
+- **Robust search capabilities** — hybrid search, reranking, and semantic retrieval
 - **MCP server** — works with Claude Code, Cursor, and any MCP-compatible AI tool
 
 ## CLI Commands
@@ -99,20 +99,17 @@ API keys are stored in `.env` and loaded automatically.
 
 ## MCP Server
 
-Use OpenDocuments as a knowledge base for AI coding tools:
+OpenDocuments supports CQRS Read-Write Split to avoid Docker isolation/mount limits:
+- **`opendocuments-read`** (Remote SSE): Dedicated RAG query and ask tools.
+- **`opendocuments-write`** (Local Stdio): Direct repo indexing from your host CLI.
 
-```json
-{
-  "mcpServers": {
-    "opendocuments": {
-      "command": "opendocuments",
-      "args": ["start", "--mcp-only"]
-    }
-  }
-}
+You can automatically register both servers in your `opencode.json` with a single command:
+
+```bash
+opendocuments mcp install
 ```
 
-19 tools available: search, ask, index, document management, connector sync, stats.
+This will safely configure and back up both read (remote) and write (local stdio) servers in your global OpenCode configuration.
 
 ## Docker
 

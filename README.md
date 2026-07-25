@@ -14,10 +14,6 @@
 </p>
 
 <p align="center">
-  English | <a href="README.ko.md">한국어</a>
-</p>
-
-<p align="center">
   <img src="assets/demo.gif" alt="OpenDocuments Demo" width="800">
 </p>
 
@@ -119,11 +115,10 @@ opendocuments ask "How does JWT token refresh work in our API?"
 
 > _"What's the remote work policy for the Tokyo office?"_
 
-OpenDocuments searches across your Confluence HR space, the employee handbook on Google Drive, and the latest policy update email -- even if some documents are in Korean and others in English.
+OpenDocuments searches across your Confluence HR space, the employee handbook on Google Drive, and the latest policy update email.
 
 ```bash
-opendocuments ask "도쿄 오피스 원격 근무 정책이 뭐야?" --profile precise
-# Cross-lingual search finds both Korean and English documents
+opendocuments ask "What is the remote work policy for Tokyo?" --profile precise
 ```
 
 ### For Product Managers
@@ -134,20 +129,38 @@ OpenDocuments decomposes the question, searches both versions' specs, and presen
 
 ### For AI-Assisted Development (MCP)
 
-Use OpenDocuments as a knowledge base for **Claude Code**, **Cursor**, or any MCP-compatible AI tool:
+OpenDocuments supports **CQRS Read-Write Split** to optimize performance and security:
+- **`opendocuments-read`** (Remote SSE): Lightweight, fast, network-accessible RAG query tools.
+- **`opendocuments-write`** (Local Stdio): Runs as a local process to index your local repository files directly without Docker volume/isolation boundaries.
 
+You can automatically register and configure both servers in your `opencode.json` with a single command:
+
+```bash
+# Run on the host to auto-configure both read and write MCP servers
+opendocuments mcp install
+```
+
+This will automatically configure both servers:
 ```json
 {
   "mcpServers": {
-    "opendocuments": {
-      "command": "opendocuments",
-      "args": ["start", "--mcp-only"]
+    "opendocuments-read": {
+      "type": "remote",
+      "url": "http://localhost:3006/mcp/sse"
+    },
+    "opendocuments-write": {
+      "command": "node",
+      "args": ["/path/to/cli/index.js", "mcp-stdio"],
+      "env": {
+        "OPENDOCUMENTS_DATA_DIR": "/path/to/data",
+        "OPENDOCUMENTS_MODEL_BASE_URL": "http://localhost:11434"
+      }
     }
   }
 }
 ```
 
-Now your AI coding assistant can search your organization's entire document corpus while writing code.
+Now your AI coding assistant can query and index your organization's entire document corpus while writing code.
 
 ### For Self-Hosted Knowledge Bases
 
