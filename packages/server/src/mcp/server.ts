@@ -19,6 +19,12 @@ const TOOLS = [
       properties: {
         query: { type: 'string', description: 'The question to ask' },
         profile: { type: 'string', description: 'RAG profile to use (optional)' },
+        workspace: { type: 'string', description: 'Workspace/project name to query (optional)' },
+        collections: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by specific collection names (optional)'
+        },
       },
       required: ['query'],
     },
@@ -31,6 +37,12 @@ const TOOLS = [
       properties: {
         query: { type: 'string', description: 'The search query' },
         topK: { type: 'number', description: 'Maximum number of results to return (default: 5)' },
+        workspace: { type: 'string', description: 'Workspace/project name to query (optional)' },
+        collections: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter by specific collection names (optional)'
+        },
       },
       required: ['query'],
     },
@@ -42,6 +54,12 @@ const TOOLS = [
       type: 'object' as const,
       properties: {
         path: { type: 'string', description: 'Absolute path to a file or directory to index' },
+        workspace: { type: 'string', description: 'Workspace/project name to index into (optional)' },
+        collections: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Add the indexed document(s) to these collection names (optional, auto-creates if missing)'
+        },
       },
       required: ['path'],
     },
@@ -51,7 +69,9 @@ const TOOLS = [
     description: 'List all indexed documents in the document store',
     inputSchema: {
       type: 'object' as const,
-      properties: {},
+      properties: {
+        workspace: { type: 'string', description: 'Workspace/project name to list from (optional)' },
+      },
     },
   },
   {
@@ -88,12 +108,26 @@ const TOOLS = [
   {
     name: 'opendocuments_document_get',
     description: 'Get document details by ID',
-    inputSchema: { type: 'object' as const, properties: { id: { type: 'string' } }, required: ['id'] },
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string' },
+        workspace: { type: 'string', description: 'Workspace/project name (optional)' }
+      },
+      required: ['id']
+    },
   },
   {
     name: 'opendocuments_document_delete',
     description: 'Delete a document (soft)',
-    inputSchema: { type: 'object' as const, properties: { id: { type: 'string' } }, required: ['id'] },
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string' },
+        workspace: { type: 'string', description: 'Workspace/project name (optional)' }
+      },
+      required: ['id']
+    },
   },
   {
     name: 'opendocuments_config_get',
@@ -122,12 +156,24 @@ const TOOLS = [
   {
     name: 'opendocuments_document_reindex',
     description: 'Reindex a document',
-    inputSchema: { type: 'object' as const, properties: { id: { type: 'string' } }, required: ['id'] },
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string' },
+        workspace: { type: 'string', description: 'Workspace/project name (optional)' }
+      },
+      required: ['id']
+    },
   },
   {
     name: 'opendocuments_index_status',
     description: 'Get indexing status',
-    inputSchema: { type: 'object' as const, properties: {} },
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        workspace: { type: 'string', description: 'Workspace/project name (optional)' }
+      }
+    },
   },
   {
     name: 'opendocuments_plugin_add',
@@ -184,6 +230,34 @@ export function createMCPServer(ctx: AppContext): Server {
     throw new Error(`Unknown resource: ${uri}`)
   })
 
+  function resolveWorkspaceId(workspaceName?: string): string {
+    if (!workspaceName) {
+      return ctx.forWorkspace().workspaceId
+    }
+    let ws = ctx.workspaceManager.getByName(workspaceName)
+    if (!ws) {
+      ws = ctx.workspaceManager.create(workspaceName)
+    }
+    return ws.id
+  }
+
+  function getCollectionDocIds(services: any, collections?: string[]): Set<string> | null {
+    if (!collections || collections.length === 0) return null
+    const allowedDocIds = new Set<string>()
+    const list = services.collectionManager.list()
+    
+    for (const name of collections) {
+      const col = list.find((c: any) => c.name === name || c.id === name)
+      if (col) {
+        const docIds = services.collectionManager.getDocuments(col.id)
+        for (const dId of docIds) {
+          allowedDocIds.add(dId)
+        }
+      }
+    }
+    return allowedDocIds
+  }
+
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params
 
@@ -192,13 +266,33 @@ export function createMCPServer(ctx: AppContext): Server {
         case 'opendocuments_ask': {
           const query = (args as Record<string, unknown>)?.query as string
           const profile = (args as Record<string, unknown>)?.profile as string | undefined
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const collections = (args as Record<string, unknown>)?.collections as string[] | undefined
           if (!query) {
             return {
               content: [{ type: 'text' as const, text: 'Error: query parameter is required' }],
               isError: true,
             }
           }
-          const result = await ctx.ragEngine.query({ query, profile })
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          const allowedDocIds = getCollectionDocIds(services, collections)
+          
+          let result
+          if (allowedDocIds) {
+            const originalSearchChunks = services.store.searchChunks.bind(services.store)
+            services.store.searchChunks = async (queryEmbedding: number[], topK: number, minScore?: number) => {
+              const results = await originalSearchChunks(queryEmbedding, topK * 5, minScore)
+              return results.filter(r => allowedDocIds.has(r.documentId)).slice(0, topK)
+            }
+            try {
+              result = await services.ragEngine.query({ query, profile })
+            } finally {
+              services.store.searchChunks = originalSearchChunks
+            }
+          } else {
+            result = await services.ragEngine.query({ query, profile })
+          }
           const sources = result.sources.map((s) => ({
             documentId: s.documentId,
             score: s.score,
@@ -222,6 +316,8 @@ export function createMCPServer(ctx: AppContext): Server {
         case 'opendocuments_search': {
           const query = (args as Record<string, unknown>)?.query as string
           const topK = ((args as Record<string, unknown>)?.topK as number) ?? 5
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const collections = (args as Record<string, unknown>)?.collections as string[] | undefined
           if (!query) {
             return {
               content: [{ type: 'text' as const, text: 'Error: query parameter is required' }],
@@ -240,7 +336,18 @@ export function createMCPServer(ctx: AppContext): Server {
             return { content: [{ type: 'text' as const, text: `Embedding failed: ${(err as Error).message}` }] }
           }
 
-          const results = await ctx.store.searchChunks(embedResult.dense[0], topK)
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          const allowedDocIds = getCollectionDocIds(services, collections)
+          
+          let results
+          if (allowedDocIds) {
+            const tempResults = await services.store.searchChunks(embedResult.dense[0], topK * 5)
+            results = tempResults.filter(r => allowedDocIds.has(r.documentId)).slice(0, topK)
+          } else {
+            results = await services.store.searchChunks(embedResult.dense[0], topK)
+          }
+
           return {
             content: [
               {
@@ -261,6 +368,8 @@ export function createMCPServer(ctx: AppContext): Server {
 
         case 'opendocuments_index_path': {
           const filePath = (args as Record<string, unknown>)?.path as string
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const collections = (args as Record<string, unknown>)?.collections as string[] | undefined
           if (!filePath) {
             return {
               content: [{ type: 'text' as const, text: 'Error: path parameter is required' }],
@@ -280,19 +389,34 @@ export function createMCPServer(ctx: AppContext): Server {
             }
           }
 
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+
           const results: { path: string; status: string; error?: string }[] = []
           for (const fp of filesToIndex) {
             try {
               const textExtensions = new Set(['.md', '.mdx', '.txt', '.json', '.yaml', '.yml', '.toml', '.csv', '.html', '.htm', '.ipynb'])
               const ext = extname(fp) || '.txt'
               const content = textExtensions.has(ext) ? await readFile(fp, 'utf-8') : await readFile(fp)
-              await ctx.pipeline.ingest({
+              const ingestResult = await services.pipeline.ingest({
                 title: fp,
                 content,
                 sourceType: 'local',
                 sourcePath: fp,
                 fileType: ext,
               })
+              
+              if (collections && collections.length > 0 && ingestResult.documentId) {
+                const existingCollections = services.collectionManager.list()
+                for (const colName of collections) {
+                  let col = existingCollections.find((c: any) => c.name === colName || c.id === colName)
+                  if (!col) {
+                    col = services.collectionManager.create(colName)
+                  }
+                  services.collectionManager.addDocument(col.id, ingestResult.documentId)
+                }
+              }
+              
               results.push({ path: fp, status: 'indexed' })
             } catch (err) {
               results.push({ path: fp, status: 'error', error: String(err) })
@@ -310,7 +434,10 @@ export function createMCPServer(ctx: AppContext): Server {
         }
 
         case 'opendocuments_document_list': {
-          const docs = ctx.store.listDocuments()
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          const docs = services.store.listDocuments()
           return {
             content: [
               {
@@ -415,13 +542,19 @@ export function createMCPServer(ctx: AppContext): Server {
         }
 
         case 'opendocuments_document_get': {
-          const doc = ctx.store.getDocument((args as Record<string, unknown>).id as string)
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          const doc = services.store.getDocument((args as Record<string, unknown>).id as string)
           if (!doc) return { content: [{ type: 'text' as const, text: 'Document not found' }] }
           return { content: [{ type: 'text' as const, text: JSON.stringify(doc, null, 2) }] }
         }
 
         case 'opendocuments_document_delete': {
-          await ctx.store.softDeleteDocument((args as Record<string, unknown>).id as string)
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          await services.store.softDeleteDocument((args as Record<string, unknown>).id as string)
           return { content: [{ type: 'text' as const, text: 'Document moved to trash' }] }
         }
 
@@ -454,15 +587,21 @@ export function createMCPServer(ctx: AppContext): Server {
 
         case 'opendocuments_document_reindex': {
           const id = (args as Record<string, unknown>).id as string
-          const doc = ctx.store.getDocument(id)
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          const doc = services.store.getDocument(id)
           if (!doc) return { content: [{ type: 'text' as const, text: 'Document not found' }] }
-          await ctx.store.softDeleteDocument(id)
-          ctx.store.restoreDocument(id)
+          await services.store.softDeleteDocument(id)
+          services.store.restoreDocument(id)
           return { content: [{ type: 'text' as const, text: `Document "${doc.title}" reset to pending. Re-index it with: opendocuments index ${doc.source_path}` }] }
         }
 
         case 'opendocuments_index_status': {
-          const docs = ctx.store.listDocuments()
+          const workspaceName = (args as Record<string, unknown>)?.workspace as string | undefined
+          const workspaceId = resolveWorkspaceId(workspaceName)
+          const services = ctx.forWorkspace(workspaceId)
+          const docs = services.store.listDocuments()
           const indexed = docs.filter(d => d.status === 'indexed').length
           const pending = docs.filter(d => d.status === 'pending').length
           const errors = docs.filter(d => d.status === 'error').length
