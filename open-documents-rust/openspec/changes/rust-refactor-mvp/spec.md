@@ -29,6 +29,19 @@ The system SHALL implement Pure-Rust document parsing engines that run without b
 
 ---
 
+### Requirement: Resilience-Engineered File Ingestion & Parser Routing
+The system SHALL guarantee file ingestion robustness, handling randomized temporary filenames (without extensions), uppercase/stray file extensions, and file permission boundaries seamlessly.
+
+#### Scenario: Ingesting a PDF with uppercase extension and missing system association
+- **WHEN** the system is requested to parse a file named `/tmp/UPLOADS_GUIDE.PDF`
+- **THEN** it SHALL normalize the file extension to lowercase and correctly route the file to `PdfParser`.
+
+#### Scenario: Ingesting a temporary file with randomized hash and no suffix
+- **WHEN** the system receives an upload written to `/tmp/83af128bcde` with `original_name = Some("financial_report.xlsx")`
+- **THEN** it SHALL extract the file extension from the original name fallback, map it to `ExcelParser`, and successfully complete chunking.
+
+---
+
 ### Requirement: Workspace-Isolated LanceDB Vector Search
 The system SHALL interact with LanceDB using native Rust bindings, ensuring dynamic table isolation per workspace.
 
