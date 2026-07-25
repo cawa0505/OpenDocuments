@@ -2,7 +2,7 @@ import { Command } from 'commander'
 import { log } from 'opendocuments-core'
 import chalk from 'chalk'
 import { getContext, shutdownContext } from '../utils/bootstrap.js'
-import { writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const CURRENT_WS_FILE = join(process.env.HOME || '~', '.opendocuments', 'current-workspace')
@@ -13,7 +13,6 @@ function getCurrentWorkspace(): string {
 
 function setCurrentWorkspace(name: string): void {
   const dir = join(process.env.HOME || '~', '.opendocuments')
-  const { mkdirSync } = require('node:fs')
   mkdirSync(dir, { recursive: true })
   writeFileSync(CURRENT_WS_FILE, name)
 }

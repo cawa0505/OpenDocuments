@@ -82,19 +82,26 @@ export class OllamaModelPlugin implements ModelPlugin {
   }
 
   async embed(texts: string[]): Promise<EmbeddingResult> {
-    const res = await fetchWithTimeout(`${this.baseUrl}/api/embed`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: this.embeddingModel,
-        input: texts,
-      }),
-    }, 30000)
+    const batchSize = 8
+    const embeddings: number[][] = []
 
-    if (!res.ok) throw new Error(`Ollama embed error: ${res.status}`)
-    const data = (await res.json()) as { embeddings: number[][] }
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batch = texts.slice(i, i + batchSize)
+      const res = await fetchWithTimeout(`${this.baseUrl}/api/embed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.embeddingModel,
+          input: batch,
+        }),
+      }, 120000)
 
-    return { dense: data.embeddings }
+      if (!res.ok) throw new Error(`Ollama embed error: ${res.status}`)
+      const data = (await res.json()) as { embeddings: number[][] }
+      embeddings.push(...data.embeddings)
+    }
+
+    return { dense: embeddings }
   }
 
   // --- Private helpers ---

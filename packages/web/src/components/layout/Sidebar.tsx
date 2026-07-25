@@ -173,9 +173,17 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-[264px] shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-[72px] items-center gap-3 px-5">
-        <LogoMark />
-        <h1 className="text-[21px] font-semibold tracking-[-0.01em] text-slate-950">OpenDocuments</h1>
+      <div className="flex h-[88px] flex-col justify-center px-5 border-b border-slate-100 pb-3 mt-2">
+        <div className="flex items-center gap-3">
+          <LogoMark />
+          <h1 className="text-[21px] font-semibold tracking-[-0.01em] text-slate-950">OpenDocuments</h1>
+        </div>
+        <div className="mt-2 flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+            Workspace: {localStorage.getItem('active-workspace') || 'default'}
+          </span>
+        </div>
       </div>
 
       <nav className="px-2 pt-3">

@@ -192,14 +192,33 @@ const TOOLS = [
   },
 ]
 
-export function createMCPServer(ctx: AppContext): Server {
+export function createMCPServer(ctx: AppContext, mode: 'read' | 'write' | 'all' = 'all'): Server {
   const server = new Server(
     { name: 'opendocuments', version: SERVER_VERSION },
     { capabilities: { tools: {}, resources: {} } }
   )
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return { tools: TOOLS }
+    let filteredTools = TOOLS
+    if (mode === 'read') {
+      const readOnlyToolNames = [
+        'opendocuments_ask',
+        'opendocuments_search',
+        'opendocuments_document_get',
+        'opendocuments_document_list',
+        'opendocuments_workspace_list',
+        'opendocuments_stats'
+      ]
+      filteredTools = TOOLS.filter(t => readOnlyToolNames.includes(t.name))
+    } else if (mode === 'write') {
+      const writeOnlyToolNames = [
+        'opendocuments_index_path',
+        'opendocuments_document_delete',
+        'opendocuments_document_reindex'
+      ]
+      filteredTools = TOOLS.filter(t => writeOnlyToolNames.includes(t.name))
+    }
+    return { tools: filteredTools }
   })
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
@@ -230,13 +249,32 @@ export function createMCPServer(ctx: AppContext): Server {
     throw new Error(`Unknown resource: ${uri}`)
   })
 
-  function resolveWorkspaceId(workspaceName?: string): string {
-    if (!workspaceName) {
+  function resolveWorkspaceId(workspaceName?: string, filePath?: string): string {
+    let resolvedName = workspaceName
+
+    if (!resolvedName && filePath) {
+      const parts = filePath.split(/[/\\]/).filter(Boolean)
+      if (parts.length > 0) {
+        let lastDir = parts[parts.length - 1]
+        // Common generic names that easily conflict
+        const genericNames = new Set(['src', 'dist', 'lib', 'config', 'tests', 'docs', 'bin', 'assets', 'public', 'build', 'repo', 'repos'])
+        
+        if (genericNames.has(lastDir.toLowerCase()) && parts.length > 1) {
+          const parentDir = parts[parts.length - 2]
+          resolvedName = `${parentDir}_${lastDir}`
+        } else {
+          resolvedName = lastDir
+        }
+      }
+    }
+
+    if (!resolvedName) {
       return ctx.forWorkspace().workspaceId
     }
-    let ws = ctx.workspaceManager.getByName(workspaceName)
+
+    let ws = ctx.workspaceManager.getByName(resolvedName)
     if (!ws) {
-      ws = ctx.workspaceManager.create(workspaceName)
+      ws = ctx.workspaceManager.create(resolvedName)
     }
     return ws.id
   }
@@ -389,7 +427,7 @@ export function createMCPServer(ctx: AppContext): Server {
             }
           }
 
-          const workspaceId = resolveWorkspaceId(workspaceName)
+          const workspaceId = resolveWorkspaceId(workspaceName, filePath)
           const services = ctx.forWorkspace(workspaceId)
 
           const results: { path: string; status: string; error?: string }[] = []
@@ -638,7 +676,7 @@ export function createMCPServer(ctx: AppContext): Server {
 }
 
 export async function startMCPServer(ctx: AppContext): Promise<void> {
-  const server = createMCPServer(ctx)
+  const server = createMCPServer(ctx, 'write')
   const transport = new StdioServerTransport()
   await server.connect(transport)
 }

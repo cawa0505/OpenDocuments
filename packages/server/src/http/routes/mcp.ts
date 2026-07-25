@@ -7,7 +7,7 @@ import { createMCPServer } from '../../mcp/server.js'
 
 export function mcpRoutes(ctx: AppContext) {
   const app = new Hono()
-  const mcpServer = createMCPServer(ctx)
+  const mcpServer = createMCPServer(ctx, 'read')
   const activeTransports = new Map<string, SSEServerTransport>()
 
   app.get('/mcp/sse', async (c) => {
