@@ -2,6 +2,9 @@
 members = [
     "crates/opendoc-types",
     "crates/opendoc-parser",
+    "crates/opendoc-parser-xlsx",
+    "crates/opendoc-parser-docx",
+    "crates/opendoc-parser-pdf",
     "crates/opendoc-storage",
     "crates/opendoc-mcp",
     "crates/opendoc-tui",
@@ -12,6 +15,12 @@ resolver = "2"
 name = "open-documents-rust"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+opendoc-types = { path = "crates/opendoc-types" }
+opendoc-parser = { path = "crates/opendoc-parser" }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
 
 [[bin]]
 name = "opendoc-srv"
