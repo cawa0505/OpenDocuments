@@ -1,0 +1,3066 @@
+
+---
+events:
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineSystem.cmake:12 (find_program)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_UNAME"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "uname"
+    candidate_directories:
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+      - "/bin/"
+    searched_directories:
+      - "/home/zeng/.aios/uname"
+      - "/home/zeng/.bun/bin/uname"
+      - "/home/zeng/.config/composer/vendor/bin/uname"
+      - "/home/zeng/go/bin/uname"
+      - "/home/zeng/.cargo/bin/uname"
+      - "/opt/rocm/bin/uname"
+      - "/home/zeng/.local/bin/uname"
+      - "/home/zeng/bin/uname"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/uname"
+      - "/home/zeng/.deno/bin/uname"
+      - "/usr/local/sbin/uname"
+      - "/usr/local/bin/uname"
+    found: "/usr/bin/uname"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineSystem.cmake:218 (message)"
+      - "CMakeLists.txt:37 (project)"
+    message: |
+      The system is: Linux - 7.1.3-2-cachyos - x86_64
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeUnixFindMake.cmake:5 (find_program)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_MAKE_PROGRAM"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gmake"
+      - "make"
+      - "smake"
+    candidate_directories:
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    searched_directories:
+      - "/home/zeng/.aios/gmake"
+      - "/home/zeng/.bun/bin/gmake"
+      - "/home/zeng/.config/composer/vendor/bin/gmake"
+      - "/home/zeng/go/bin/gmake"
+      - "/home/zeng/.cargo/bin/gmake"
+      - "/opt/rocm/bin/gmake"
+      - "/home/zeng/.local/bin/gmake"
+      - "/home/zeng/bin/gmake"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gmake"
+      - "/home/zeng/.deno/bin/gmake"
+      - "/usr/local/sbin/gmake"
+      - "/usr/local/bin/gmake"
+      - "/usr/bin/gmake"
+      - "/opt/android-sdk/platform-tools/gmake"
+      - "/usr/share/dotnet/gmake"
+      - "/home/zeng/.dotnet/tools/gmake"
+      - "/usr/lib/jvm/default/bin/gmake"
+      - "/usr/bin/site_perl/gmake"
+      - "/usr/bin/vendor_perl/gmake"
+      - "/usr/bin/core_perl/gmake"
+      - "/home/zeng/.aios/make"
+      - "/home/zeng/.bun/bin/make"
+      - "/home/zeng/.config/composer/vendor/bin/make"
+      - "/home/zeng/go/bin/make"
+      - "/home/zeng/.cargo/bin/make"
+      - "/opt/rocm/bin/make"
+      - "/home/zeng/.local/bin/make"
+      - "/home/zeng/bin/make"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/make"
+      - "/home/zeng/.deno/bin/make"
+      - "/usr/local/sbin/make"
+      - "/usr/local/bin/make"
+    found: "/usr/bin/make"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:501 (find_file)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:538 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCCompilerId.c.in"
+    candidate_directories:
+      - "/usr/share/cmake/Modules/"
+    found: "/usr/share/cmake/Modules/CMakeCCompilerId.c.in"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:37 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: -ffunction-sections;-fdata-sections;-fPIC;-m64;-w
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/4.4.0/CompilerIdC/a.out
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_AR"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/ar"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_RANLIB"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/ranlib"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_STRIP"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "strip"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/strip"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_LINKER"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ld"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/ld"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_NM"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "nm"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/nm"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_OBJDUMP"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "objdump"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/objdump"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_OBJCOPY"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "objcopy"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/objcopy"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_READELF"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "readelf"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/readelf"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_DLLTOOL"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "dlltool"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    searched_directories:
+      - "/usr/bin/dlltool"
+      - "/home/zeng/.aios/dlltool"
+      - "/home/zeng/.bun/bin/dlltool"
+      - "/home/zeng/.config/composer/vendor/bin/dlltool"
+      - "/home/zeng/go/bin/dlltool"
+      - "/home/zeng/.cargo/bin/dlltool"
+      - "/opt/rocm/bin/dlltool"
+      - "/home/zeng/.local/bin/dlltool"
+      - "/home/zeng/bin/dlltool"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/dlltool"
+      - "/home/zeng/.deno/bin/dlltool"
+      - "/usr/local/sbin/dlltool"
+      - "/usr/local/bin/dlltool"
+      - "/opt/android-sdk/platform-tools/dlltool"
+      - "/usr/share/dotnet/dlltool"
+      - "/home/zeng/.dotnet/tools/dlltool"
+      - "/usr/lib/jvm/default/bin/dlltool"
+      - "/usr/bin/site_perl/dlltool"
+      - "/usr/bin/vendor_perl/dlltool"
+      - "/usr/bin/core_perl/dlltool"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_ADDR2LINE"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "addr2line"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    found: "/usr/bin/addr2line"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_TAPI"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "tapi"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    searched_directories:
+      - "/usr/bin/tapi"
+      - "/home/zeng/.aios/tapi"
+      - "/home/zeng/.bun/bin/tapi"
+      - "/home/zeng/.config/composer/vendor/bin/tapi"
+      - "/home/zeng/go/bin/tapi"
+      - "/home/zeng/.cargo/bin/tapi"
+      - "/opt/rocm/bin/tapi"
+      - "/home/zeng/.local/bin/tapi"
+      - "/home/zeng/bin/tapi"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/tapi"
+      - "/home/zeng/.deno/bin/tapi"
+      - "/usr/local/sbin/tapi"
+      - "/usr/local/bin/tapi"
+      - "/opt/android-sdk/platform-tools/tapi"
+      - "/usr/share/dotnet/tapi"
+      - "/home/zeng/.dotnet/tools/tapi"
+      - "/usr/lib/jvm/default/bin/tapi"
+      - "/usr/bin/site_perl/tapi"
+      - "/usr/bin/vendor_perl/tapi"
+      - "/usr/bin/core_perl/tapi"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Compiler/GNU-FindBinUtils.cmake:18 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:201 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_AR"
+    description: "A wrapper around 'ar' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ar-16.1"
+      - "gcc-ar-16"
+      - "gcc-ar16"
+      - "gcc-ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    searched_directories:
+      - "/usr/bin/gcc-ar-16.1"
+      - "/home/zeng/.aios/gcc-ar-16.1"
+      - "/home/zeng/.bun/bin/gcc-ar-16.1"
+      - "/home/zeng/.config/composer/vendor/bin/gcc-ar-16.1"
+      - "/home/zeng/go/bin/gcc-ar-16.1"
+      - "/home/zeng/.cargo/bin/gcc-ar-16.1"
+      - "/opt/rocm/bin/gcc-ar-16.1"
+      - "/home/zeng/.local/bin/gcc-ar-16.1"
+      - "/home/zeng/bin/gcc-ar-16.1"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcc-ar-16.1"
+      - "/home/zeng/.deno/bin/gcc-ar-16.1"
+      - "/usr/local/sbin/gcc-ar-16.1"
+      - "/usr/local/bin/gcc-ar-16.1"
+      - "/opt/android-sdk/platform-tools/gcc-ar-16.1"
+      - "/usr/share/dotnet/gcc-ar-16.1"
+      - "/home/zeng/.dotnet/tools/gcc-ar-16.1"
+      - "/usr/lib/jvm/default/bin/gcc-ar-16.1"
+      - "/usr/bin/site_perl/gcc-ar-16.1"
+      - "/usr/bin/vendor_perl/gcc-ar-16.1"
+      - "/usr/bin/core_perl/gcc-ar-16.1"
+      - "/usr/bin/gcc-ar-16"
+      - "/home/zeng/.aios/gcc-ar-16"
+      - "/home/zeng/.bun/bin/gcc-ar-16"
+      - "/home/zeng/.config/composer/vendor/bin/gcc-ar-16"
+      - "/home/zeng/go/bin/gcc-ar-16"
+      - "/home/zeng/.cargo/bin/gcc-ar-16"
+      - "/opt/rocm/bin/gcc-ar-16"
+      - "/home/zeng/.local/bin/gcc-ar-16"
+      - "/home/zeng/bin/gcc-ar-16"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcc-ar-16"
+      - "/home/zeng/.deno/bin/gcc-ar-16"
+      - "/usr/local/sbin/gcc-ar-16"
+      - "/usr/local/bin/gcc-ar-16"
+      - "/opt/android-sdk/platform-tools/gcc-ar-16"
+      - "/usr/share/dotnet/gcc-ar-16"
+      - "/home/zeng/.dotnet/tools/gcc-ar-16"
+      - "/usr/lib/jvm/default/bin/gcc-ar-16"
+      - "/usr/bin/site_perl/gcc-ar-16"
+      - "/usr/bin/vendor_perl/gcc-ar-16"
+      - "/usr/bin/core_perl/gcc-ar-16"
+      - "/usr/bin/gcc-ar16"
+      - "/home/zeng/.aios/gcc-ar16"
+      - "/home/zeng/.bun/bin/gcc-ar16"
+      - "/home/zeng/.config/composer/vendor/bin/gcc-ar16"
+      - "/home/zeng/go/bin/gcc-ar16"
+      - "/home/zeng/.cargo/bin/gcc-ar16"
+      - "/opt/rocm/bin/gcc-ar16"
+      - "/home/zeng/.local/bin/gcc-ar16"
+      - "/home/zeng/bin/gcc-ar16"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcc-ar16"
+      - "/home/zeng/.deno/bin/gcc-ar16"
+      - "/usr/local/sbin/gcc-ar16"
+      - "/usr/local/bin/gcc-ar16"
+      - "/opt/android-sdk/platform-tools/gcc-ar16"
+      - "/usr/share/dotnet/gcc-ar16"
+      - "/home/zeng/.dotnet/tools/gcc-ar16"
+      - "/usr/lib/jvm/default/bin/gcc-ar16"
+      - "/usr/bin/site_perl/gcc-ar16"
+      - "/usr/bin/vendor_perl/gcc-ar16"
+      - "/usr/bin/core_perl/gcc-ar16"
+    found: "/usr/bin/gcc-ar"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Compiler/GNU-FindBinUtils.cmake:30 (find_program)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCCompiler.cmake:201 (include)"
+      - "CMakeLists.txt:37 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_RANLIB"
+    description: "A wrapper around 'ranlib' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ranlib-16.1"
+      - "gcc-ranlib-16"
+      - "gcc-ranlib16"
+      - "gcc-ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+    searched_directories:
+      - "/usr/bin/gcc-ranlib-16.1"
+      - "/home/zeng/.aios/gcc-ranlib-16.1"
+      - "/home/zeng/.bun/bin/gcc-ranlib-16.1"
+      - "/home/zeng/.config/composer/vendor/bin/gcc-ranlib-16.1"
+      - "/home/zeng/go/bin/gcc-ranlib-16.1"
+      - "/home/zeng/.cargo/bin/gcc-ranlib-16.1"
+      - "/opt/rocm/bin/gcc-ranlib-16.1"
+      - "/home/zeng/.local/bin/gcc-ranlib-16.1"
+      - "/home/zeng/bin/gcc-ranlib-16.1"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcc-ranlib-16.1"
+      - "/home/zeng/.deno/bin/gcc-ranlib-16.1"
+      - "/usr/local/sbin/gcc-ranlib-16.1"
+      - "/usr/local/bin/gcc-ranlib-16.1"
+      - "/opt/android-sdk/platform-tools/gcc-ranlib-16.1"
+      - "/usr/share/dotnet/gcc-ranlib-16.1"
+      - "/home/zeng/.dotnet/tools/gcc-ranlib-16.1"
+      - "/usr/lib/jvm/default/bin/gcc-ranlib-16.1"
+      - "/usr/bin/site_perl/gcc-ranlib-16.1"
+      - "/usr/bin/vendor_perl/gcc-ranlib-16.1"
+      - "/usr/bin/core_perl/gcc-ranlib-16.1"
+      - "/usr/bin/gcc-ranlib-16"
+      - "/home/zeng/.aios/gcc-ranlib-16"
+      - "/home/zeng/.bun/bin/gcc-ranlib-16"
+      - "/home/zeng/.config/composer/vendor/bin/gcc-ranlib-16"
+      - "/home/zeng/go/bin/gcc-ranlib-16"
+      - "/home/zeng/.cargo/bin/gcc-ranlib-16"
+      - "/opt/rocm/bin/gcc-ranlib-16"
+      - "/home/zeng/.local/bin/gcc-ranlib-16"
+      - "/home/zeng/bin/gcc-ranlib-16"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcc-ranlib-16"
+      - "/home/zeng/.deno/bin/gcc-ranlib-16"
+      - "/usr/local/sbin/gcc-ranlib-16"
+      - "/usr/local/bin/gcc-ranlib-16"
+      - "/opt/android-sdk/platform-tools/gcc-ranlib-16"
+      - "/usr/share/dotnet/gcc-ranlib-16"
+      - "/home/zeng/.dotnet/tools/gcc-ranlib-16"
+      - "/usr/lib/jvm/default/bin/gcc-ranlib-16"
+      - "/usr/bin/site_perl/gcc-ranlib-16"
+      - "/usr/bin/vendor_perl/gcc-ranlib-16"
+      - "/usr/bin/core_perl/gcc-ranlib-16"
+      - "/usr/bin/gcc-ranlib16"
+      - "/home/zeng/.aios/gcc-ranlib16"
+      - "/home/zeng/.bun/bin/gcc-ranlib16"
+      - "/home/zeng/.config/composer/vendor/bin/gcc-ranlib16"
+      - "/home/zeng/go/bin/gcc-ranlib16"
+      - "/home/zeng/.cargo/bin/gcc-ranlib16"
+      - "/opt/rocm/bin/gcc-ranlib16"
+      - "/home/zeng/.local/bin/gcc-ranlib16"
+      - "/home/zeng/bin/gcc-ranlib16"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcc-ranlib16"
+      - "/home/zeng/.deno/bin/gcc-ranlib16"
+      - "/usr/local/sbin/gcc-ranlib16"
+      - "/usr/local/bin/gcc-ranlib16"
+      - "/opt/android-sdk/platform-tools/gcc-ranlib16"
+      - "/usr/share/dotnet/gcc-ranlib16"
+      - "/home/zeng/.dotnet/tools/gcc-ranlib16"
+      - "/usr/lib/jvm/default/bin/gcc-ranlib16"
+      - "/usr/bin/site_perl/gcc-ranlib16"
+      - "/usr/bin/vendor_perl/gcc-ranlib16"
+      - "/usr/bin/core_perl/gcc-ranlib16"
+    found: "/usr/bin/gcc-ranlib"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:123 (try_compile)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:37 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: false
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_bdace/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_bdace.dir/build.make CMakeFiles/cmTC_bdace.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz'
+        Building C object CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11   -v -o CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        Target: x86_64-pc-linux-gnu
+        Configured with: ../gcc/configure --enable-languages=ada,c,c++,d,fortran,go,lto,m2,objc,obj-c++,rust,cobol --enable-bootstrap --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://github.com/CachyOS/CachyOS-PKGBUILDS/issues --with-build-config=bootstrap-lto --with-gcc-major-version-only --with-linker-hash-style=gnu --with-system-zlib --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-libstdcxx-backtrace --enable-link-serialization=1 --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-fixincludes --disable-libssp --disable-libstdcxx-pch --disable-werror
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 16.1.1 20260625 (GCC) 
+        COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-std=c11' '-v' '-o' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_bdace.dir/'
+         /usr/lib/gcc/x86_64-pc-linux-gnu/16/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_bdace.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -m64 -mtune=generic -march=x86-64 -w -std=c11 -version -ffunction-sections -fdata-sections -fPIC -o /tmp/ccbCf13Y.s
+        GNU C11 (GCC) version 16.1.1 20260625 (x86_64-pc-linux-gnu)
+        	compiled by GNU C version 16.1.1 20260625, GMP version 6.3.0, MPFR version 4.2.2, MPC version 1.4.1, isl version isl-0.28-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/16/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../x86_64-pc-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-pc-linux-gnu/16/include
+         /usr/local/include
+         /usr/include
+        End of search list.
+        Compiler executable checksum: 2c8126a93f51427fc007b89c5e555d2b
+        COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-std=c11' '-v' '-o' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_bdace.dir/'
+         as -v -W --64 -o CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o /tmp/ccbCf13Y.s
+        GNU assembler version 2.46.1 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.46.1
+        COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-std=c11' '-v' '-o' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_bdace
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bdace.dir/link.txt --verbose=1
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper
+        Target: x86_64-pc-linux-gnu
+        Configured with: ../gcc/configure --enable-languages=ada,c,c++,d,fortran,go,lto,m2,objc,obj-c++,rust,cobol --enable-bootstrap --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://github.com/CachyOS/CachyOS-PKGBUILDS/issues --with-build-config=bootstrap-lto --with-gcc-major-version-only --with-linker-hash-style=gnu --with-system-zlib --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-libstdcxx-backtrace --enable-link-serialization=1 --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-fixincludes --disable-libssp --disable-libstdcxx-pch --disable-werror
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 16.1.1 20260625 (GCC) 
+        COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-v' '-o' 'cmTC_bdace' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_bdace.'
+         /usr/lib/gcc/x86_64-pc-linux-gnu/16/collect2 -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3A9xqe.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded -plugin-opt=-pass-through=-latomic_asneeded -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_bdace /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/16 -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -lgcc -lgcc_s_asneeded -latomic_asneeded -lc -lgcc -lgcc_s_asneeded /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o
+        collect2 version 16.1.1 20260625
+        /usr/bin/ld -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3A9xqe.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded -plugin-opt=-pass-through=-latomic_asneeded -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_bdace /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/16 -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -lgcc -lgcc_s_asneeded -latomic_asneeded -lc -lgcc -lgcc_s_asneeded /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o
+        GNU ld (GNU Binutils) 2.46.1
+        COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-v' '-o' 'cmTC_bdace' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_bdace.'
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w   -v -Wl,-v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -o cmTC_bdace
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:255 (message)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:37 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-pc-linux-gnu/16/include]
+          add: [/usr/local/include]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16/include] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/16/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/gcc/x86_64-pc-linux-gnu/16/include;/usr/local/include;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:291 (message)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:37 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild))("|,| |$)]
+        ignore line: [Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_bdace/fast]
+        ignore line: [/usr/bin/make  -f CMakeFiles/cmTC_bdace.dir/build.make CMakeFiles/cmTC_bdace.dir/build]
+        ignore line: [make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-D1LhMz']
+        ignore line: [Building C object CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11   -v -o CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [Target: x86_64-pc-linux-gnu]
+        ignore line: [Configured with: ../gcc/configure --enable-languages=ada c c++ d fortran go lto m2 objc obj-c++ rust cobol --enable-bootstrap --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://github.com/CachyOS/CachyOS-PKGBUILDS/issues --with-build-config=bootstrap-lto --with-gcc-major-version-only --with-linker-hash-style=gnu --with-system-zlib --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-libstdcxx-backtrace --enable-link-serialization=1 --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-fixincludes --disable-libssp --disable-libstdcxx-pch --disable-werror]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 16.1.1 20260625 (GCC) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-std=c11' '-v' '-o' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_bdace.dir/']
+        ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/16/cc1 -quiet -v /usr/share/cmake/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_bdace.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -m64 -mtune=generic -march=x86-64 -w -std=c11 -version -ffunction-sections -fdata-sections -fPIC -o /tmp/ccbCf13Y.s]
+        ignore line: [GNU C11 (GCC) version 16.1.1 20260625 (x86_64-pc-linux-gnu)]
+        ignore line: [	compiled by GNU C version 16.1.1 20260625  GMP version 6.3.0  MPFR version 4.2.2  MPC version 1.4.1  isl version isl-0.28-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/16/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../x86_64-pc-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/16/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: 2c8126a93f51427fc007b89c5e555d2b]
+        ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-std=c11' '-v' '-o' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_bdace.dir/']
+        ignore line: [ as -v -W --64 -o CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o /tmp/ccbCf13Y.s]
+        ignore line: [GNU assembler version 2.46.1 (x86_64-pc-linux-gnu) using BFD version (GNU Binutils) 2.46.1]
+        ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-std=c11' '-v' '-o' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_bdace]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bdace.dir/link.txt --verbose=1]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper]
+        ignore line: [Target: x86_64-pc-linux-gnu]
+        ignore line: [Configured with: ../gcc/configure --enable-languages=ada c c++ d fortran go lto m2 objc obj-c++ rust cobol --enable-bootstrap --prefix=/usr --libdir=/usr/lib --libexecdir=/usr/lib --mandir=/usr/share/man --infodir=/usr/share/info --with-bugurl=https://github.com/CachyOS/CachyOS-PKGBUILDS/issues --with-build-config=bootstrap-lto --with-gcc-major-version-only --with-linker-hash-style=gnu --with-system-zlib --enable-cet=auto --enable-checking=release --enable-clocale=gnu --enable-default-pie --enable-default-ssp --enable-gnu-indirect-function --enable-gnu-unique-object --enable-libstdcxx-backtrace --enable-link-serialization=1 --enable-linker-build-id --enable-lto --enable-multilib --enable-plugin --enable-shared --enable-threads=posix --disable-fixincludes --disable-libssp --disable-libstdcxx-pch --disable-werror]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 16.1.1 20260625 (GCC) ]
+        ignore line: [COMPILER_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-pc-linux-gnu/16/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/:/lib/../lib/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-ffunction-sections' '-fdata-sections' '-fPIC' '-m64' '-w' '-v' '-o' 'cmTC_bdace' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_bdace.']
+        link line: [ /usr/lib/gcc/x86_64-pc-linux-gnu/16/collect2 -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3A9xqe.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded -plugin-opt=-pass-through=-latomic_asneeded -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_bdace /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/16 -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -lgcc -lgcc_s_asneeded -latomic_asneeded -lc -lgcc -lgcc_s_asneeded /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o]
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/cc3A9xqe.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s_asneeded] ==> ignore
+          arg [-plugin-opt=-pass-through=-latomic_asneeded] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s_asneeded] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_bdace] ==> ignore
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o] ==> obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o]
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/16] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16]
+          arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../..] ==> dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../..]
+          arg [-L/lib] ==> dir [/lib]
+          arg [-L/usr/lib] ==> dir [/usr/lib]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lgcc_s_asneeded] ==> lib [gcc_s_asneeded]
+          arg [-latomic_asneeded] ==> lib [atomic_asneeded]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lgcc_s_asneeded] ==> lib [gcc_s_asneeded]
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o] ==> obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o]
+        ignore line: [collect2 version 16.1.1 20260625]
+        link line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3A9xqe.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded -plugin-opt=-pass-through=-latomic_asneeded -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_bdace /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/16 -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -lgcc -lgcc_s_asneeded -latomic_asneeded -lc -lgcc -lgcc_s_asneeded /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o] ==> linker [/usr/bin/ld]
+        link line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3A9xqe.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded -plugin-opt=-pass-through=-latomic_asneeded -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_bdace /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/16 -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -lgcc -lgcc_s_asneeded -latomic_asneeded -lc -lgcc -lgcc_s_asneeded /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o] ==> linker architecture flags [-m;elf]
+        ignore line: [/usr/bin/ld -plugin /usr/lib/gcc/x86_64-pc-linux-gnu/16/liblto_plugin.so -plugin-opt=/usr/lib/gcc/x86_64-pc-linux-gnu/16/lto-wrapper -plugin-opt=-fresolution=/tmp/cc3A9xqe.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded -plugin-opt=-pass-through=-latomic_asneeded -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s_asneeded --build-id --eh-frame-hdr --hash-style=gnu -m elf_x86_64 -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -o cmTC_bdace /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o -L/usr/lib/gcc/x86_64-pc-linux-gnu/16 -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib -L/lib/../lib -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_bdace.dir/CMakeCCompilerABI.c.o -lgcc -lgcc_s_asneeded -latomic_asneeded -lc -lgcc -lgcc_s_asneeded /usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o /usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o]
+        linker tool for 'C': /usr/bin/ld -m;elf
+        collapse obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/Scrt1.o] ==> [/usr/lib/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crti.o] ==> [/usr/lib/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib/crtn.o] ==> [/usr/lib/crtn.o]
+        collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16] ==> [/usr/lib/gcc/x86_64-pc-linux-gnu/16]
+        collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-pc-linux-gnu/16/../../..] ==> [/usr/lib]
+        collapse library dir [/lib] ==> [/lib]
+        collapse library dir [/usr/lib] ==> [/usr/lib]
+        implicit libs: [gcc;gcc_s_asneeded;atomic_asneeded;c;gcc;gcc_s_asneeded]
+        implicit objs: [/usr/lib/Scrt1.o;/usr/lib/crti.o;/usr/lib/gcc/x86_64-pc-linux-gnu/16/crtbeginS.o;/usr/lib/gcc/x86_64-pc-linux-gnu/16/crtendS.o;/usr/lib/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-pc-linux-gnu/16;/usr/lib;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CMakeDetermineLinkerId.cmake:41 (message)"
+      - "/usr/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:337 (cmake_determine_linker_id)"
+      - "/usr/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:37 (project)"
+    message: |
+      Running the C compiler's linker: "/usr/bin/ld" "-v"
+      GNU ld (GNU Binutils) 2.46.1
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CTest.cmake:188 (find_program)"
+      - "CMakeLists.txt:48 (include)"
+    mode: "program"
+    variable: "MEMORYCHECK_COMMAND"
+    description: "Path to the memory checking command, used for memory error detection."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "purify"
+      - "valgrind"
+      - "boundscheck"
+      - "drmemory"
+      - "cuda-memcheck"
+      - "compute-sanitizer"
+    candidate_directories:
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/home/zeng/.aios/purify"
+      - "/home/zeng/.bun/bin/purify"
+      - "/home/zeng/.config/composer/vendor/bin/purify"
+      - "/home/zeng/go/bin/purify"
+      - "/home/zeng/.cargo/bin/purify"
+      - "/opt/rocm/bin/purify"
+      - "/home/zeng/.local/bin/purify"
+      - "/home/zeng/bin/purify"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/purify"
+      - "/home/zeng/.deno/bin/purify"
+      - "/usr/local/sbin/purify"
+      - "/usr/local/bin/purify"
+      - "/usr/bin/purify"
+      - "/opt/android-sdk/platform-tools/purify"
+      - "/usr/share/dotnet/purify"
+      - "/home/zeng/.dotnet/tools/purify"
+      - "/usr/lib/jvm/default/bin/purify"
+      - "/usr/bin/site_perl/purify"
+      - "/usr/bin/vendor_perl/purify"
+      - "/usr/bin/core_perl/purify"
+      - "/usr/local/bin/purify"
+      - "/usr/local/sbin/purify"
+      - "/usr/local/purify"
+      - "/usr/bin/purify"
+      - "/usr/sbin/purify"
+      - "/usr/purify"
+      - "/bin/purify"
+      - "/sbin/purify"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/purify"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/purify"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/purify"
+      - "/usr/X11R6/bin/purify"
+      - "/usr/X11R6/sbin/purify"
+      - "/usr/X11R6/purify"
+      - "/usr/pkg/bin/purify"
+      - "/usr/pkg/sbin/purify"
+      - "/usr/pkg/purify"
+      - "/opt/bin/purify"
+      - "/opt/sbin/purify"
+      - "/opt/purify"
+      - "/home/zeng/.aios/valgrind"
+      - "/home/zeng/.bun/bin/valgrind"
+      - "/home/zeng/.config/composer/vendor/bin/valgrind"
+      - "/home/zeng/go/bin/valgrind"
+      - "/home/zeng/.cargo/bin/valgrind"
+      - "/opt/rocm/bin/valgrind"
+      - "/home/zeng/.local/bin/valgrind"
+      - "/home/zeng/bin/valgrind"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/valgrind"
+      - "/home/zeng/.deno/bin/valgrind"
+      - "/usr/local/sbin/valgrind"
+      - "/usr/local/bin/valgrind"
+      - "/usr/bin/valgrind"
+      - "/opt/android-sdk/platform-tools/valgrind"
+      - "/usr/share/dotnet/valgrind"
+      - "/home/zeng/.dotnet/tools/valgrind"
+      - "/usr/lib/jvm/default/bin/valgrind"
+      - "/usr/bin/site_perl/valgrind"
+      - "/usr/bin/vendor_perl/valgrind"
+      - "/usr/bin/core_perl/valgrind"
+      - "/usr/local/bin/valgrind"
+      - "/usr/local/sbin/valgrind"
+      - "/usr/local/valgrind"
+      - "/usr/bin/valgrind"
+      - "/usr/sbin/valgrind"
+      - "/usr/valgrind"
+      - "/bin/valgrind"
+      - "/sbin/valgrind"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/valgrind"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/valgrind"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/valgrind"
+      - "/usr/X11R6/bin/valgrind"
+      - "/usr/X11R6/sbin/valgrind"
+      - "/usr/X11R6/valgrind"
+      - "/usr/pkg/bin/valgrind"
+      - "/usr/pkg/sbin/valgrind"
+      - "/usr/pkg/valgrind"
+      - "/opt/bin/valgrind"
+      - "/opt/sbin/valgrind"
+      - "/opt/valgrind"
+      - "/home/zeng/.aios/boundscheck"
+      - "/home/zeng/.bun/bin/boundscheck"
+      - "/home/zeng/.config/composer/vendor/bin/boundscheck"
+      - "/home/zeng/go/bin/boundscheck"
+      - "/home/zeng/.cargo/bin/boundscheck"
+      - "/opt/rocm/bin/boundscheck"
+      - "/home/zeng/.local/bin/boundscheck"
+      - "/home/zeng/bin/boundscheck"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/boundscheck"
+      - "/home/zeng/.deno/bin/boundscheck"
+      - "/usr/local/sbin/boundscheck"
+      - "/usr/local/bin/boundscheck"
+      - "/usr/bin/boundscheck"
+      - "/opt/android-sdk/platform-tools/boundscheck"
+      - "/usr/share/dotnet/boundscheck"
+      - "/home/zeng/.dotnet/tools/boundscheck"
+      - "/usr/lib/jvm/default/bin/boundscheck"
+      - "/usr/bin/site_perl/boundscheck"
+      - "/usr/bin/vendor_perl/boundscheck"
+      - "/usr/bin/core_perl/boundscheck"
+      - "/usr/local/bin/boundscheck"
+      - "/usr/local/sbin/boundscheck"
+      - "/usr/local/boundscheck"
+      - "/usr/bin/boundscheck"
+      - "/usr/sbin/boundscheck"
+      - "/usr/boundscheck"
+      - "/bin/boundscheck"
+      - "/sbin/boundscheck"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/boundscheck"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/boundscheck"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/boundscheck"
+      - "/usr/X11R6/bin/boundscheck"
+      - "/usr/X11R6/sbin/boundscheck"
+      - "/usr/X11R6/boundscheck"
+      - "/usr/pkg/bin/boundscheck"
+      - "/usr/pkg/sbin/boundscheck"
+      - "/usr/pkg/boundscheck"
+      - "/opt/bin/boundscheck"
+      - "/opt/sbin/boundscheck"
+      - "/opt/boundscheck"
+      - "/home/zeng/.aios/drmemory"
+      - "/home/zeng/.bun/bin/drmemory"
+      - "/home/zeng/.config/composer/vendor/bin/drmemory"
+      - "/home/zeng/go/bin/drmemory"
+      - "/home/zeng/.cargo/bin/drmemory"
+      - "/opt/rocm/bin/drmemory"
+      - "/home/zeng/.local/bin/drmemory"
+      - "/home/zeng/bin/drmemory"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/drmemory"
+      - "/home/zeng/.deno/bin/drmemory"
+      - "/usr/local/sbin/drmemory"
+      - "/usr/local/bin/drmemory"
+      - "/usr/bin/drmemory"
+      - "/opt/android-sdk/platform-tools/drmemory"
+      - "/usr/share/dotnet/drmemory"
+      - "/home/zeng/.dotnet/tools/drmemory"
+      - "/usr/lib/jvm/default/bin/drmemory"
+      - "/usr/bin/site_perl/drmemory"
+      - "/usr/bin/vendor_perl/drmemory"
+      - "/usr/bin/core_perl/drmemory"
+      - "/usr/local/bin/drmemory"
+      - "/usr/local/sbin/drmemory"
+      - "/usr/local/drmemory"
+      - "/usr/bin/drmemory"
+      - "/usr/sbin/drmemory"
+      - "/usr/drmemory"
+      - "/bin/drmemory"
+      - "/sbin/drmemory"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/drmemory"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/drmemory"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/drmemory"
+      - "/usr/X11R6/bin/drmemory"
+      - "/usr/X11R6/sbin/drmemory"
+      - "/usr/X11R6/drmemory"
+      - "/usr/pkg/bin/drmemory"
+      - "/usr/pkg/sbin/drmemory"
+      - "/usr/pkg/drmemory"
+      - "/opt/bin/drmemory"
+      - "/opt/sbin/drmemory"
+      - "/opt/drmemory"
+      - "/home/zeng/.aios/cuda-memcheck"
+      - "/home/zeng/.bun/bin/cuda-memcheck"
+      - "/home/zeng/.config/composer/vendor/bin/cuda-memcheck"
+      - "/home/zeng/go/bin/cuda-memcheck"
+      - "/home/zeng/.cargo/bin/cuda-memcheck"
+      - "/opt/rocm/bin/cuda-memcheck"
+      - "/home/zeng/.local/bin/cuda-memcheck"
+      - "/home/zeng/bin/cuda-memcheck"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/cuda-memcheck"
+      - "/home/zeng/.deno/bin/cuda-memcheck"
+      - "/usr/local/sbin/cuda-memcheck"
+      - "/usr/local/bin/cuda-memcheck"
+      - "/usr/bin/cuda-memcheck"
+      - "/opt/android-sdk/platform-tools/cuda-memcheck"
+      - "/usr/share/dotnet/cuda-memcheck"
+      - "/home/zeng/.dotnet/tools/cuda-memcheck"
+      - "/usr/lib/jvm/default/bin/cuda-memcheck"
+      - "/usr/bin/site_perl/cuda-memcheck"
+      - "/usr/bin/vendor_perl/cuda-memcheck"
+      - "/usr/bin/core_perl/cuda-memcheck"
+      - "/usr/local/bin/cuda-memcheck"
+      - "/usr/local/sbin/cuda-memcheck"
+      - "/usr/local/cuda-memcheck"
+      - "/usr/bin/cuda-memcheck"
+      - "/usr/sbin/cuda-memcheck"
+      - "/usr/cuda-memcheck"
+      - "/bin/cuda-memcheck"
+      - "/sbin/cuda-memcheck"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/cuda-memcheck"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/cuda-memcheck"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/cuda-memcheck"
+      - "/usr/X11R6/bin/cuda-memcheck"
+      - "/usr/X11R6/sbin/cuda-memcheck"
+      - "/usr/X11R6/cuda-memcheck"
+      - "/usr/pkg/bin/cuda-memcheck"
+      - "/usr/pkg/sbin/cuda-memcheck"
+      - "/usr/pkg/cuda-memcheck"
+      - "/opt/bin/cuda-memcheck"
+      - "/opt/sbin/cuda-memcheck"
+      - "/opt/cuda-memcheck"
+      - "/home/zeng/.aios/compute-sanitizer"
+      - "/home/zeng/.bun/bin/compute-sanitizer"
+      - "/home/zeng/.config/composer/vendor/bin/compute-sanitizer"
+      - "/home/zeng/go/bin/compute-sanitizer"
+      - "/home/zeng/.cargo/bin/compute-sanitizer"
+      - "/opt/rocm/bin/compute-sanitizer"
+      - "/home/zeng/.local/bin/compute-sanitizer"
+      - "/home/zeng/bin/compute-sanitizer"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/compute-sanitizer"
+      - "/home/zeng/.deno/bin/compute-sanitizer"
+      - "/usr/local/sbin/compute-sanitizer"
+      - "/usr/local/bin/compute-sanitizer"
+      - "/usr/bin/compute-sanitizer"
+      - "/opt/android-sdk/platform-tools/compute-sanitizer"
+      - "/usr/share/dotnet/compute-sanitizer"
+      - "/home/zeng/.dotnet/tools/compute-sanitizer"
+      - "/usr/lib/jvm/default/bin/compute-sanitizer"
+      - "/usr/bin/site_perl/compute-sanitizer"
+      - "/usr/bin/vendor_perl/compute-sanitizer"
+      - "/usr/bin/core_perl/compute-sanitizer"
+      - "/usr/local/bin/compute-sanitizer"
+      - "/usr/local/sbin/compute-sanitizer"
+      - "/usr/local/compute-sanitizer"
+      - "/usr/bin/compute-sanitizer"
+      - "/usr/sbin/compute-sanitizer"
+      - "/usr/compute-sanitizer"
+      - "/bin/compute-sanitizer"
+      - "/sbin/compute-sanitizer"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/compute-sanitizer"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/compute-sanitizer"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/compute-sanitizer"
+      - "/usr/X11R6/bin/compute-sanitizer"
+      - "/usr/X11R6/sbin/compute-sanitizer"
+      - "/usr/X11R6/compute-sanitizer"
+      - "/usr/pkg/bin/compute-sanitizer"
+      - "/usr/pkg/sbin/compute-sanitizer"
+      - "/usr/pkg/compute-sanitizer"
+      - "/opt/bin/compute-sanitizer"
+      - "/opt/sbin/compute-sanitizer"
+      - "/opt/compute-sanitizer"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/usr"
+        - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CTest.cmake:196 (find_program)"
+      - "CMakeLists.txt:48 (include)"
+    mode: "program"
+    variable: "COVERAGE_COMMAND"
+    description: "Path to the coverage program that CTest uses for performing coverage inspection"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcov"
+    candidate_directories:
+      - "/home/zeng/.aios/"
+      - "/home/zeng/.bun/bin/"
+      - "/home/zeng/.config/composer/vendor/bin/"
+      - "/home/zeng/go/bin/"
+      - "/home/zeng/.cargo/bin/"
+      - "/opt/rocm/bin/"
+      - "/home/zeng/.local/bin/"
+      - "/home/zeng/bin/"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/"
+      - "/home/zeng/.deno/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/bin/"
+      - "/opt/android-sdk/platform-tools/"
+      - "/usr/share/dotnet/"
+      - "/home/zeng/.dotnet/tools/"
+      - "/usr/lib/jvm/default/bin/"
+      - "/usr/bin/site_perl/"
+      - "/usr/bin/vendor_perl/"
+      - "/usr/bin/core_perl/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/bin/"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/sbin/"
+      - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/home/zeng/.aios/gcov"
+      - "/home/zeng/.bun/bin/gcov"
+      - "/home/zeng/.config/composer/vendor/bin/gcov"
+      - "/home/zeng/go/bin/gcov"
+      - "/home/zeng/.cargo/bin/gcov"
+      - "/opt/rocm/bin/gcov"
+      - "/home/zeng/.local/bin/gcov"
+      - "/home/zeng/bin/gcov"
+      - "/home/zeng/.nvm/versions/node/v22.23.1/bin/gcov"
+      - "/home/zeng/.deno/bin/gcov"
+      - "/usr/local/sbin/gcov"
+      - "/usr/local/bin/gcov"
+    found: "/usr/bin/gcov"
+    search_context:
+      ENV{PATH}:
+        - "/home/zeng/.aios"
+        - "/home/zeng/.bun/bin"
+        - "/home/zeng/.config/composer/vendor/bin"
+        - "/home/zeng/go/bin"
+        - "/home/zeng/.cargo/bin"
+        - "/opt/rocm/bin"
+        - "/home/zeng/.local/bin"
+        - "/home/zeng/bin"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.aios"
+        - "/home/zeng/.nvm/versions/node/v22.23.1/bin"
+        - "/home/zeng/.deno/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/bin"
+        - "/opt/android-sdk/platform-tools"
+        - "/usr/share/dotnet"
+        - "/home/zeng/.dotnet/tools"
+        - "/usr/lib/jvm/default/bin"
+        - "/usr/bin/site_perl"
+        - "/usr/bin/vendor_perl"
+        - "/usr/bin/core_perl"
+      CMAKE_INSTALL_PREFIX: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/usr"
+        - "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "try_run-v1"
+    backtrace:
+      - "cmake/detect-arch.cmake:25 (try_run)"
+      - "CMakeLists.txt:68 (include)"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeTmp"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeTmp"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "compile_result_unused"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeTmp'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_48adf/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_48adf.dir/build.make CMakeFiles/cmTC_48adf.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeTmp'
+        Building C object CMakeFiles/cmTC_48adf.dir/detect-arch.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_48adf.dir/detect-arch.c.o -c /home/zeng/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libz-ng-sys-1.1.29/src/zlib-ng/cmake/detect-arch.c
+        /home/zeng/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libz-ng-sys-1.1.29/src/zlib-ng/cmake/detect-arch.c:8:6: error: #error archfound x86_64
+            8 |     #error archfound x86_64
+              |      ^~~~~
+        make[1]: *** [CMakeFiles/cmTC_48adf.dir/build.make:81: CMakeFiles/cmTC_48adf.dir/detect-arch.c.o] Error 1
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeTmp'
+        make: *** [Makefile:134: cmTC_48adf/fast] Error 2
+        
+      exitCode: 2
+    runResult:
+      variable: "run_result_unused"
+      cached: true
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:250 (check_c_source_compiles)"
+    checks:
+      - "Performing Test FNO_LTO_AVAILABLE"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-I1vc7d"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-I1vc7d"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "FNO_LTO_AVAILABLE"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-I1vc7d'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_af42d/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_af42d.dir/build.make CMakeFiles/cmTC_af42d.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-I1vc7d'
+        Building C object CMakeFiles/cmTC_af42d.dir/src.c.o
+        /usr/bin/cc -DFNO_LTO_AVAILABLE  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto -std=c11 -o CMakeFiles/cmTC_af42d.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-I1vc7d/src.c
+        Linking C executable cmTC_af42d
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_af42d.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto CMakeFiles/cmTC_af42d.dir/src.c.o -o cmTC_af42d
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-I1vc7d'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "CMakeLists.txt:436 (check_include_file)"
+    checks:
+      - "Looking for arm_acle.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_ARM_ACLE_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_9c636/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_9c636.dir/build.make CMakeFiles/cmTC_9c636.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP'
+        Building C object CMakeFiles/cmTC_9c636.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_9c636.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP/CheckIncludeFile.c
+        /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP/CheckIncludeFile.c:1:10: fatal error: arm_acle.h: No such file or directory
+            1 | #include <arm_acle.h>
+              |          ^~~~~~~~~~~~
+        compilation terminated.
+        make[1]: *** [CMakeFiles/cmTC_9c636.dir/build.make:81: CMakeFiles/cmTC_9c636.dir/CheckIncludeFile.c.o] Error 1
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JtdopP'
+        make: *** [Makefile:134: cmTC_9c636/fast] Error 2
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "CMakeLists.txt:440 (check_include_file)"
+    checks:
+      - "Looking for sys/auxv.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-E7EqtK"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-E7EqtK"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SYS_AUXV_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-E7EqtK'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_fd419/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_fd419.dir/build.make CMakeFiles/cmTC_fd419.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-E7EqtK'
+        Building C object CMakeFiles/cmTC_fd419.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_fd419.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-E7EqtK/CheckIncludeFile.c
+        Linking C executable cmTC_fd419
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_fd419.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_fd419.dir/CheckIncludeFile.c.o -o cmTC_fd419
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-E7EqtK'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "CMakeLists.txt:444 (check_include_file)"
+    checks:
+      - "Looking for sys/sdt.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Ziusjj"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Ziusjj"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SYS_SDT_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Ziusjj'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_3b516/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_3b516.dir/build.make CMakeFiles/cmTC_3b516.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Ziusjj'
+        Building C object CMakeFiles/cmTC_3b516.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_3b516.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Ziusjj/CheckIncludeFile.c
+        Linking C executable cmTC_3b516
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3b516.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_3b516.dir/CheckIncludeFile.c.o -o cmTC_3b516
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Ziusjj'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "CMakeLists.txt:448 (check_include_file)"
+    checks:
+      - "Looking for unistd.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-WkvCPQ"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-WkvCPQ"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_UNISTD_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-WkvCPQ'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_19e3b/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_19e3b.dir/build.make CMakeFiles/cmTC_19e3b.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-WkvCPQ'
+        Building C object CMakeFiles/cmTC_19e3b.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_19e3b.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-WkvCPQ/CheckIncludeFile.c
+        Linking C executable cmTC_19e3b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_19e3b.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_19e3b.dir/CheckIncludeFile.c.o -o cmTC_19e3b
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-WkvCPQ'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "CMakeLists.txt:453 (check_include_file)"
+    checks:
+      - "Looking for linux/auxvec.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-S9zD3y"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-S9zD3y"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_LINUX_AUXVEC_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-S9zD3y'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_b76f3/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_b76f3.dir/build.make CMakeFiles/cmTC_b76f3.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-S9zD3y'
+        Building C object CMakeFiles/cmTC_b76f3.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_b76f3.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-S9zD3y/CheckIncludeFile.c
+        Linking C executable cmTC_b76f3
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b76f3.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_b76f3.dir/CheckIncludeFile.c.o -o cmTC_b76f3
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-S9zD3y'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckTypeSize.cmake:462 (check_include_file)"
+      - "CMakeLists.txt:462 (check_type_size)"
+    checks:
+      - "Looking for sys/types.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-KLPxIY"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-KLPxIY"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SYS_TYPES_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-KLPxIY'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_aca9b/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_aca9b.dir/build.make CMakeFiles/cmTC_aca9b.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-KLPxIY'
+        Building C object CMakeFiles/cmTC_aca9b.dir/CheckIncludeFile.c.o
+        /usr/bin/cc -D_LARGEFILE64_SOURCE=1 -D__USE_LARGEFILE64  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_aca9b.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-KLPxIY/CheckIncludeFile.c
+        Linking C executable cmTC_aca9b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_aca9b.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_aca9b.dir/CheckIncludeFile.c.o -o cmTC_aca9b
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-KLPxIY'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckTypeSize.cmake:463 (check_include_file)"
+      - "CMakeLists.txt:462 (check_type_size)"
+    checks:
+      - "Looking for stdint.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bKWIhb"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bKWIhb"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STDINT_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bKWIhb'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_68578/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_68578.dir/build.make CMakeFiles/cmTC_68578.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bKWIhb'
+        Building C object CMakeFiles/cmTC_68578.dir/CheckIncludeFile.c.o
+        /usr/bin/cc -D_LARGEFILE64_SOURCE=1 -D__USE_LARGEFILE64  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_68578.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bKWIhb/CheckIncludeFile.c
+        Linking C executable cmTC_68578
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_68578.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_68578.dir/CheckIncludeFile.c.o -o cmTC_68578
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bKWIhb'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckIncludeFile.cmake:170 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckTypeSize.cmake:464 (check_include_file)"
+      - "CMakeLists.txt:462 (check_type_size)"
+    checks:
+      - "Looking for stddef.h"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bYAhHE"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bYAhHE"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STDDEF_H"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bYAhHE'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_e54c1/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_e54c1.dir/build.make CMakeFiles/cmTC_e54c1.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bYAhHE'
+        Building C object CMakeFiles/cmTC_e54c1.dir/CheckIncludeFile.c.o
+        /usr/bin/cc -D_LARGEFILE64_SOURCE=1 -D__USE_LARGEFILE64  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_e54c1.dir/CheckIncludeFile.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bYAhHE/CheckIncludeFile.c
+        Linking C executable cmTC_e54c1
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e54c1.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_e54c1.dir/CheckIncludeFile.c.o -o cmTC_e54c1
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-bYAhHE'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckTypeSize.cmake:348 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckTypeSize.cmake:481 (__check_type_size_impl)"
+      - "CMakeLists.txt:462 (check_type_size)"
+    checks:
+      - "Check size of off64_t"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-xalag9"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-xalag9"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_OFF64_T"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-xalag9'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_091a0/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_091a0.dir/build.make CMakeFiles/cmTC_091a0.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-xalag9'
+        Building C object CMakeFiles/cmTC_091a0.dir/OFF64_T.c.o
+        /usr/bin/cc -D_LARGEFILE64_SOURCE=1 -D__USE_LARGEFILE64  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_091a0.dir/OFF64_T.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-xalag9/OFF64_T.c
+        Linking C executable cmTC_091a0
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_091a0.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_091a0.dir/OFF64_T.c.o -o cmTC_091a0
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-xalag9'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "CMakeLists.txt:479 (check_function_exists)"
+    checks:
+      - "Looking for fseeko"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-M1YOjV"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-M1YOjV"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_FSEEKO"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-M1YOjV'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_aaa60/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_aaa60.dir/build.make CMakeFiles/cmTC_aaa60.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-M1YOjV'
+        Building C object CMakeFiles/cmTC_aaa60.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w -DCHECK_FUNCTION_EXISTS=fseeko -std=c11 -o CMakeFiles/cmTC_aaa60.dir/CheckFunctionExists.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-M1YOjV/CheckFunctionExists.c
+        Linking C executable cmTC_aaa60
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_aaa60.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -DCHECK_FUNCTION_EXISTS=fseeko CMakeFiles/cmTC_aaa60.dir/CheckFunctionExists.c.o -o cmTC_aaa60
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-M1YOjV'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckFunctionExists.cmake:167 (try_compile)"
+      - "CMakeLists.txt:486 (check_function_exists)"
+    checks:
+      - "Looking for strerror"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-kZz8mc"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-kZz8mc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STRERROR"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-kZz8mc'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_b6e1f/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_b6e1f.dir/build.make CMakeFiles/cmTC_b6e1f.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-kZz8mc'
+        Building C object CMakeFiles/cmTC_b6e1f.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w -DCHECK_FUNCTION_EXISTS=strerror -std=c11 -o CMakeFiles/cmTC_b6e1f.dir/CheckFunctionExists.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-kZz8mc/CheckFunctionExists.c
+        Linking C executable cmTC_b6e1f
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b6e1f.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -DCHECK_FUNCTION_EXISTS=strerror CMakeFiles/cmTC_b6e1f.dir/CheckFunctionExists.c.o -o cmTC_b6e1f
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-kZz8mc'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/CheckSymbolExists.cmake:193 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckSymbolExists.cmake:98 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "CMakeLists.txt:495 (check_symbol_exists)"
+    checks:
+      - "Looking for __cpuid_count"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-hgfYWc"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-hgfYWc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_CPUID_GNU"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-hgfYWc'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_4a4c7/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_4a4c7.dir/build.make CMakeFiles/cmTC_4a4c7.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-hgfYWc'
+        Building C object CMakeFiles/cmTC_4a4c7.dir/CheckSymbolExists.c.o
+        /usr/bin/cc   -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_4a4c7.dir/CheckSymbolExists.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-hgfYWc/CheckSymbolExists.c
+        Linking C executable cmTC_4a4c7
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4a4c7.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_4a4c7.dir/CheckSymbolExists.c.o -o cmTC_4a4c7
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-hgfYWc'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:506 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_CPUID_MS"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_CPUID_MS"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_5d8c5/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_5d8c5.dir/build.make CMakeFiles/cmTC_5d8c5.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp'
+        Building C object CMakeFiles/cmTC_5d8c5.dir/src.c.o
+        /usr/bin/cc -DHAVE_CPUID_MS  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_5d8c5.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp/src.c
+        /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp/src.c:2:10: fatal error: intrin.h: No such file or directory
+            2 | #include <intrin.h>
+              |          ^~~~~~~~~~
+        compilation terminated.
+        make[1]: *** [CMakeFiles/cmTC_5d8c5.dir/build.make:81: CMakeFiles/cmTC_5d8c5.dir/src.c.o] Error 1
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-sR7Imp'
+        make: *** [Makefile:134: cmTC_5d8c5/fast] Error 2
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake/Modules/CheckCCompilerFlag.cmake:105 (cmake_check_compiler_flag)"
+      - "CMakeLists.txt:547 (check_c_compiler_flag)"
+    checks:
+      - "Performing Test HAVE_NO_INTERPOSITION"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-QusJjx"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-QusJjx"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_NO_INTERPOSITION"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-QusJjx'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_11b83/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_11b83.dir/build.make CMakeFiles/cmTC_11b83.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-QusJjx'
+        Building C object CMakeFiles/cmTC_11b83.dir/src.c.o
+        /usr/bin/cc -DHAVE_NO_INTERPOSITION  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11   -fno-semantic-interposition -o CMakeFiles/cmTC_11b83.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-QusJjx/src.c
+        Linking C executable cmTC_11b83
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_11b83.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_11b83.dir/src.c.o -o cmTC_11b83
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-QusJjx'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:553 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_ATTRIBUTE_VISIBILITY_HIDDEN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-OpVDGb"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-OpVDGb"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_ATTRIBUTE_VISIBILITY_HIDDEN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-OpVDGb'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_d900c/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_d900c.dir/build.make CMakeFiles/cmTC_d900c.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-OpVDGb'
+        Building C object CMakeFiles/cmTC_d900c.dir/src.c.o
+        /usr/bin/cc -DHAVE_ATTRIBUTE_VISIBILITY_HIDDEN  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_d900c.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-OpVDGb/src.c
+        Linking C executable cmTC_d900c
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d900c.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_d900c.dir/src.c.o -o cmTC_d900c
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-OpVDGb'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:567 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_ATTRIBUTE_VISIBILITY_INTERNAL"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-31iff4"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-31iff4"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_ATTRIBUTE_VISIBILITY_INTERNAL"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-31iff4'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_19bfa/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_19bfa.dir/build.make CMakeFiles/cmTC_19bfa.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-31iff4'
+        Building C object CMakeFiles/cmTC_19bfa.dir/src.c.o
+        /usr/bin/cc -DHAVE_ATTRIBUTE_VISIBILITY_INTERNAL  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_19bfa.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-31iff4/src.c
+        Linking C executable cmTC_19bfa
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_19bfa.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_19bfa.dir/src.c.o -o cmTC_19bfa
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-31iff4'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:581 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_ATTRIBUTE_ALIGNED"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Tc0HHe"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Tc0HHe"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_ATTRIBUTE_ALIGNED"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Tc0HHe'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_c7175/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_c7175.dir/build.make CMakeFiles/cmTC_c7175.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Tc0HHe'
+        Building C object CMakeFiles/cmTC_c7175.dir/src.c.o
+        /usr/bin/cc -DHAVE_ATTRIBUTE_ALIGNED  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_c7175.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Tc0HHe/src.c
+        Linking C executable cmTC_c7175
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c7175.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_c7175.dir/src.c.o -o cmTC_c7175
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-Tc0HHe'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:596 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_BUILTIN_ASSUME_ALIGNED"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-ORe9fM"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-ORe9fM"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_BUILTIN_ASSUME_ALIGNED"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-ORe9fM'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_0c02b/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_0c02b.dir/build.make CMakeFiles/cmTC_0c02b.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-ORe9fM'
+        Building C object CMakeFiles/cmTC_0c02b.dir/src.c.o
+        /usr/bin/cc -DHAVE_BUILTIN_ASSUME_ALIGNED  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto -std=c11 -o CMakeFiles/cmTC_0c02b.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-ORe9fM/src.c
+        Linking C executable cmTC_0c02b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0c02b.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto CMakeFiles/cmTC_0c02b.dir/src.c.o -o cmTC_0c02b
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-ORe9fM'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:614 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_BUILTIN_CTZ"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JOZnNq"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JOZnNq"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_BUILTIN_CTZ"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JOZnNq'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_02aa3/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_02aa3.dir/build.make CMakeFiles/cmTC_02aa3.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JOZnNq'
+        Building C object CMakeFiles/cmTC_02aa3.dir/src.c.o
+        /usr/bin/cc -DHAVE_BUILTIN_CTZ  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto -std=c11 -o CMakeFiles/cmTC_02aa3.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JOZnNq/src.c
+        Linking C executable cmTC_02aa3
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_02aa3.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto CMakeFiles/cmTC_02aa3.dir/src.c.o -o cmTC_02aa3
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-JOZnNq'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:632 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_BUILTIN_CTZLL"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-GeL62c"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-GeL62c"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_BUILTIN_CTZLL"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-GeL62c'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_ad5b8/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_ad5b8.dir/build.make CMakeFiles/cmTC_ad5b8.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-GeL62c'
+        Building C object CMakeFiles/cmTC_ad5b8.dir/src.c.o
+        /usr/bin/cc -DHAVE_BUILTIN_CTZLL  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto -std=c11 -o CMakeFiles/cmTC_ad5b8.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-GeL62c/src.c
+        Linking C executable cmTC_ad5b8
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ad5b8.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -fno-lto CMakeFiles/cmTC_ad5b8.dir/src.c.o -o cmTC_ad5b8
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-GeL62c'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "CMakeLists.txt:649 (check_c_source_compiles)"
+    checks:
+      - "Performing Test HAVE_PTRDIFF_T"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pdpj9P"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pdpj9P"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_PTRDIFF_T"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pdpj9P'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_ef84c/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_ef84c.dir/build.make CMakeFiles/cmTC_ef84c.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pdpj9P'
+        Building C object CMakeFiles/cmTC_ef84c.dir/src.c.o
+        /usr/bin/cc -DHAVE_PTRDIFF_T  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11 -o CMakeFiles/cmTC_ef84c.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pdpj9P/src.c
+        Linking C executable cmTC_ef84c
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ef84c.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_ef84c.dir/src.c.o -o cmTC_ef84c
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pdpj9P'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:672 (check_c_source_compiles)"
+      - "CMakeLists.txt:1056 (check_xsave_intrinsics)"
+    checks:
+      - "Performing Test HAVE_XSAVE_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-imKWGl"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-imKWGl"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_XSAVE_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-imKWGl'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_cd90e/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_cd90e.dir/build.make CMakeFiles/cmTC_cd90e.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-imKWGl'
+        Building C object CMakeFiles/cmTC_cd90e.dir/src.c.o
+        /usr/bin/cc -DHAVE_XSAVE_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mxsave  -fno-lto -std=c11 -o CMakeFiles/cmTC_cd90e.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-imKWGl/src.c
+        Linking C executable cmTC_cd90e
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_cd90e.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mxsave  -fno-lto CMakeFiles/cmTC_cd90e.dir/src.c.o -o cmTC_cd90e
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-imKWGl'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:561 (check_c_source_compiles)"
+      - "CMakeLists.txt:1067 (check_sse2_intrinsics)"
+    checks:
+      - "Performing Test HAVE_SSE2_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-4ziJVl"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-4ziJVl"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SSE2_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-4ziJVl'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_22b79/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_22b79.dir/build.make CMakeFiles/cmTC_22b79.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-4ziJVl'
+        Building C object CMakeFiles/cmTC_22b79.dir/src.c.o
+        /usr/bin/cc -DHAVE_SSE2_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -msse2  -fno-lto -std=c11 -o CMakeFiles/cmTC_22b79.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-4ziJVl/src.c
+        Linking C executable cmTC_22b79
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_22b79.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -msse2  -fno-lto CMakeFiles/cmTC_22b79.dir/src.c.o -o cmTC_22b79
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-4ziJVl'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:584 (check_c_source_compiles)"
+      - "CMakeLists.txt:1080 (check_ssse3_intrinsics)"
+    checks:
+      - "Performing Test HAVE_SSSE3_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-jmWFJ6"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-jmWFJ6"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SSSE3_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-jmWFJ6'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_b28bb/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_b28bb.dir/build.make CMakeFiles/cmTC_b28bb.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-jmWFJ6'
+        Building C object CMakeFiles/cmTC_b28bb.dir/src.c.o
+        /usr/bin/cc -DHAVE_SSSE3_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mssse3  -fno-lto -std=c11 -o CMakeFiles/cmTC_b28bb.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-jmWFJ6/src.c
+        Linking C executable cmTC_b28bb
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b28bb.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mssse3  -fno-lto CMakeFiles/cmTC_b28bb.dir/src.c.o -o cmTC_b28bb
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-jmWFJ6'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:610 (check_c_source_compiles)"
+      - "CMakeLists.txt:1092 (check_sse41_intrinsics)"
+    checks:
+      - "Performing Test HAVE_SSE41_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pzlyRt"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pzlyRt"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SSE41_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pzlyRt'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_55f71/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_55f71.dir/build.make CMakeFiles/cmTC_55f71.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pzlyRt'
+        Building C object CMakeFiles/cmTC_55f71.dir/src.c.o
+        /usr/bin/cc -DHAVE_SSE41_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -msse4.1  -fno-lto -std=c11 -o CMakeFiles/cmTC_55f71.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pzlyRt/src.c
+        Linking C executable cmTC_55f71
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_55f71.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -msse4.1  -fno-lto CMakeFiles/cmTC_55f71.dir/src.c.o -o cmTC_55f71
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-pzlyRt'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:633 (check_c_source_compiles)"
+      - "CMakeLists.txt:1103 (check_sse42_intrinsics)"
+    checks:
+      - "Performing Test HAVE_SSE42_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-t6pynu"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-t6pynu"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SSE42_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-t6pynu'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_a9ba0/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_a9ba0.dir/build.make CMakeFiles/cmTC_a9ba0.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-t6pynu'
+        Building C object CMakeFiles/cmTC_a9ba0.dir/src.c.o
+        /usr/bin/cc -DHAVE_SSE42_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -msse4.2  -fno-lto -std=c11 -o CMakeFiles/cmTC_a9ba0.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-t6pynu/src.c
+        Linking C executable cmTC_a9ba0
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a9ba0.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -msse4.2  -fno-lto CMakeFiles/cmTC_a9ba0.dir/src.c.o -o cmTC_a9ba0
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-t6pynu'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:309 (check_c_source_compiles)"
+      - "CMakeLists.txt:1115 (check_pclmulqdq_intrinsics)"
+    checks:
+      - "Performing Test HAVE_PCLMULQDQ_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-yeAIMY"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-yeAIMY"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_PCLMULQDQ_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-yeAIMY'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_f27e5/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_f27e5.dir/build.make CMakeFiles/cmTC_f27e5.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-yeAIMY'
+        Building C object CMakeFiles/cmTC_f27e5.dir/src.c.o
+        /usr/bin/cc -DHAVE_PCLMULQDQ_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mpclmul  -fno-lto -std=c11 -o CMakeFiles/cmTC_f27e5.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-yeAIMY/src.c
+        Linking C executable cmTC_f27e5
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f27e5.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mpclmul  -fno-lto CMakeFiles/cmTC_f27e5.dir/src.c.o -o cmTC_f27e5
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-yeAIMY'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:200 (check_c_source_compiles)"
+      - "CMakeLists.txt:1127 (check_avx2_intrinsics)"
+    checks:
+      - "Performing Test HAVE_AVX2_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-LNN6IZ"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-LNN6IZ"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_AVX2_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-LNN6IZ'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_f6cf3/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_f6cf3.dir/build.make CMakeFiles/cmTC_f6cf3.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-LNN6IZ'
+        Building C object CMakeFiles/cmTC_f6cf3.dir/src.c.o
+        /usr/bin/cc -DHAVE_AVX2_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mavx2 -mbmi2  -fno-lto -std=c11 -o CMakeFiles/cmTC_f6cf3.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-LNN6IZ/src.c
+        Linking C executable cmTC_f6cf3
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f6cf3.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mavx2 -mbmi2  -fno-lto CMakeFiles/cmTC_f6cf3.dir/src.c.o -o cmTC_f6cf3
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-LNN6IZ'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake/Modules/CheckCCompilerFlag.cmake:105 (cmake_check_compiler_flag)"
+      - "cmake/detect-intrinsics.cmake:117 (check_c_compiler_flag)"
+      - "CMakeLists.txt:1145 (check_avx512_intrinsics)"
+    checks:
+      - "Performing Test HAVE_CASCADE_LAKE"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-coD8hz"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-coD8hz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_CASCADE_LAKE"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-coD8hz'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_acf2b/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_acf2b.dir/build.make CMakeFiles/cmTC_acf2b.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-coD8hz'
+        Building C object CMakeFiles/cmTC_acf2b.dir/src.c.o
+        /usr/bin/cc -DHAVE_CASCADE_LAKE  -ffunction-sections -fdata-sections -fPIC -m64 -w  -std=c11   -mtune=cascadelake -o CMakeFiles/cmTC_acf2b.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-coD8hz/src.c
+        Linking C executable cmTC_acf2b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_acf2b.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w  CMakeFiles/cmTC_acf2b.dir/src.c.o -o cmTC_acf2b
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-coD8hz'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:131 (check_c_source_compiles)"
+      - "CMakeLists.txt:1145 (check_avx512_intrinsics)"
+    checks:
+      - "Performing Test HAVE_AVX512_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-7f3SA8"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-7f3SA8"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_AVX512_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-7f3SA8'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_6be74/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_6be74.dir/build.make CMakeFiles/cmTC_6be74.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-7f3SA8'
+        Building C object CMakeFiles/cmTC_6be74.dir/src.c.o
+        /usr/bin/cc -DHAVE_AVX512_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mavx512f -mavx512dq -mavx512bw -mavx512vl -mbmi2 -mtune=cascadelake  -fno-lto -std=c11 -o CMakeFiles/cmTC_6be74.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-7f3SA8/src.c
+        Linking C executable cmTC_6be74
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6be74.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mavx512f -mavx512dq -mavx512bw -mavx512vl -mbmi2 -mtune=cascadelake  -fno-lto CMakeFiles/cmTC_6be74.dir/src.c.o -o cmTC_6be74
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-7f3SA8'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:168 (check_c_source_compiles)"
+      - "CMakeLists.txt:1162 (check_avx512vnni_intrinsics)"
+    checks:
+      - "Performing Test HAVE_AVX512VNNI_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-nlgAuG"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-nlgAuG"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_AVX512VNNI_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-nlgAuG'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_30867/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_30867.dir/build.make CMakeFiles/cmTC_30867.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-nlgAuG'
+        Building C object CMakeFiles/cmTC_30867.dir/src.c.o
+        /usr/bin/cc -DHAVE_AVX512VNNI_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mavx512f -mavx512dq -mavx512bw -mavx512vl -mavx512vnni -mbmi2 -mtune=cascadelake  -fno-lto -std=c11 -o CMakeFiles/cmTC_30867.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-nlgAuG/src.c
+        Linking C executable cmTC_30867
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_30867.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mavx512f -mavx512dq -mavx512bw -mavx512vl -mavx512vnni -mbmi2 -mtune=cascadelake  -fno-lto CMakeFiles/cmTC_30867.dir/src.c.o -o cmTC_30867
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-nlgAuG'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake/Modules/Internal/CheckSourceCompiles.cmake:138 (try_compile)"
+      - "/usr/share/cmake/Modules/CheckCSourceCompiles.cmake:103 (cmake_check_source_compiles)"
+      - "cmake/detect-intrinsics.cmake:331 (check_c_source_compiles)"
+      - "CMakeLists.txt:1174 (check_vpclmulqdq_intrinsics)"
+    checks:
+      - "Performing Test HAVE_VPCLMULQDQ_INTRIN"
+    directories:
+      source: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-9z1J3r"
+      binary: "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-9z1J3r"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -ffunction-sections -fdata-sections -fPIC -m64 -w"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_VPCLMULQDQ_INTRIN"
+      cached: true
+      stdout: |
+        Change Dir: '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-9z1J3r'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_0cfe4/fast
+        /usr/bin/make  -f CMakeFiles/cmTC_0cfe4.dir/build.make CMakeFiles/cmTC_0cfe4.dir/build
+        make[1]: Entering directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-9z1J3r'
+        Building C object CMakeFiles/cmTC_0cfe4.dir/src.c.o
+        /usr/bin/cc -DHAVE_VPCLMULQDQ_INTRIN  -ffunction-sections -fdata-sections -fPIC -m64 -w -mvpclmulqdq -mavx512f  -fno-lto -std=c11 -o CMakeFiles/cmTC_0cfe4.dir/src.c.o -c /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-9z1J3r/src.c
+        Linking C executable cmTC_0cfe4
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0cfe4.dir/link.txt --verbose=1
+        /usr/bin/cc  -ffunction-sections -fdata-sections -fPIC -m64 -w -mvpclmulqdq -mavx512f  -fno-lto CMakeFiles/cmTC_0cfe4.dir/src.c.o -o cmTC_0cfe4
+        make[1]: Leaving directory '/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/CMakeFiles/CMakeScratch/TryCompile-9z1J3r'
+        
+      exitCode: 0
+...

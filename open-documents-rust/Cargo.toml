@@ -1,15 +1,21 @@
 [workspace]
+resolver = "2"
 members = [
     "crates/opendoc-types",
     "crates/opendoc-parser",
     "crates/opendoc-parser-xlsx",
     "crates/opendoc-parser-docx",
     "crates/opendoc-parser-pdf",
+    "crates/opendoc-parser-text",
+    "crates/opendoc-parser-code",
+    "crates/opendoc-parser-jupyter",
+    "crates/opendoc-parser-email",
+    "crates/opendoc-parser-html",
+    "crates/opendoc-parser-pptx",
     "crates/opendoc-storage",
     "crates/opendoc-mcp",
-    "crates/opendoc-tui",
+    "crates/opendoc-tui"
 ]
-resolver = "2"
 
 [package]
 name = "open-documents-rust"
@@ -19,9 +25,5 @@ edition = "2021"
 [dependencies]
 opendoc-types = { path = "crates/opendoc-types" }
 opendoc-parser = { path = "crates/opendoc-parser" }
+tokio = { version = "1.35", features = ["full"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
-
-[[bin]]
-name = "opendoc-srv"
-path = "src/main.rs"

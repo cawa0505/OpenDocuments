@@ -1,0 +1,15 @@
+running: cd "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build" && CMAKE_PREFIX_PATH="" LC_ALL="C" "cmake" "/home/zeng/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/libz-ng-sys-1.1.29/src/zlib-ng" "-B" "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build" "-DBUILD_SHARED_LIBS=OFF" "-DZLIB_COMPAT=OFF" "-DZLIB_ENABLE_TESTS=OFF" "-DWITH_GZFILEOP=ON" "-DCMAKE_INSTALL_LIBDIR=lib" "-DCMAKE_INSTALL_PREFIX=/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out" "-DCMAKE_C_FLAGS= -ffunction-sections -fdata-sections -fPIC -m64 -w" "-DCMAKE_C_COMPILER=/usr/bin/cc" "-DCMAKE_CXX_FLAGS= -ffunction-sections -fdata-sections -fPIC -m64 -w" "-DCMAKE_CXX_COMPILER=/usr/bin/c++" "-DCMAKE_ASM_FLAGS= -ffunction-sections -fdata-sections -fPIC -m64 -w" "-DCMAKE_ASM_COMPILER=/usr/bin/cc" "-DCMAKE_BUILD_TYPE=Debug"
+CMake Warning (deprecated) at CMakeLists.txt:54 (message):
+  ZLIB_ENABLE_TESTS is deprecated.  Please use BUILD_TESTING instead.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+CMake Warning (unused-cli):
+  Manually-specified variables were not used by the project:
+
+    CMAKE_ASM_COMPILER
+    CMAKE_ASM_FLAGS
+    CMAKE_CXX_FLAGS
+
+
+running: cd "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build" && LC_ALL="C" MAKEFLAGS="-j --jobserver-fds=3,5 --jobserver-auth=3,5" "cmake" "--build" "/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build" "--target" "install" "--config" "Debug"

@@ -1,0 +1,11 @@
+[package]
+name = "opendoc-parser-email"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+opendoc-types = { path = "../opendoc-types" }
+mail-parser = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"

@@ -8,7 +8,12 @@ opendoc-types = { path = "../opendoc-types" }
 opendoc-parser-xlsx = { path = "../opendoc-parser-xlsx" }
 opendoc-parser-docx = { path = "../opendoc-parser-docx" }
 opendoc-parser-pdf = { path = "../opendoc-parser-pdf" }
+opendoc-parser-text = { path = "../opendoc-parser-text" }
+opendoc-parser-code = { path = "../opendoc-parser-code" }
+opendoc-parser-jupyter = { path = "../opendoc-parser-jupyter" }
+opendoc-parser-email = { path = "../opendoc-parser-email" }
+opendoc-parser-html = { path = "../opendoc-parser-html" }
+opendoc-parser-pptx = { path = "../opendoc-parser-pptx" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"

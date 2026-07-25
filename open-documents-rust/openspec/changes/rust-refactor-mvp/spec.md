@@ -14,9 +14,7 @@ The system SHALL define clear, serializable types for all document ingestion chu
   - `relevance_score` optionally evaluated during post-reranking
   - `metadata` containing JSON-structured document context
 
----
-
-### Requirement: Event-Loop-Friendly Binary File Parsers (xlsx, docx, pdf)
+---\n\n### Requirement: Standard Plugin API Alignment & Trait Contract\nThe Rust implementation SHALL strictly match the architectural intent of the original TypeScript `ParserPlugin` interface. It must define a shared `DocumentParser` trait contract, allowing independent feature-isolated parser crates to be registered and queried dynamically.\n\n- Each parser crate (e.g., `opendoc-parser-xlsx`, `opendoc-parser-html`) MUST implement `DocumentParser`.\n- The total parser router (`opendoc-parser`) MUST act as the central registry, resolving extensions to their corresponding trait instances.\n\n---\n\n### Requirement: Event-Loop-Friendly Binary File Parsers (xlsx, docx, pdf)
 The system SHALL implement Pure-Rust document parsing engines that run without blocking the core runtime event-loop.
 
 #### Scenario: Ingesting an Excel sheet
