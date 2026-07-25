@@ -14,6 +14,7 @@ import { collectionRoutes } from './routes/collections.js'
 import { pluginRoutes } from './routes/plugins.js'
 import { authRoutes } from './routes/auth-routes.js'
 import { workbenchRoutes } from './routes/workbench.js'
+import { mcpRoutes } from './routes/mcp.js'
 import { getSharedConversationHandler } from './routes/conversations.js'
 import { authMiddleware } from './middleware/auth.js'
 import { rateLimit } from './middleware/rate-limit.js'
@@ -111,6 +112,7 @@ export function createApp(ctx: AppContext, opts?: AppOptions) {
   app.route('/', collectionRoutes(ctx))
   app.route('/', pluginRoutes(ctx))
   app.route('/', workbenchRoutes(ctx))
+  app.route('/', mcpRoutes(ctx))
 
   app.onError((err, c) => {
     console.error('Unhandled error:', err.message)

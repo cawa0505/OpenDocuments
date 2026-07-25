@@ -45,6 +45,9 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
+    "@lancedb/lancedb-linux-x64-gnu": "^0.31.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.62.2",
+    "apache-arrow": "^21.2.0",
     "turbo": "^2.3.0",
     "typescript": "^5.5.0"
   },
