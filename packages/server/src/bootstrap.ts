@@ -460,8 +460,29 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppContext
       pluginCtx,
       embeddingDimensions,
     )
-    await registry.register(embedder, pluginCtx)
-    if (llm.name !== embedder.name) await registry.register(llm, pluginCtx)
+    
+    const embedderCtx = {
+      ...pluginCtx,
+      config: {
+        apiKey: config.model.embeddingApiKey || config.model.apiKey || '',
+        baseUrl: config.model.embeddingBaseUrl || config.model.baseUrl || '',
+        llmModel: config.model.llm,
+        embeddingModel: config.model.embedding,
+      } as any
+    }
+
+    const llmCtx = {
+      ...pluginCtx,
+      config: {
+        apiKey: config.model.apiKey || '',
+        baseUrl: config.model.baseUrl || '',
+        llmModel: config.model.llm,
+        embeddingModel: config.model.embedding,
+      } as any
+    }
+
+    await registry.register(embedder, embedderCtx)
+    if (llm.name !== embedder.name) await registry.register(llm, llmCtx)
 
     // Print degraded mode warning if using stub models
     const usingStubEmbedder = embedder.name.includes('stub')
@@ -650,6 +671,10 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppContext
           defaultProfile: config.rag.profile,
           customProfileConfig: config.rag.custom,
           webSearchProvider,
+          rerankerProvider: config.model.rerankerProvider,
+          rerankerApiKey: config.model.rerankerApiKey,
+          rerankerBaseUrl: config.model.rerankerBaseUrl,
+          rerankerScoreThreshold: config.model.rerankerScoreThreshold,
         })
         ragEngines.set(workspaceId, scopedEngine)
       }

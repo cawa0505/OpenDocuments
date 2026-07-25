@@ -53,6 +53,10 @@ export const configSchema = z.object({
     baseUrl: z.string().optional(),
     embeddingBaseUrl: z.string().optional(),
     embeddingDimensions: z.number().optional(),
+    rerankerProvider: z.string().optional(),
+    rerankerApiKey: z.string().optional(),
+    rerankerBaseUrl: z.string().optional(),
+    rerankerScoreThreshold: z.number().default(0.6),
   }).default({}),
   rag: z.object({
     profile: ragProfileSchema.default('balanced'),

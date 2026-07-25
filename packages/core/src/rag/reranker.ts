@@ -24,37 +24,131 @@ const INTENT_CHUNK_PREFERENCES: Record<string, string[]> = {
 }
 
 /**
- * Rerank search results using the model's rerank capability,
- * or fall back to improved keyword scoring with heading boost, partial matching,
- * and intent-adaptive weight profiles.
+ * Rerank search results using external API (Cohere, Jina) or model's rerank capability,
+ * with fall back to improved keyword scoring with heading boost, partial matching,
+ * and intent-adaptive weight profiles. Includes high-precision Score Filtering.
  */
 export async function rerankResults(
   query: string,
   results: SearchResult[],
-  model?: ModelPlugin,
+  rerankConfig?: {
+    rerankerProvider?: string;
+    rerankerApiKey?: string;
+    rerankerBaseUrl?: string;
+    rerankerScoreThreshold?: number;
+  },
   intent?: QueryIntent
 ): Promise<SearchResult[]> {
   if (results.length <= 1) return results
 
-  // Try model reranker if available
-  if (model?.rerank) {
+  const provider = rerankConfig?.rerankerProvider || 'local'
+  const apiKey = rerankConfig?.rerankerApiKey || ''
+  const baseUrl = rerankConfig?.rerankerBaseUrl || ''
+  const threshold = rerankConfig?.rerankerScoreThreshold ?? 0.6
+
+  let scoredResults: SearchResult[] = []
+
+  // 1. Cohere Reranker API Integration (perfect for multilingual and office files)
+  if (provider === 'cohere' && apiKey) {
     try {
-      const docs = results.map(r => r.content)
-      const reranked = await model.rerank(query, docs)
-      if (!reranked.indices || !reranked.scores || reranked.indices.length !== reranked.scores.length) {
-        console.warn('[reranker] Invalid rerank response: indices/scores length mismatch, falling back to keyword scoring')
-      } else {
-        return reranked.indices
-          .filter(idx => idx >= 0 && idx < results.length)
-          .map((idx, i) => ({
-            ...results[idx],
-            score: reranked.scores[i] ?? 0,
-          }))
+      const cohereUrl = baseUrl || 'https://api.cohere.ai/v1/rerank'
+      const response = await fetch(cohereUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'rerank-multilingual-v3.0',
+          query: query,
+          documents: results.map(r => r.content),
+          top_n: results.length,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Cohere API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json() as any
+      if (data && Array.isArray(data.results)) {
+        scoredResults = data.results.map((res: any) => ({
+          ...results[res.index],
+          score: res.relevance_score,
+        }))
       }
     } catch (err) {
-      console.warn('[reranker] Rerank failed, falling back to keyword scoring:', err instanceof Error ? err.message : String(err))
+      console.warn('[reranker] Cohere rerank failed, falling back to local heuristic:', err instanceof Error ? err.message : String(err))
     }
   }
+  // 2. Jina Reranker API Integration (great fallback option)
+  else if (provider === 'jina' && apiKey) {
+    try {
+      const jinaUrl = baseUrl || 'https://api.jina.ai/v1/rerank'
+      const response = await fetch(jinaUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'jina-reranker-v2-base-multilingual',
+          query: query,
+          documents: results.map(r => r.content),
+          top_n: results.length,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Jina API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json() as any
+      if (data && Array.isArray(data.results)) {
+        scoredResults = data.results.map((res: any) => ({
+          ...results[res.index],
+          score: res.relevance_score,
+        }))
+      }
+    } catch (err) {
+      console.warn('[reranker] Jina rerank failed, falling back to local heuristic:', err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  // 3. Fallback to Local Heuristic if no external model is used or if it failed
+  if (scoredResults.length === 0) {
+    scoredResults = await runFallbackLocalRerank(query, results, intent)
+  }
+
+  // 4. Score Filter (Fuse Filter):
+  // Filter out noisy documents with low confidence.
+  // External APIs (Cohere/Jina) output a stable 0.0 ~ 1.0 probability score.
+  const isExternalModelUsed = scoredResults.length > 0 && scoredResults[0] !== undefined && (provider === 'cohere' || provider === 'jina')
+  let finalResults = scoredResults
+
+  if (isExternalModelUsed) {
+    finalResults = scoredResults.filter(r => r.score >= threshold)
+
+    // Self-healing safety guard: if threshold is too strict and filters everything out,
+    // fallback to keeping the best matched candidate to avoid blank results.
+    if (finalResults.length === 0 && results.length > 0 && threshold < 0.8) {
+      finalResults = [scoredResults[0]]
+    }
+  }
+
+  return finalResults.sort((a, b) => b.score - a.score)
+}
+
+/**
+ * High-quality fallback local keyword word-boundary, n-gram phrase scoring,
+ * and heading boost adapter.
+ */
+export async function runFallbackLocalRerank(
+  query: string,
+  results: SearchResult[],
+  intent?: QueryIntent
+): Promise<SearchResult[]> {
+  if (results.length <= 1) return results
 
   // Improved fallback: word-boundary matching + n-gram phrase scoring + heading boost
   const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 1)

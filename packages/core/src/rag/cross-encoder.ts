@@ -33,6 +33,7 @@ export async function crossEncoderRerank(
   results: SearchResult[],
   llm: ModelPlugin,
   topK: number,
+  threshold?: number,
 ): Promise<SearchResult[]> {
   if (results.length === 0) return []
   if (!llm.generate) return results
@@ -55,7 +56,20 @@ export async function crossEncoderRerank(
     const reranked = head
       .map((r, i) => ({ ...r, score: scores[i] / 10 }))
       .sort((a, b) => b.score - a.score)
-    return [...reranked, ...tail]
+
+    // 關鍵實作：Score Filter (分數過濾保險絲)
+    let filteredResults = reranked
+    if (threshold !== undefined && threshold > 0) {
+      filteredResults = reranked.filter(r => r.score >= threshold)
+      
+      // 安全保護網：如果所有文檔大模型打分都低於 threshold
+      // 為了安全起見且原始首位確實有相似度，我們保留大模型打分最高的第一名，防止過度過濾導致空屏
+      if (filteredResults.length === 0 && reranked.length > 0) {
+        filteredResults = [reranked[0]]
+      }
+    }
+
+    return [...filteredResults, ...tail]
   } catch {
     return results
   }

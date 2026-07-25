@@ -1,7 +1,7 @@
 # ── Stage 1: build ──────────────────────────────────────────────────────────
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
-COPY package*.json turbo.json tsconfig.base.json ./
+COPY package*.json turbo.json tsconfig.base.json opendocuments.config.ts ./
 COPY packages/ packages/
 COPY plugins/ plugins/
 RUN npm install --include=optional
@@ -47,6 +47,7 @@ COPY --from=builder /app/packages/web/dist packages/web/dist
 COPY --from=builder /app/plugins/ plugins/
 COPY --from=builder /app/node_modules node_modules
 COPY --from=builder /app/package.json .
+COPY --from=builder /app/opendocuments.config.ts .
 
 # Create data directory with correct ownership
 RUN mkdir -p /data && chown opendocs:opendocs /data && chown -R opendocs:opendocs /app

@@ -60,6 +60,7 @@ export function ChatPage() {
   }
 
   useEffect(() => {
+    useChatStore.getState().setActiveError(null)
     void refreshConversations()
     void refreshWorkbench()
   }, [])

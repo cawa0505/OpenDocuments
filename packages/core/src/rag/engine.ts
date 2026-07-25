@@ -47,6 +47,10 @@ export interface RAGEngineOptions {
   customProfileConfig?: Partial<RAGProfileConfig>
   rerankerModel?: ModelPlugin
   webSearchProvider?: any
+  rerankerProvider?: string
+  rerankerApiKey?: string
+  rerankerBaseUrl?: string
+  rerankerScoreThreshold?: number
 }
 
 export type StreamEvent =
@@ -103,6 +107,10 @@ export class RAGEngine {
   private rerankerModel: ModelPlugin | undefined
   private webSearchProvider: any | undefined
   private queryCache = createQueryCache()
+  private rerankerProvider: string | undefined
+  private rerankerApiKey: string | undefined
+  private rerankerBaseUrl: string | undefined
+  private rerankerScoreThreshold: number | undefined
 
   constructor(opts: RAGEngineOptions) {
     this.store = opts.store
@@ -114,6 +122,10 @@ export class RAGEngine {
     this.rerankerModel = opts.rerankerModel
     this.webSearchProvider = opts.webSearchProvider
     this.retriever = new Retriever(this.store, this.embedder)
+    this.rerankerProvider = opts.rerankerProvider
+    this.rerankerApiKey = opts.rerankerApiKey
+    this.rerankerBaseUrl = opts.rerankerBaseUrl
+    this.rerankerScoreThreshold = opts.rerankerScoreThreshold
   }
 
   private buildCacheKey(query: string, profile: string, conversationHistory?: string): string {
@@ -377,13 +389,18 @@ export class RAGEngine {
 
     // Rerank if enabled
     if (config.features.reranker && results.length > 1) {
-      results = await rerankResults(query, results, this.rerankerModel, intent)
+      results = await rerankResults(query, results, {
+        rerankerProvider: this.rerankerProvider,
+        rerankerApiKey: this.rerankerApiKey,
+        rerankerBaseUrl: this.rerankerBaseUrl,
+        rerankerScoreThreshold: this.rerankerScoreThreshold,
+      }, intent)
     }
 
     // Cross-encoder rerank (expensive: 1 LLM call per candidate). Runs after the
     // heuristic/rerank stage so it only scores already-filtered candidates.
     if (config.features.crossEncoder && results.length > 1) {
-      results = await crossEncoderRerank(query, results, this.llm, Math.min(10, results.length))
+      results = await crossEncoderRerank(query, results, this.llm, Math.min(10, results.length), this.rerankerScoreThreshold)
     }
 
     // Parent-doc retrieval: replace precise chunks with their enclosing section text
