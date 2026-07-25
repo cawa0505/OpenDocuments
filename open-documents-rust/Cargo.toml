@@ -1,0 +1,18 @@
+[workspace]
+members = [
+    "crates/opendoc-types",
+    "crates/opendoc-parser",
+    "crates/opendoc-storage",
+    "crates/opendoc-mcp",
+    "crates/opendoc-tui",
+]
+resolver = "2"
+
+[package]
+name = "open-documents-rust"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "opendoc-srv"
+path = "src/main.rs"

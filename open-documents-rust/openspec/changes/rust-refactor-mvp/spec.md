@@ -1,0 +1,58 @@
+# OpenDocuments Rust Refactor Specification — Phase 1 & 2
+
+## ADDED Requirements
+
+### Requirement: Strong-typed Chunking and Processing Contract
+The system SHALL define clear, serializable types for all document ingestion chunks, restricting input mutations in downstream parsers, search logic, and TUI representations.
+
+#### Scenario: Instantiating a semantic chunk
+- **WHEN** a parser processes an document chunk
+- **THEN** it SHALL output a strict `DocumentChunk` struct mapping:
+  - `chunk_type` as either `Semantic`, `CodeAst`, or `Table`
+  - `content` as non-empty String
+  - `workspace_id` and `collection_id` as String tags
+  - `relevance_score` optionally evaluated during post-reranking
+  - `metadata` containing JSON-structured document context
+
+---
+
+### Requirement: Event-Loop-Friendly Binary File Parsers (xlsx, docx, pdf)
+The system SHALL implement Pure-Rust document parsing engines that run without blocking the core runtime event-loop.
+
+#### Scenario: Ingesting an Excel sheet
+- **WHEN** calamine parsing is invoked on a large `.xlsx`
+- **THEN** it SHALL extract headers, estimate tokens using character weight heuristics, and output partitioned `ChunkType::Table` blocks.
+
+#### Scenario: Ingesting a Word document
+- **WHEN** docx-rs parsing runs on a `.docx`
+- **THEN** it SHALL build a parent header stack (H1-H6) and prepend hierarchical header chains to each child paragraph chunk's metadata.
+
+---
+
+### Requirement: Workspace-Isolated LanceDB Vector Search
+The system SHALL interact with LanceDB using native Rust bindings, ensuring dynamic table isolation per workspace.
+
+#### Scenario: Storing vectors for a workspace
+- **WHEN** vectors are persisted to storage for `workspace_id = "proj_a"`
+- **THEN** the system SHALL create or connect to a separate isolated LanceDB table named `opendocuments_workspace_proj_a`.
+
+---
+
+### Requirement: Double-Stage Reranker & Score Threshold Filter Fuse
+The system SHALL evaluate a multi-tier query pipelines containing:
+1. Fast heuristic keyword/path-based weight filtering.
+2. Pairwise LLM/Cross-Encoder semantic scoring.
+3. Score Threshold Filter "Fuse" pruning out any candidates under the specified score.
+
+#### Scenario: Filtering results with dynamic threshold
+- **WHEN** query results are returned from LanceDB vector index
+- **THEN** the Score Filter SHALL discard results below `SearchQueryParams.score_threshold` (e.g., 0.70), but SHALL gracefully fall back to preserving the top-1 result if all items would otherwise be filtered out.
+
+---
+
+### Requirement: Low-Latency Ratatui TUI Debug & Search Terminal
+The system SHALL expose an interactive, terminal-native user interface rendered using Ratatui + Crossterm, allowing rapid search querying and ingestion progress monitoring.
+
+#### Scenario: Querying from the terminal
+- **WHEN** you input a query into the TUI search box
+- **THEN** it SHALL fetch top-5 results within <10ms and render them in a clean visual table showing Score, Workspace, and Content snippets.
