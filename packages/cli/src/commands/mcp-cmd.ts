@@ -9,7 +9,7 @@ export function mcpCommand() {
   const cmd = new Command('mcp')
     .description('Manage and register OpenDocuments MCP servers with OpenCode client')
 
-  cmd.command('install')
+  cmd.command('install-opencode')
     .description('Standardize and register both read-only SSE and write-only Stdio MCP servers in opencode.json')
     .option('--host <host>', 'OpenDocuments host address', '192.168.77.200')
     .option('--port <port>', 'OpenDocuments port number', '3006')
@@ -60,7 +60,8 @@ export function mcpCommand() {
         env: {
           OPENDOCUMENTS_DATA_DIR: '/mnt/data/btrfs-hdd/DockerData/OpenDocuments/data',
           OPENDOCUMENTS_MODEL_BASE_URL: 'http://192.168.77.200:11435',
-          OPENDOCUMENTS_MODEL_EMBEDDING: 'bge-m3'
+          OPENDOCUMENTS_MODEL_EMBEDDING: 'bge-m3',
+          OPENDOCUMENTS_MCP_MODE: 'write'
         }
       }
 

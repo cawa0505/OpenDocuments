@@ -137,7 +137,7 @@ You can automatically register and configure both servers in your `opencode.json
 
 ```bash
 # Run on the host to auto-configure both read and write MCP servers
-opendocuments mcp install
+opendocuments mcp install-opencode
 ```
 
 This will automatically configure both servers:

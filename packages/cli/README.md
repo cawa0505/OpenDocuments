@@ -106,7 +106,7 @@ OpenDocuments supports CQRS Read-Write Split to avoid Docker isolation/mount lim
 You can automatically register both servers in your `opencode.json` with a single command:
 
 ```bash
-opendocuments mcp install
+opendocuments mcp install-opencode
 ```
 
 This will safely configure and back up both read (remote) and write (local stdio) servers in your global OpenCode configuration.

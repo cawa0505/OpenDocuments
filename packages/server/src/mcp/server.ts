@@ -193,6 +193,7 @@ const TOOLS = [
 ]
 
 export function createMCPServer(ctx: AppContext, mode: 'read' | 'write' | 'all' = 'all'): Server {
+  const activeMode = (process.env.OPENDOCUMENTS_MCP_MODE as 'read' | 'write' | 'all') || mode
   const server = new Server(
     { name: 'opendocuments', version: SERVER_VERSION },
     { capabilities: { tools: {}, resources: {} } }
@@ -200,7 +201,7 @@ export function createMCPServer(ctx: AppContext, mode: 'read' | 'write' | 'all' 
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     let filteredTools = TOOLS
-    if (mode === 'read') {
+    if (activeMode === 'read') {
       const readOnlyToolNames = [
         'opendocuments_ask',
         'opendocuments_search',
@@ -676,7 +677,7 @@ export function createMCPServer(ctx: AppContext, mode: 'read' | 'write' | 'all' 
 }
 
 export async function startMCPServer(ctx: AppContext): Promise<void> {
-  const server = createMCPServer(ctx, 'write')
+  const server = createMCPServer(ctx)
   const transport = new StdioServerTransport()
   await server.connect(transport)
 }
