@@ -121,7 +121,7 @@ export function WorkspacesPage() {
                             <div className="flex items-center gap-2">
                               <Briefcase size={16} className={isActive ? 'text-blue-600' : 'text-slate-400'} />
                               <p className="truncate text-[14px] font-semibold text-slate-900">{workspace.name}</p>
-                              {isActive && <span className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">{t('common.active')}</span>}
+                              {isActive && <span className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">{t('common.active')}</span>}
                             </div>
                             <p className="mt-1 truncate font-mono text-[11px] text-slate-400">{workspace.id}</p>
                           </div>

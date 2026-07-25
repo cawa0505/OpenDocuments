@@ -233,3 +233,36 @@ export async function getDashboardData() {
   ])
   return { stats, adminStats, connectorStatus, pluginHealth }
 }
+
+// Dictionary
+export interface DictionaryEntry {
+  id: string
+  workspaceId: string
+  key: string
+  value: string
+  createdAt: string
+}
+
+export async function getDictionary(): Promise<{ entries: DictionaryEntry[] }> {
+  return request('/dictionary')
+}
+
+export async function addDictionaryEntry(key: string, value: string): Promise<DictionaryEntry> {
+  return request('/dictionary', {
+    method: 'POST',
+    body: JSON.stringify({ key, value })
+  })
+}
+
+export async function deleteDictionaryEntry(id: string): Promise<{ deleted: boolean }> {
+  return request(`/dictionary/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function importDictionarySeed(language: 'zh-TW' | 'ko-KR'): Promise<{ imported: boolean }> {
+  return request('/dictionary/import-seed', {
+    method: 'POST',
+    body: JSON.stringify({ language })
+  })
+}

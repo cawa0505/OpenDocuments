@@ -51,6 +51,7 @@ export const configSchema = z.object({
     apiKey: z.string().optional(),
     embeddingApiKey: z.string().optional(),    // separate API key for embedding provider
     baseUrl: z.string().optional(),
+    embeddingBaseUrl: z.string().optional(),
     embeddingDimensions: z.number().optional(),
   }).default({}),
   rag: z.object({

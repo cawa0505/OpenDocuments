@@ -12,6 +12,7 @@ import { PluginsPage } from './components/plugins/PluginsPage'
 import { UnifiedDashboard } from './components/dashboard/UnifiedDashboard'
 import { LoginPage } from './components/auth/LoginPage'
 import { CollectionsPage } from './components/collections/CollectionsPage'
+import DictionaryPage from './components/dictionary/DictionaryPage'
 import { getHealth } from './lib/api'
 import { clearStoredApiKey, setStoredApiKey } from './lib/auth'
 import { translate as tr } from './lib/i18n'
@@ -21,6 +22,7 @@ const PAGES: Record<string, () => React.ReactElement> = {
   chat: ChatPage,
   documents: DocumentsPage,
   collections: CollectionsPage,
+  dictionary: DictionaryPage,
   settings: SettingsPage,
   health: HealthPage,
   connectors: ConnectorsPage,

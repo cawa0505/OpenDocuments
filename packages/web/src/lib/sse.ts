@@ -16,10 +16,14 @@ export async function streamChat(
   callbacks: SSECallbacks,
   signal?: AbortSignal
 ): Promise<void> {
+  const activeWorkspace = localStorage.getItem('active-workspace') || ''
   const res = await fetch('/api/v1/chat/stream', {
     method: 'POST',
     credentials: 'same-origin',
-    headers: withStoredApiKey({ 'Content-Type': 'application/json' }),
+    headers: withStoredApiKey({ 
+      'Content-Type': 'application/json',
+      'X-Workspace': activeWorkspace,
+    }),
     body: JSON.stringify({ query, profile, conversationId: conversationId || undefined }),
     signal,
   })

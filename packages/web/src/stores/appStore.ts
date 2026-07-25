@@ -3,7 +3,7 @@ import type { RAGProfile } from '../lib/types'
 import { detectLocale, normalizeLocale, type Locale } from '../lib/i18n'
 
 export type Theme = 'light' | 'dark' | 'system'
-export type Page = 'dashboard' | 'chat' | 'documents' | 'collections' | 'settings' | 'health' | 'connectors' | 'plugins' | 'workspaces'
+export type Page = 'dashboard' | 'chat' | 'documents' | 'collections' | 'settings' | 'health' | 'connectors' | 'plugins' | 'workspaces' | 'dictionary'
 
 interface AppState {
   theme: Theme

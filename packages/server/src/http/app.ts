@@ -11,6 +11,7 @@ import { conversationRoutes } from './routes/conversations.js'
 import { adminRoutes } from './routes/admin.js'
 import { tagRoutes } from './routes/tags.js'
 import { collectionRoutes } from './routes/collections.js'
+import { dictionaryRoutes } from './routes/dictionary.js'
 import { pluginRoutes } from './routes/plugins.js'
 import { authRoutes } from './routes/auth-routes.js'
 import { workbenchRoutes } from './routes/workbench.js'
@@ -110,6 +111,7 @@ export function createApp(ctx: AppContext, opts?: AppOptions) {
   app.route('/', adminRoutes(ctx))
   app.route('/', tagRoutes(ctx))
   app.route('/', collectionRoutes(ctx))
+  app.route('/', dictionaryRoutes(ctx))
   app.route('/', pluginRoutes(ctx))
   app.route('/', workbenchRoutes(ctx))
   app.route('/', mcpRoutes(ctx))
@@ -164,7 +166,13 @@ export function createApp(ctx: AppContext, opts?: AppOptions) {
       const indexPath = join(webDir, 'index.html')
       if (existsSync(indexPath)) {
         const indexContent = await readFile(indexPath, 'utf-8')
-        return c.html(indexContent)
+        return c.html(indexContent, {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        })
       }
 
       return c.json({ error: 'Not found' }, 404)

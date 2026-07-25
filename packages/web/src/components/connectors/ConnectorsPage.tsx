@@ -14,7 +14,7 @@ function StatusBadge({ status }: { status: string }) {
   const tone = status === 'active'
     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : 'border-slate-200 bg-slate-50 text-slate-600'
-  return <span className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${tone}`}>{status}</span>
+  return <span className={`rounded-md border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${tone}`}>{status}</span>
 }
 
 export function ConnectorsPage() {

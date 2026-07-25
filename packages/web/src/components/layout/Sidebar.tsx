@@ -16,10 +16,11 @@ import {
   ShieldCheck,
   Trash2,
   Briefcase,
+  BookOpen,
 } from 'lucide-react'
 import { translate as tr, type Locale } from '../../lib/i18n'
 
-type PageId = 'chat' | 'documents' | 'collections' | 'connectors' | 'health' | 'settings' | 'workspaces'
+type PageId = 'chat' | 'documents' | 'collections' | 'connectors' | 'health' | 'settings' | 'workspaces' | 'dictionary'
 
 const NAV_ITEMS: { id: PageId; labelKey: string; icon: ReactNode }[] = [
   { id: 'chat', labelKey: 'nav.ask', icon: <Search size={19} strokeWidth={2} /> },
@@ -276,6 +277,15 @@ export function Sidebar() {
         >
           <Briefcase size={20} strokeWidth={1.9} />
           {t('workspaces.title') || 'Workspaces'}
+        </button>
+        <button
+          onClick={() => setPage('dictionary')}
+          className={`flex h-10 w-full items-center gap-3 text-left text-[15px] font-medium ${
+            currentPage === 'dictionary' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'
+          }`}
+        >
+          <BookOpen size={20} strokeWidth={1.9} />
+          {t('settings.glossary') || 'Glossary'}
         </button>
         <button
           onClick={() => setPage('settings')}

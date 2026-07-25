@@ -120,8 +120,8 @@ export function SettingsPage() {
             </SettingCard>
 
             <SettingCard title={t('settings.language')} description={t('settings.languageDesc')}>
-              <div className="grid grid-cols-2 gap-2">
-                {(['en', 'ko'] as const).map((value) => (
+              <div className="grid grid-cols-3 gap-2">
+                {(['en', 'zh-TW', 'ko'] as const).map((value) => (
                   <button
                     key={value}
                     onClick={() => setLocale(value)}

@@ -30,6 +30,7 @@ import {
   DocumentVersionManager,
   TagManager,
   CollectionManager,
+  DictionaryManager,
   type DB,
   type VectorDB,
   type ModelPlugin,
@@ -206,7 +207,7 @@ async function loadModelPlugin(
     // actually functional (e.g. the remote model server is running with the
     // required model installed). Fall back to stubs on any failure so that the
     // server can still start and serve requests in degraded mode.
-    if (mainPlugin.capabilities.embedding && mainPlugin.embed) {
+    if (mainPlugin.capabilities.embedding && mainPlugin.embed && provider === (modelConfig.embeddingProvider || provider)) {
       let probeSuccess = false
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -228,15 +229,17 @@ async function loadModelPlugin(
       }
     }
 
-    // If the main plugin doesn't support embedding, load a secondary embedding provider
-    if (!mainPlugin.capabilities.embedding) {
+    // If the main plugin doesn't support embedding, or a different embedding provider is explicitly configured
+    const needsSecondaryEmbedding = !mainPlugin.capabilities.embedding || (modelConfig.embeddingProvider && modelConfig.embeddingProvider !== provider)
+
+    if (needsSecondaryEmbedding) {
       const embeddingProvider = modelConfig.embeddingProvider || 'ollama'
       log.info(`Main provider '${provider}' does not support embedding. Loading secondary embedding provider: ${embeddingProvider}`)
 
       const embeddingPlugin = await loadSinglePlugin(
         embeddingProvider,
         modelConfig.embeddingApiKey || modelConfig.apiKey || '',
-        modelConfig.baseUrl || '',
+        modelConfig.embeddingBaseUrl || modelConfig.baseUrl || '',
         modelConfig.llm,
         modelConfig.embedding,
         pluginCtx,
@@ -316,6 +319,7 @@ export interface WorkspaceServices {
   connectorManager: ConnectorManager
   tagManager: TagManager
   collectionManager: CollectionManager
+  dictionaryManager: DictionaryManager
 }
 
 /* ------------------------------------------------------------------ */
@@ -497,6 +501,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppContext
     const connectorManagers = new Map<string, ConnectorManager>()
     const tagManagers = new Map<string, TagManager>()
     const collectionManagers = new Map<string, CollectionManager>()
+    const dictionaryManagers = new Map<string, DictionaryManager>()
     const configuredConnectors: Array<{
       plugin: ConnectorPlugin
       config: { name?: string; syncIntervalSeconds?: number; autoSync?: boolean; config?: Record<string, unknown> }
@@ -567,6 +572,16 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppContext
       if (!manager) {
         manager = new CollectionManager(sqliteDb, workspaceId)
         collectionManagers.set(workspaceId, manager)
+      }
+      return manager
+    }
+
+    const getDictionaryManagerForWorkspace = (workspaceId: string) => {
+      ensureWorkspaceExists(workspaceId)
+      let manager = dictionaryManagers.get(workspaceId)
+      if (!manager) {
+        manager = new DictionaryManager(sqliteDb, workspaceId)
+        dictionaryManagers.set(workspaceId, manager)
       }
       return manager
     }
@@ -787,6 +802,8 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppContext
 
     const forWorkspace = (workspaceId?: string): WorkspaceServices => {
       const resolvedWorkspaceId = workspaceId || defaultWorkspace.id
+      const dictMgr = getDictionaryManagerForWorkspace(resolvedWorkspaceId)
+      dictMgr.loadToEngine()
       return {
         workspaceId: resolvedWorkspaceId,
         store: getStoreForWorkspace(resolvedWorkspaceId),
@@ -796,6 +813,7 @@ export async function bootstrap(opts: BootstrapOptions = {}): Promise<AppContext
         connectorManager: getConnectorManagerForWorkspace(resolvedWorkspaceId),
         tagManager: getTagManagerForWorkspace(resolvedWorkspaceId),
         collectionManager: getCollectionManagerForWorkspace(resolvedWorkspaceId),
+        dictionaryManager: dictMgr,
       }
     }
 

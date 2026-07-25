@@ -55,12 +55,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </button>
             <select
               value={locale}
-              onChange={(event) => setLocale(event.target.value === 'ko' ? 'ko' : 'en')}
+              onChange={(event) => setLocale(event.target.value as any)}
               className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 shadow-sm outline-none hover:bg-slate-50"
               aria-label={tr(locale, 'layout.language')}
             >
-              <option value="en">EN</option>
-              <option value="ko">KO</option>
+              <option value="en">English (EN)</option>
+              <option value="zh-TW">繁體中文 (TW)</option>
+              <option value="ko">한국어 (KO)</option>
             </select>
             <button
               className="text-slate-500 hover:text-slate-900"
