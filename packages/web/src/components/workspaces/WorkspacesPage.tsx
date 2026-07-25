@@ -103,7 +103,20 @@ export function WorkspacesPage() {
                     {workspaces.map((workspace) => {
                       const isActive = workspace.name === activeWorkspaceName || workspace.id === activeWorkspaceName
                       return (
-                        <div key={workspace.id} className={`grid gap-3 px-5 py-4 lg:grid-cols-[1fr_120px_190px] lg:items-center ${isActive ? 'bg-blue-50/50' : ''}`}>
+                        <div 
+                          key={workspace.id} 
+                          onClick={() => {
+                            if (!isActive) {
+                              localStorage.setItem('active-workspace', workspace.name)
+                              window.location.reload()
+                            }
+                          }}
+                          className={`grid gap-3 px-5 py-4 lg:grid-cols-[1fr_120px_190px] lg:items-center transition-colors ${
+                            isActive 
+                              ? 'bg-blue-50/50' 
+                              : 'cursor-pointer hover:bg-slate-50'
+                          }`}
+                        >
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <Briefcase size={16} className={isActive ? 'text-blue-600' : 'text-slate-400'} />

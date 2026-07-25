@@ -5,10 +5,15 @@ const BASE = '/api/v1'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const { headers, ...rest } = options || {}
+  const activeWorkspace = localStorage.getItem('active-workspace') || ''
   const res = await fetch(`${BASE}${path}`, {
     ...rest,
     credentials: 'same-origin',
-    headers: withStoredApiKey({ 'Content-Type': 'application/json', ...headers }),
+    headers: withStoredApiKey({ 
+      'Content-Type': 'application/json', 
+      'X-Workspace': activeWorkspace,
+      ...headers 
+    }),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -41,9 +46,12 @@ export async function deleteDocument(id: string): Promise<void> {
 export async function uploadDocument(file: File): Promise<{ documentId: string; chunks: number; status: string }> {
   const formData = new FormData()
   formData.append('file', file)
+  const activeWorkspace = localStorage.getItem('active-workspace') || ''
   const res = await fetch(`${BASE}/documents/upload`, {
     credentials: 'same-origin',
-    headers: withStoredApiKey(),
+    headers: withStoredApiKey({
+      'X-Workspace': activeWorkspace
+    }),
     method: 'POST',
     body: formData,
   })

@@ -10,12 +10,23 @@ export function resolveRequestWorkspaceId(
   const authWorkspaceId = auth?.record?.workspaceId
   if (authWorkspaceId) return authWorkspaceId
 
-  if (requestedWorkspaceId) {
+  // --- Dynamic Header & Query Override ---
+  const headerWorkspace = c.req.header('x-workspace') || c.req.header('x-workspace-id') || c.req.header('x-workspace-name')
+  const queryWorkspace = c.req.query('workspace') || c.req.query('workspaceId')
+  const wsParam = requestedWorkspaceId || headerWorkspace || queryWorkspace
+
+  if (wsParam) {
     const requested =
-      ctx.workspaceManager.getById(requestedWorkspaceId) ??
-      ctx.workspaceManager.getByName(requestedWorkspaceId)
+      ctx.workspaceManager.getById(wsParam) ??
+      ctx.workspaceManager.getByName(wsParam)
     if (requested) return requested.id
+
+    try {
+      const created = ctx.workspaceManager.create(wsParam)
+      return created.id
+    } catch {}
   }
+  // ----------------------------------------
 
   if (ctx.config.workspace) {
     const configured = ctx.workspaceManager.getByName(ctx.config.workspace)

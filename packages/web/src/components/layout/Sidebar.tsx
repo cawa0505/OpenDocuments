@@ -15,10 +15,11 @@ import {
   Settings,
   ShieldCheck,
   Trash2,
+  Briefcase,
 } from 'lucide-react'
 import { translate as tr, type Locale } from '../../lib/i18n'
 
-type PageId = 'chat' | 'documents' | 'collections' | 'connectors' | 'health' | 'settings'
+type PageId = 'chat' | 'documents' | 'collections' | 'connectors' | 'health' | 'settings' | 'workspaces'
 
 const NAV_ITEMS: { id: PageId; labelKey: string; icon: ReactNode }[] = [
   { id: 'chat', labelKey: 'nav.ask', icon: <Search size={19} strokeWidth={2} /> },
@@ -258,7 +259,16 @@ export function Sidebar() {
         )}
       </div>
 
-      <div className="mt-auto px-5 pb-6">
+      <div className="mt-auto px-5 pb-6 space-y-2">
+        <button
+          onClick={() => setPage('workspaces')}
+          className={`flex h-10 w-full items-center gap-3 text-left text-[15px] font-medium ${
+            currentPage === 'workspaces' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-950'
+          }`}
+        >
+          <Briefcase size={20} strokeWidth={1.9} />
+          {t('workspaces.title') || 'Workspaces'}
+        </button>
         <button
           onClick={() => setPage('settings')}
           className={`flex h-10 w-full items-center gap-3 text-left text-[15px] font-medium ${
