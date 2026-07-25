@@ -18,8 +18,20 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
   const [selectedSource, setSelectedSource] = useState<SearchResult | null>(null)
   const isUser = message.role === 'user'
   const visibleSources = message.sources?.slice(0, 4) || []
+  
+  // Dedup visible sources by documentId/sourcePath to prevent duplicate cards for the same file
+  const dedupedSources: SearchResult[] = []
+  const seenDocs = new Set<string>()
+  for (const src of visibleSources) {
+    const docKey = src.documentId || src.sourcePath || src.content
+    if (!seenDocs.has(docKey)) {
+      seenDocs.add(docKey)
+      dedupedSources.push(src)
+    }
+  }
+
   const confidence = message.confidence?.score
-  const bestSourceScore = visibleSources.length > 0 ? Math.max(...visibleSources.map((source) => source.score)) : undefined
+  const bestSourceScore = dedupedSources.length > 0 ? Math.max(...dedupedSources.map((source) => source.score)) : undefined
   const metricScore = bestSourceScore ?? confidence
   const metricLabel = bestSourceScore !== undefined ? t('chat.evidenceMatch') : t('chat.confidence')
   const sourceHeading = selectedSource?.headingHierarchy?.join(' / ')
@@ -67,7 +79,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                   </div>
                 </div>
                 <div className="grid gap-4 md:grid-cols-4">
-                  {visibleSources.map((source, i) => (
+                  {dedupedSources.map((source, i) => (
                     <SourceCard
                       key={`${source.chunkId}-${i}`}
                       source={source}

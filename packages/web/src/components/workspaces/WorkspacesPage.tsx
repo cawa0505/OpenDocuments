@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Briefcase, Database, RefreshCw, Shield } from 'lucide-react'
-import { getWorkbench, listWorkspaces } from '../../lib/api'
+import { Briefcase, Database, RefreshCw, Shield, Trash2 } from 'lucide-react'
+import { getWorkbench, listWorkspaces, deleteWorkspace } from '../../lib/api'
 import type { WorkbenchResponse, Workspace } from '../../lib/types'
 import { useAppStore } from '../../stores/appStore'
 import { translate as tr, type Locale } from '../../lib/i18n'
@@ -35,6 +35,28 @@ export function WorkspacesPage() {
       setError(err instanceof Error ? err.message : t('workspaces.empty'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (e: React.MouseEvent, workspace: Workspace) => {
+    e.stopPropagation()
+    if (workspace.name === 'default') return
+    const confirmed = window.confirm(t('workspaces.deleteConfirm', { name: workspace.name }))
+    if (!confirmed) return
+
+    try {
+      await deleteWorkspace(workspace.id)
+      
+      // 如果刪除的是當前正處於啟用 (Active) 狀態的工作空間，我們必須重置/切回 default
+      const isActive = workspace.name === activeWorkspaceName || workspace.id === activeWorkspaceName
+      if (isActive) {
+        localStorage.setItem('active-workspace', 'default')
+        window.location.reload()
+      } else {
+        await refresh()
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -111,7 +133,7 @@ export function WorkspacesPage() {
                               window.location.reload()
                             }
                           }}
-                          className={`grid gap-3 px-5 py-4 lg:grid-cols-[1fr_120px_190px] lg:items-center transition-colors ${
+                          className={`grid gap-3 px-5 py-4 lg:grid-cols-[1fr_120px_50px] lg:items-center transition-colors ${
                             isActive 
                               ? 'bg-blue-50/50' 
                               : 'cursor-pointer hover:bg-slate-50'
@@ -123,12 +145,27 @@ export function WorkspacesPage() {
                               <p className="truncate text-[14px] font-semibold text-slate-900">{workspace.name}</p>
                               {isActive && <span className="rounded-md bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">{t('common.active')}</span>}
                             </div>
-                            <p className="mt-1 truncate font-mono text-[11px] text-slate-400">{workspace.id}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
+                              <span className="font-mono">{workspace.id}</span>
+                              <span>·</span>
+                              <span>{t('docDetail.created')} {formatDate(workspace.createdAt, locale)}</span>
+                            </div>
                           </div>
                           <span className={`w-fit rounded-md border px-2 py-0.5 text-[11px] font-medium ${modeTone(workspace.mode)}`}>
                             {workspace.mode}
                           </span>
-                          <span className="text-[12px] text-slate-500">{t('docDetail.created')} {formatDate(workspace.createdAt, locale)}</span>
+                          
+                          <div className="flex justify-end">
+                            {workspace.name !== 'default' && (
+                              <button
+                                onClick={(e) => handleDelete(e, workspace)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+                                title={t('workspaces.delete')}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )
                     })}

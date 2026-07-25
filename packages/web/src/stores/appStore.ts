@@ -22,20 +22,25 @@ interface AppState {
 
 function getEffectiveTheme(theme: Theme): 'light' | 'dark' {
   if (theme === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   }
   return theme
 }
 
+const initialTheme = (typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-theme') as Theme : 'system') || 'system'
+const initialEffective = getEffectiveTheme(initialTheme)
+
+if (typeof document !== 'undefined') {
+  document.documentElement.classList.toggle('dark', initialEffective === 'dark')
+}
+
 export const useAppStore = create<AppState>((set) => ({
-  theme: (localStorage.getItem('opendocuments-theme') as Theme) || 'system',
-  effectiveTheme: getEffectiveTheme(
-    (localStorage.getItem('opendocuments-theme') as Theme) || 'system'
-  ),
-  locale: localStorage.getItem('opendocuments-locale')
+  theme: initialTheme,
+  effectiveTheme: initialEffective,
+  locale: (typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-locale') : null)
     ? normalizeLocale(localStorage.getItem('opendocuments-locale'))
     : detectLocale(),
-  profile: (localStorage.getItem('opendocuments-profile') as RAGProfile) || 'fast',
+  profile: ((typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-profile') as RAGProfile : 'fast') || 'fast'),
   currentPage: 'chat',
   sidebarOpen: true,
 

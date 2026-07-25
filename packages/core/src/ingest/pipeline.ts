@@ -53,10 +53,11 @@ export class IngestPipeline {
     fileExt: string,
     config?: OpenDocumentsConfig
   ): Promise<ParsedChunk[]> {
+    const normalizedExt = fileExt.toLowerCase()
     const { registry } = this.opts
 
     // Try primary parser first
-    const primaryParser = registry.findParserForType(fileExt)
+    const primaryParser = registry.findParserForType(normalizedExt)
     if (primaryParser) {
       try {
         const chunks: ParsedChunk[] = []
@@ -65,12 +66,12 @@ export class IngestPipeline {
         }
         if (chunks.length > 0) return chunks
       } catch (err) {
-        console.warn(`[parse] Primary parser failed for ${fileExt}: ${err instanceof Error ? err.message : String(err)}`)
+        console.warn(`[parse] Primary parser failed for ${normalizedExt}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 
     // Try fallback chain
-    const fallbacks = config?.parserFallbacks?.[fileExt] || []
+    const fallbacks = config?.parserFallbacks?.[normalizedExt] || []
     for (const fallbackName of fallbacks) {
       const fallbackParser = registry.get(fallbackName)
       if (!fallbackParser || fallbackParser.type !== 'parser') continue
@@ -81,12 +82,12 @@ export class IngestPipeline {
         }
         if (chunks.length > 0) return chunks
       } catch (err) {
-        console.warn(`[parse] Fallback parser '${fallbackName}' failed for ${fileExt}: ${err instanceof Error ? err.message : String(err)}`)
+        console.warn(`[parse] Fallback parser '${fallbackName}' failed for ${normalizedExt}: ${err instanceof Error ? err.message : String(err)}`)
         continue
       }
     }
 
-    throw new Error(`No parser found for ${fileExt}`)
+    throw new Error(`No parser found for ${normalizedExt}`)
   }
 
   async ingest(

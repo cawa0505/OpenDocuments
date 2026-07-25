@@ -1,14 +1,14 @@
 import { Sidebar } from './Sidebar'
 import { useAppStore } from '../../stores/appStore'
 import { useEffect, useState } from 'react'
-import { CircleHelp, Sun } from 'lucide-react'
+import { CircleHelp, Sun, Moon } from 'lucide-react'
 import { getWorkbench } from '../../lib/api'
 import type { WorkbenchResponse } from '../../lib/types'
 import { translate as tr } from '../../lib/i18n'
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { theme, setTheme, locale, setLocale } = useAppStore()
-  const nextTheme = theme === 'dark' ? 'light' : 'dark'
+  const { theme, effectiveTheme, setTheme, locale, setLocale } = useAppStore()
+  const nextTheme = effectiveTheme === 'dark' ? 'light' : 'dark'
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null)
   const [reachable, setReachable] = useState(true)
 
@@ -68,7 +68,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               aria-label={tr(locale, 'layout.toggleTheme')}
               onClick={() => setTheme(nextTheme)}
             >
-              <Sun size={23} strokeWidth={1.8} />
+              {effectiveTheme === 'dark' ? (
+                <Sun size={23} strokeWidth={1.8} className="text-amber-500" />
+              ) : (
+                <Moon size={22} strokeWidth={1.8} className="text-slate-500" />
+              )}
             </button>
           </div>
         </header>

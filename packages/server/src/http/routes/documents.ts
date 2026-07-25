@@ -69,7 +69,7 @@ export function documentRoutes(ctx: AppContext) {
 
     // Read as buffer for binary files, text for known text formats
     const textExtensions = ['.md', '.mdx', '.txt', '.json', '.yaml', '.yml', '.toml', '.csv', '.html', '.htm']
-    const ext = '.' + (sanitizedName.split('.').pop() || '')
+    const ext = '.' + (sanitizedName.split('.').pop() || '').toLowerCase()
     const content = textExtensions.includes(ext)
       ? await file.text()
       : Buffer.from(await file.arrayBuffer())
@@ -79,7 +79,7 @@ export function documentRoutes(ctx: AppContext) {
       content,
       sourceType: 'upload',
       sourcePath: sanitizedName,
-      fileType: sanitizedName.includes('.') ? '.' + sanitizedName.split('.').pop() : undefined,
+      fileType: sanitizedName.includes('.') ? '.' + sanitizedName.split('.').pop()?.toLowerCase() : undefined,
     })
     return c.json(result, 201)
   })

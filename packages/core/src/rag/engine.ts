@@ -491,7 +491,17 @@ export class RAGEngine {
       }
     }
 
-    return results
+    // Normalize RRF scores so they render beautifully as percentages in the UI
+    const finalResults = results.map(r => {
+      if (r.score < 0.05) {
+        // Map max RRF (1/61 = 0.016393) to ~95%, scaling linearly down
+        const normalized = Math.min(0.99, (r.score / 0.016393) * 0.95)
+        return { ...r, score: Math.round(normalized * 100) / 100 }
+      }
+      return r
+    })
+
+    return finalResults
   }
 
   private computeConfidence(query: string, sources: SearchResult[]): ConfidenceResult {

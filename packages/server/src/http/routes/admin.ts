@@ -290,6 +290,19 @@ export function adminRoutes(ctx: AppContext) {
     return c.json({ workspaces })
   })
 
+  app.delete('/api/v1/workspaces/:id', (c) => {
+    const id = c.req.param('id')
+    const ws = ctx.workspaceManager.getById(id)
+    if (!ws) {
+      return c.json({ error: 'Workspace not found' }, 404)
+    }
+    if (ws.name === 'default') {
+      return c.json({ error: 'Cannot delete the default workspace' }, 400)
+    }
+    ctx.workspaceManager.delete(id)
+    return c.json({ deleted: true })
+  })
+
   app.get('/api/v1/admin/connectors', requireRole('admin'), requireScope('admin'), (c) => {
     const workspaceId = resolveRequestWorkspaceId(c, ctx)
     const connectors = ctx.forWorkspace(workspaceId).connectorManager.listConnectors()

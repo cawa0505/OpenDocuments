@@ -97,17 +97,16 @@ export default function DictionaryPage() {
     <div className="min-h-full bg-slate-50 px-6 py-6 text-slate-950">
       <div className="mx-auto max-w-6xl space-y-5">
         {/* 標題大盤區 */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5 dark:border-slate-800 gap-4">
+        <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {tr('settings.glossary')}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-[13px] font-medium text-blue-600">{tr('settings.glossary.eyebrow')}</p>
+            <h2 className="mt-1 text-[26px] font-semibold tracking-normal">{tr('settings.glossary')}</h2>
+            <p className="mt-2 max-w-2xl text-[14px] leading-6 text-slate-500">
               {tr('settings.glossary.desc')}
             </p>
           </div>
-          <div className="flex items-center self-start sm:self-center space-x-2 bg-blue-50/50 px-3 py-1.5 rounded-full border border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-semibold shrink-0 whitespace-nowrap">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="flex h-9 items-center gap-2 rounded-md border border-blue-100 bg-blue-50/50 px-3 text-[13px] font-medium text-blue-700 shadow-sm shrink-0 whitespace-nowrap">
+            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
             <span>Workspace: {activeWorkspace}</span>
@@ -127,7 +126,7 @@ export default function DictionaryPage() {
         <button
           onClick={handleImportSeed}
           disabled={isImporting}
-          className="w-full md:w-auto shrink-0 flex items-center justify-center space-x-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50 shadow-sm whitespace-nowrap"
+          className="w-full md:w-auto shrink-0 flex items-center justify-center space-x-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all disabled:opacity-50 shadow-sm whitespace-nowrap"
         >
           {isImporting && (
             <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
@@ -141,7 +140,7 @@ export default function DictionaryPage() {
 
       {/* 錯誤資訊展示區 (防止跑版，附帶圓角與動畫) */}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50/60 p-4 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300 flex items-start space-x-2.5 animate-fadeIn">
+        <div className="rounded-xl border border-red-200 bg-red-50/60 p-4 text-xs text-red-700 flex items-start space-x-2.5 animate-fadeIn">
           <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>

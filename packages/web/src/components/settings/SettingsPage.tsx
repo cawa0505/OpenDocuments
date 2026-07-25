@@ -41,24 +41,36 @@ export function SettingsPage() {
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null)
   const [models, setModels] = useState<BenchmarkModel[]>([])
   const [loading, setLoading] = useState(true)
+  const [benchmarksLoading, setBenchmarksLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = async () => {
     setLoading(true)
+    setBenchmarksLoading(true)
     setError(null)
+    
+    // 1. 立即異步獲取基本健康與工作台狀態（10ms 極速返回）
     try {
-      const [nextHealth, nextWorkbench, modelData] = await Promise.all([
+      const [nextHealth, nextWorkbench] = await Promise.all([
         getHealth(),
-        getWorkbench(),
-        getModelBenchmarks().catch(() => ({ benchmarks: [] as BenchmarkModel[] })),
+        getWorkbench()
       ])
       setHealth(nextHealth)
       setWorkbench(nextWorkbench)
-      setModels(modelData.benchmarks)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('settings.subtitle'))
     } finally {
       setLoading(false)
+    }
+
+    // 2. 異步在背景非阻塞執行耗時的大模型效能跑分（5~10秒，不卡死主頁面）
+    try {
+      const modelData = await getModelBenchmarks().catch(() => ({ benchmarks: [] as BenchmarkModel[] }))
+      setModels(modelData.benchmarks)
+    } catch (err) {
+      console.warn('Failed to load benchmarks:', err)
+    } finally {
+      setBenchmarksLoading(false)
     }
   }
 
@@ -185,7 +197,12 @@ export function SettingsPage() {
                 <Server size={17} className="text-slate-500" />
                 <h3 className="text-[15px] font-semibold text-slate-950">{t('settings.modelProviders')}</h3>
               </div>
-              {models.length === 0 ? (
+              {benchmarksLoading ? (
+                <div className="mt-4 flex items-center justify-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/50 p-6 text-[13px] text-slate-500">
+                  <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                  <span>正在對大模型進行本地硬體跑分基準測試中，請稍候...</span>
+                </div>
+              ) : models.length === 0 ? (
                 <p className="mt-4 text-[13px] text-slate-400">{t('settings.noModels')}</p>
               ) : (
                 <div className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">

@@ -83,16 +83,13 @@ In short: **OpenDocuments is a private AI search engine for your organization's 
 | **OpenDocuments vs local-only scripts** | A production-oriented system with team mode, API access, syncable connectors, backups, and admin tooling |
 
 ### Recent Improvements
-- **RAG accuracy overhaul**: Structure-preserving chunking, contextual prefixes, HyDE + multi-query retrieval, parent-document recall, proposition augmentation, reranking, and adaptive context fitting
-- **Workspace-scoped team mode**: Admin/chat/document APIs stay inside the authenticated workspace, with shared conversation links plus session and API-key auth support
-- **Backup & restore CLI**: Snapshot SQLite + LanceDB data and recover an instance with one command
-- **Plugin hardening**: Plugin search/install routes are admin-only and use validated npm argument execution
-- **One-touch Ollama setup**: `init` auto-detects Ollama, offers to pull missing models
-- **`.env` auto-loading**: API keys in `.env` are loaded automatically (no manual export needed)
-- **Multi-turn conversations**: Chat remembers previous context for follow-up questions
-- **Degraded mode warnings**: Clear banners when models aren't configured, with fix instructions
-- **Enhanced diagnostics**: `opendocuments doctor` checks Ollama connectivity, model availability, and config validity
-- **Security hardening**: FTS5 injection prevention, file upload sanitization, OAuth state limits, workspace isolation
+- **Double-Stage Rerank & Score Filter**: Implemented a hybrid pipeline featuring Stage-1 heuristic path/keyword prioritizing and Stage-2 LLM-based Cross-Encoder Reranker. Introduced a semantic score threshold filter to purge low-relevance KNN retrieval noise, combined with a self-healing fallback that guarantees a preserved Top-1 chunk when filtering is overly restrictive.
+- **200ms Adaptive Dark Mode & UI Aesthetics**: Redesigned the Theme Toggle (Light/Dark/System) with smooth 200ms transitions and responsive icon indicators. Fixed persistent theme caching across refreshes by syncing system/manual class-list binding at the app store's root level.
+- **Double-Row Workspace Grid Layout**: Refactored the workspace grid to `lg:grid-cols-[1fr_120px_50px]`, freeing up 3x column space to resolve text truncate (`...`) clutter. Merged Workspace ID and creation time into an elegant dual-row subtext view.
+- **Safe Workspace Deletion & Event Guard**: Added the workspace deletion API (`DELETE /api/v1/workspaces/:id`) with confirm modals and stopPropagation click bubbling prevention. Hard-coded system-level protection for the `'default'` workspace to guarantee a minimum of one resilient workspace remaining.
+- **Lazy-Loaded Settings Page**: Solved a critical UI rendering bottleneck by decoupling heavy asynchronous model benchmarks into background lazy-fetches, achieving instant (<10ms) settings screen loads.
+- **Case-Insensitive File Parsing**: Eliminated ingestion errors caused by case-variant extensions (e.g. `.PDF`, `.PNG`) by normalizing file suffix strings to lowercase at both API ingress routes and core pipeline layers.
+- **Polished Multilingual Translations**: Standardized English, Korean, and Taiwanese Traditional Chinese locales by stripping out parenthetical clutter, aligning terminology with natural developer phrasing (e.g., '資料庫', '工作空間').
 
 ---
 

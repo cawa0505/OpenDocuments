@@ -79,6 +79,10 @@ export async function listWorkspaces(): Promise<{ workspaces: Workspace[] }> {
   return request('/workspaces')
 }
 
+export async function deleteWorkspace(id: string): Promise<{ deleted: boolean }> {
+  return request(`/workspaces/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
 // Conversations
 export async function listConversations(opts?: { limit?: number; offset?: number }): Promise<{ conversations: Conversation[]; limit: number; offset: number }> {
   const params = new URLSearchParams()
