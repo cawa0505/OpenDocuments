@@ -7,8 +7,16 @@ use std::path::PathBuf;
 use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
+use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
 use walkdir::WalkDir;
 use reqwest::multipart;
+use crossterm::{
+    event::{self, Event as CrossEvent, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::io;
 
 #[derive(Parser)]
 #[command(name = "opendocuments-rust")]
@@ -25,7 +33,7 @@ enum Commands {
     /// 啟動輕量化 Ratatui TUI 檢索與進度調試終端
     Tui,
 
-    /// 对 RAG 知識庫進行快速終端問答
+    /// 對 RAG 知識庫進行快速終端問答
     Ask {
         /// 問答諮詢內容
         query: String,
@@ -39,7 +47,7 @@ enum Commands {
         collections: Option<Vec<String>>,
     },
 
-    /// 对 RAG 知識庫進行向量與混合檢索
+    /// 對 RAG 知識庫進行向量與混合檢索
     Search {
         /// 檢索關鍵字或語義句
         query: String,
@@ -183,7 +191,18 @@ async fn main() {
 
     match cli.command {
         Commands::Tui => {
-            println!("正在啟動 Ratatui TUI 終端互動檢索介面... (Phase 2 實裝中)");
+            // 完美註冊全局 Panic Hook, 確保 TUI 崩潰時強制還原終端
+            let default_hook = std::panic::take_hook();
+            std::panic::set_hook(Box::new(move |info| {
+                let _ = disable_raw_mode();
+                let mut stdout = io::stdout();
+                let _ = execute!(stdout, LeaveAlternateScreen);
+                default_hook(info);
+            }));
+
+            if let Err(e) = run_tui_loop(&app_cfg.model.default_workspace).await {
+                eprintln!("💥 TUI 異常退出: {e}");
+            }
         }
         Commands::Ask { query, workspace, collections } => {
             println!("正在向空間 '{workspace}' 提問: '{query}' ... (API 端點: {})", app_cfg.server.url);
@@ -200,7 +219,7 @@ async fn main() {
         Commands::Document { sub } => {
             match sub {
                 DocumentSubcommands::Index { path, workspace } => {
-                    let path = match path.canonicalize() {
+                    let canon_path = match path.canonicalize() {
                         Ok(p) => p,
                         Err(e) => {
                             eprintln!("💥 無法解析路徑 {path_display:?}: {e}", path_display = path.display());
@@ -213,7 +232,6 @@ async fn main() {
                     println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
                     println!("{}", "-".repeat(50));
 
-                    // 100% 繼承 python ingester 的噪音過濾
                     let ignored_dirs = [
                         "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
                         "__pycache__", "venv", ".env", "out"
@@ -229,8 +247,7 @@ async fn main() {
                     let mut success_count = 0;
                     let mut fail_count = 0;
 
-                    // 執行多執行緒或高效掃描
-                    let walk = WalkDir::new(&path).into_iter().filter_entry(|entry| {
+                    let walk = WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
                         if let Some(name) = entry.file_name().to_str() {
                             !ignored_dirs.contains(&name) && !name.starts_with('.')
                         } else {
@@ -252,7 +269,6 @@ async fn main() {
                             continue;
                         }
 
-                        // 副檔名過濾
                         let ext = file_path.extension()
                             .and_then(|e| e.to_str())
                             .map(|e| format!(".{}", e.to_lowercase()))
@@ -262,17 +278,16 @@ async fn main() {
                             continue;
                         }
 
-                        let rel_path = match file_path.strip_prefix(&path) {
+                        let rel_path = match file_path.strip_prefix(&canon_path) {
                             Ok(p) => p.to_string_lossy().into_owned(),
                             Err(_) => file_name.to_string(),
                         };
 
                         print!("[..] 上傳中: {rel_path} ...");
-                        if let Err(e) = std::io::Write::flush(&mut std::io::stdout()) {
+                        if let Err(e) = io::Write::flush(&mut io::stdout()) {
                             eprintln!("\r[!!] 無法刷新終端: {e}");
                         }
 
-                        // 3 次退避重試邏輯
                         let max_retries = 3;
                         let mut attempt = 0;
 
@@ -303,7 +318,7 @@ async fn main() {
                             let req_res = client.post(&upload_url)
                                 .header("X-Workspace", &workspace)
                                 .multipart(form)
-                                .timeout(Duration::from_mins(3))
+                                .timeout(Duration::from_secs(180)) // 3 mins timeout
                                 .send()
                                 .await;
 
@@ -314,7 +329,7 @@ async fn main() {
                                         let chunks = res_json.get("chunks").and_then(serde_json::Value::as_u64).unwrap_or(0);
                                         print!("\r[ok] 已索引: {rel_path} ({chunks} 區塊)\n");
                                         success_count += 1;
-                                        tokio::time::sleep(Duration::from_millis(500)).await; // 💡 舒緩 GPU & CPU 滿載保護
+                                        tokio::time::sleep(Duration::from_millis(500)).await;
                                         break;
                                     } else if attempt == max_retries {
                                         print!("\r[!!] 失敗: {rel_path} - HTTP {}\n", resp.status());
@@ -415,4 +430,80 @@ async fn main() {
             }
         }
     }
+}
+
+/// 運行 Ratatui TUI 主循環，具備 100% 非同步事件調度與背景阻斷保護
+async fn run_tui_loop(default_workspace: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. 初始化終端機環境
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+    
+    // 【防禦起手式】開啟獨立異步 Task 監聽鍵盤輸入，絕不阻塞主執行緒
+    let tx_clone = tx.clone();
+    tokio::task::spawn_blocking(move || {
+        loop {
+            // 每 50 毫秒檢查一次有沒有鍵盤輸入
+            if let Ok(true) = event::poll(Duration::from_millis(50)) {
+                if let Ok(CrossEvent::Key(key)) = event::read() {
+                    let _ = tx_clone.blocking_send(TuiEvent::Input(key.code));
+                }
+            }
+            // 定時發送 Tick 事件，用來更新動畫或檢查背景進度
+            let _ = tx_clone.blocking_send(TuiEvent::Tick);
+        }
+    });
+
+    let mut state = TuiAppState::new(default_workspace.to_string());
+
+    // 模擬載入一些初始化的 TUI 測試資料
+    state.results = vec![
+        TuiSearchResult {
+            file_name: "CHANGELOG.md".to_string(),
+            score: 0.89,
+            snippet: "修正：OpenDocuments MCP 在連線超時下的崩潰問題，合入 Reranker 阻斷。".to_string(),
+        },
+        TuiSearchResult {
+            file_name: "STRUCTURE.md".to_string(),
+            score: 0.65,
+            snippet: "Homelab 整合：arhat 主要工作機 (192.168.77.200) 部署 5x MCP 遠端容器。".to_string(),
+        },
+    ];
+
+    // TUI 主事件循環
+    loop {
+        terminal.draw(|f| render_ui(f, &state))?;
+
+        if let Some(event) = rx.recv().await {
+            match event {
+                TuiEvent::Input(KeyCode::Esc) => break,
+                TuiEvent::Input(KeyCode::Char(c)) => {
+                    state.search_query.push(c);
+                }
+                TuiEvent::Input(KeyCode::Backspace) => {
+                    state.search_query.pop();
+                }
+                TuiEvent::Input(KeyCode::Enter) => {
+                    // 當按下 Enter，觸發非同步檢索
+                    // 這裡可以透過 tokio::spawn 去呼叫 crates/opendoc-storage，
+                    // 檢索完後再透過 tx.send(TuiEvent::FetchResults(data)) 丟回來更新 state
+                    println!("觸發檢索: {}", state.search_query);
+                }
+                TuiEvent::FetchResults(new_results) => {
+                    state.results = new_results;
+                }
+                TuiEvent::Tick => {}
+                _ => {}
+            }
+        }
+    }
+
+    // 還原終端機
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    Ok(())
 }

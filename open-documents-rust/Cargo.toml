@@ -16,19 +16,23 @@ members = [
     "crates/opendoc-parser-email",
     "crates/opendoc-parser-html",
     "crates/opendoc-parser-pptx",
-    "crates/opendoc-storage"
+    "crates/opendoc-storage",
+    "crates/opendoc-tui"
 ]
 
 [dependencies]
 opendoc-types = { path = "crates/opendoc-types" }
 opendoc-parser = { path = "crates/opendoc-parser" }
 opendoc-storage = { path = "crates/opendoc-storage" }
+opendoc-tui = { path = "crates/opendoc-tui" }
 clap = { version = "4.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 reqwest = { version = "0.11", features = ["multipart", "json"] }
 walkdir = "2.4"
+crossterm = "0.27"
+ratatui = "0.26"
 
 [profile.release]
 opt-level = 3       # 最高級別的編譯優化
