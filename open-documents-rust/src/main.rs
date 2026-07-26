@@ -1,5 +1,9 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::clone_on_ref_ptr)]
+#![warn(clippy::pedantic)]
+
 use clap::{Parser, Subcommand};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
@@ -21,7 +25,7 @@ enum Commands {
     /// 啟動輕量化 Ratatui TUI 檢索與進度調試終端
     Tui,
 
-    /// 對 RAG 知識庫進行快速終端問答
+    /// 对 RAG 知識庫進行快速終端問答
     Ask {
         /// 問答諮詢內容
         query: String,
@@ -35,7 +39,7 @@ enum Commands {
         collections: Option<Vec<String>>,
     },
 
-    /// 對 RAG 知識庫進行向量與混合檢索
+    /// 对 RAG 知識庫進行向量與混合檢索
     Search {
         /// 檢索關鍵字或語義句
         query: String,
@@ -170,7 +174,7 @@ async fn main() {
     let config_manager = match ConfigManager::load_or_init() {
         Ok(cm) => cm,
         Err(e) => {
-            eprintln!("💥 載入設定失敗: {}", e);
+            eprintln!("💥 載入設定失敗: {e}");
             std::process::exit(1);
         }
     };
@@ -182,15 +186,15 @@ async fn main() {
             println!("正在啟動 Ratatui TUI 終端互動檢索介面... (Phase 2 實裝中)");
         }
         Commands::Ask { query, workspace, collections } => {
-            println!("正在向空間 '{}' 提問: '{}' ... (API 端點: {})", workspace, query, app_cfg.server.url);
+            println!("正在向空間 '{workspace}' 提問: '{query}' ... (API 端點: {})", app_cfg.server.url);
             if let Some(cols) = collections {
-                println!("過濾集合: {:?}", cols);
+                println!("過濾集合: {cols:?}");
             }
         }
         Commands::Search { query, workspace, threshold, limit } => {
             println!(
-                "正在空間 '{}' 檢索: '{}' (門檻: {}, 限制: {})... (API 端點: {})",
-                workspace, query, threshold, limit, app_cfg.server.url
+                "正在空間 '{workspace}' 檢索: '{query}' (門檻: {threshold}, 限制: {limit})... (API 端點: {})",
+                app_cfg.server.url
             );
         }
         Commands::Document { sub } => {
@@ -199,13 +203,13 @@ async fn main() {
                     let path = match path.canonicalize() {
                         Ok(p) => p,
                         Err(e) => {
-                            eprintln!("💥 無法解析路徑 {:?}: {}", path, e);
+                            eprintln!("💥 無法解析路徑 {path_display:?}: {e}", path_display = path.display());
                             std::process::exit(1);
                         }
                     };
 
                     println!("🚀 啟動高效目錄索引:");
-                    println!("📦 目標工作空間: {}", workspace);
+                    println!("📦 目標工作空間: {workspace}");
                     println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
                     println!("{}", "-".repeat(50));
 
@@ -235,20 +239,14 @@ async fn main() {
                     });
 
                     for entry in walk {
-                        let entry = match entry {
-                            Ok(e) => e,
-                            Err(_) => continue,
-                        };
+                        let Ok(entry) = entry else { continue };
 
                         if !entry.file_type().is_file() {
                             continue;
                         }
 
                         let file_path = entry.path();
-                        let file_name = match file_path.file_name().and_then(|n| n.to_str()) {
-                            Some(name) => name,
-                            None => continue,
-                        };
+                        let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) else { continue };
 
                         if file_name.starts_with('.') {
                             continue;
@@ -269,13 +267,14 @@ async fn main() {
                             Err(_) => file_name.to_string(),
                         };
 
-                        print!("[..] 上傳中: {} ...", rel_path);
-                        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+                        print!("[..] 上傳中: {rel_path} ...");
+                        if let Err(e) = std::io::Write::flush(&mut std::io::stdout()) {
+                            eprintln!("\r[!!] 無法刷新終端: {e}");
+                        }
 
                         // 3 次退避重試邏輯
                         let max_retries = 3;
                         let mut attempt = 0;
-                        let mut success = false;
 
                         while attempt < max_retries {
                             attempt += 1;
@@ -283,46 +282,50 @@ async fn main() {
                             let file_bytes = match std::fs::read(file_path) {
                                 Ok(b) => b,
                                 Err(e) => {
-                                    eprintln!("\r[!!] 讀取檔案失敗: {} - {}", rel_path, e);
+                                    eprintln!("\r[!!] 讀取檔案失敗: {rel_path} - {e}");
                                     break;
                                 }
                             };
 
-                            let part = multipart::Part::bytes(file_bytes)
+                            let part = match multipart::Part::bytes(file_bytes)
                                 .file_name(file_name.to_string())
-                                .mime_str("application/octet-stream")
-                                .unwrap();
+                                .mime_str("application/octet-stream") 
+                            {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    eprintln!("\r[!!] 建立請求體失敗: {rel_path} - {e}");
+                                    break;
+                                }
+                            };
 
                             let form = multipart::Form::new().part("file", part);
 
-                            match client.post(&upload_url)
+                            let req_res = client.post(&upload_url)
                                 .header("X-Workspace", &workspace)
                                 .multipart(form)
-                                .timeout(Duration::from_secs(180))
+                                .timeout(Duration::from_mins(3))
                                 .send()
-                                .await 
-                            {
+                                .await;
+
+                            match req_res {
                                 Ok(resp) => {
                                     if resp.status().is_success() {
-                                        success = true;
                                         let res_json: serde_json::Value = resp.json().await.unwrap_or_default();
-                                        let chunks = res_json.get("chunks").and_then(|c| c.as_u64()).unwrap_or(0);
-                                        print!("\r[ok] 已索引: {} ({} 區塊)\n", rel_path, chunks);
+                                        let chunks = res_json.get("chunks").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                                        print!("\r[ok] 已索引: {rel_path} ({chunks} 區塊)\n");
                                         success_count += 1;
                                         tokio::time::sleep(Duration::from_millis(500)).await; // 💡 舒緩 GPU & CPU 滿載保護
                                         break;
+                                    } else if attempt == max_retries {
+                                        print!("\r[!!] 失敗: {rel_path} - HTTP {}\n", resp.status());
+                                        fail_count += 1;
                                     } else {
-                                        if attempt == max_retries {
-                                            print!("\r[!!] 失敗: {} - HTTP {}\n", rel_path, resp.status());
-                                            fail_count += 1;
-                                        } else {
-                                            tokio::time::sleep(Duration::from_millis(1500)).await;
-                                        }
+                                        tokio::time::sleep(Duration::from_millis(1500)).await;
                                     }
                                 }
                                 Err(e) => {
                                     if attempt == max_retries {
-                                        print!("\r[!!] 失敗: {} - 錯誤: {}\n", rel_path, e);
+                                        print!("\r[!!] 失敗: {rel_path} - 錯誤: {e}\n");
                                         fail_count += 1;
                                     } else {
                                         tokio::time::sleep(Duration::from_millis(1500)).await;
@@ -333,16 +336,16 @@ async fn main() {
                     }
 
                     println!("{}", "-".repeat(50));
-                    println!("🎉 索引完成! 成功: {}, 失敗: {}", success_count, fail_count);
+                    println!("🎉 索引完成! 成功: {success_count}, 失敗: {fail_count}");
                 }
                 DocumentSubcommands::List { workspace } => {
-                    println!("正在列出 '{}' 空間下的文件...", workspace);
+                    println!("正在列出 '{workspace}' 空間下的文件...");
                 }
                 DocumentSubcommands::Delete { id, workspace } => {
-                    println!("正在從 '{}' 刪除文件 ID: {}", workspace, id);
+                    println!("正在從 '{workspace}' 刪除文件 ID: {id}");
                 }
                 DocumentSubcommands::Reindex { id, workspace } => {
-                    println!("正在對 '{}' 重新索引文件 ID: {}", workspace, id);
+                    println!("正在對 '{workspace}' 重新索引文件 ID: {id}");
                 }
             }
         }
@@ -352,18 +355,18 @@ async fn main() {
                     println!("工作空間列表:");
                 }
                 WorkspaceSubcommands::Create { name } => {
-                    println!("已成功建立工作空間: {}", name);
+                    println!("已成功建立工作空間: {name}");
                 }
                 WorkspaceSubcommands::Delete { name } => {
-                    println!("已成功刪除工作空間: {}", name);
+                    println!("已成功刪除工作空間: {name}");
                 }
                 WorkspaceSubcommands::Switch { name } => {
-                    println!("切換預設工作空間至: {}", name);
+                    println!("切換預設工作空間至: {name}");
                 }
             }
         }
         Commands::Start { port } => {
-            println!("正在啟動 API & MCP 服務端 (Port: {})...", port);
+            println!("正在啟動 API & MCP 服務端 (Port: {port})...");
         }
         Commands::Stop => {
             println!("已向背景服務發送停止訊號。");
@@ -384,23 +387,29 @@ async fn main() {
         Commands::Config { sub } => {
             match sub {
                 ConfigSubcommands::Get { key } => {
-                    println!("配置項 '{}' ...", key);
+                    println!("配置項 '{key}' ...");
                 }
                 ConfigSubcommands::Set { key, value } => {
-                    println!("已將 '{}' 配置更新為 '{}'", key, value);
+                    println!("已將 '{key}' 配置更新為 '{value}'");
                 }
             }
         }
         Commands::Parse { file_path, workspace_id, collection_id, original_name } => {
-            println!("正在解析檔案: {:?}", file_path);
+            println!("正在解析檔案: {file_path_display}", file_path_display = file_path.display());
             let name_ref = original_name.as_deref();
             match parse_file(&file_path, name_ref, &workspace_id, &collection_id).await {
                 Ok(chunks) => {
-                    let json = serde_json::to_string_pretty(&chunks).unwrap();
-                    println!("{}", json);
+                    let json = match serde_json::to_string_pretty(&chunks) {
+                        Ok(j) => j,
+                        Err(e) => {
+                            eprintln!("💥 序列化 JSON 失敗: {e}");
+                            std::process::exit(1);
+                        }
+                    };
+                    println!("{json}");
                 }
                 Err(e) => {
-                    eprintln!("💥 解析失敗: {}", e);
+                    eprintln!("💥 解析失敗: {e}");
                     std::process::exit(1);
                 }
             }
