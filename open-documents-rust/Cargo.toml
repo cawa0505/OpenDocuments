@@ -1,5 +1,9 @@
+[package]
+name = "open-documents-rust"
+version = "0.1.0"
+edition = "2021"
+
 [workspace]
-resolver = "2"
 members = [
     "crates/opendoc-types",
     "crates/opendoc-parser",
@@ -12,18 +16,16 @@ members = [
     "crates/opendoc-parser-email",
     "crates/opendoc-parser-html",
     "crates/opendoc-parser-pptx",
-    "crates/opendoc-storage",
-    "crates/opendoc-mcp",
-    "crates/opendoc-tui"
+    "crates/opendoc-storage"
 ]
-
-[package]
-name = "open-documents-rust"
-version = "0.1.0"
-edition = "2021"
 
 [dependencies]
 opendoc-types = { path = "crates/opendoc-types" }
 opendoc-parser = { path = "crates/opendoc-parser" }
-tokio = { version = "1.35", features = ["full"] }
+opendoc-storage = { path = "crates/opendoc-storage" }
+clap = { version = "4.4", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["multipart", "json"] }
+walkdir = "2.4"
