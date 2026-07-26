@@ -21,10 +21,12 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
-// ponytail: bridge between opendoc-storage and opendoc-mcp to avoid pulling lance into mcp's dep tree
-impl SearchBackend for ConfigManager {
+// ponytail: newtype wrapper avoids orphan rule (both types from different crates)
+struct SearchWrapper(Arc<ConfigManager>);
+
+impl SearchBackend for SearchWrapper {
     fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
-        ConfigManager::search_and_rerank(self, query, threshold)
+        self.0.search_and_rerank(query, threshold)
     }
 }
 
@@ -185,7 +187,7 @@ enum ConfigSubcommands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cli = Cli::parse();
 
     // 1. 初始化設定檔載入
@@ -392,8 +394,8 @@ async fn main() {
         }
         Commands::Start { port } => {
             println!("🚀 正在啟動大一統 API & MCP 伺服器端 (Port: {port})...");
-            let search: Arc<dyn SearchBackend> = Arc::clone(&config_manager);
-            start_mcp_and_api_server(*port, search).await?;
+            let search = Arc::new(SearchWrapper(Arc::clone(&config_manager))) as Arc<dyn SearchBackend>;
+            start_mcp_and_api_server(port, search).await?;
         }
         Commands::Stop => {
             println!("已向背景服務發送停止訊號。");
@@ -442,6 +444,8 @@ async fn main() {
             }
         }
     }
+
+    Ok(())
 }
 
 /// 運行 Ratatui TUI 主循環，具備 100% 非同步事件調度與背景阻斷保護
