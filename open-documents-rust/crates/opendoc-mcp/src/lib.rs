@@ -196,7 +196,7 @@ pub async fn start_mcp_and_api_server(
     port: u16,
     search: Arc<dyn SearchBackend>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     println!("🚀 [OpenDocuments] 大一統伺服器正啟動於 http://{addr}");
 
     let mcp_state = Arc::new(McpState {
