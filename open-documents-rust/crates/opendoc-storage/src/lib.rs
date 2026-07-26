@@ -148,6 +148,26 @@ impl ConfigManager {
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
+        // 💡 預留團隊與 SDK / Embeddable Widget 專屬金鑰 (od_live_) 驗證資料表 ！！！
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS api_keys (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                key_hash TEXT NOT NULL UNIQUE,
+                key_prefix TEXT NOT NULL,
+                workspace_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                role TEXT NOT NULL,
+                scopes TEXT NOT NULL,
+                rate_limit INTEGER,
+                allowed_ips TEXT,
+                expires_at DATETIME,
+                last_used_at DATETIME,
+                revoked_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
         Ok(pool)
     }
 
