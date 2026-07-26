@@ -2,6 +2,7 @@
 #![deny(clippy::clone_on_ref_ptr)]
 #![warn(clippy::pedantic)]
 
+use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -180,7 +181,7 @@ async fn main() {
 
     // 1. 初始化設定檔載入
     let config_manager = match ConfigManager::load_or_init() {
-        Ok(cm) => cm,
+        Ok(cm) => Arc::new(cm),
         Err(e) => {
             eprintln!("💥 載入設定失敗: {e}");
             std::process::exit(1);
@@ -200,7 +201,7 @@ async fn main() {
                 default_hook(info);
             }));
 
-            if let Err(e) = run_tui_loop(&app_cfg.model.default_workspace).await {
+            if let Err(e) = run_tui_loop(&config_manager).await {
                 eprintln!("💥 TUI 異常退出: {e}");
             }
         }
@@ -433,7 +434,11 @@ async fn main() {
 }
 
 /// 運行 Ratatui TUI 主循環，具備 100% 非同步事件調度與背景阻斷保護
-async fn run_tui_loop(default_workspace: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn std::error::Error>> {
+    let app_cfg = config_manager.get_config().await;
+    let default_workspace = app_cfg.model.default_workspace.clone();
+    let score_threshold = app_cfg.model.score_threshold;
+
     // 1. 初始化終端機環境
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -458,7 +463,7 @@ async fn run_tui_loop(default_workspace: &str) -> Result<(), Box<dyn std::error:
         }
     });
 
-    let mut state = TuiAppState::new(default_workspace.to_string());
+    let mut state = TuiAppState::new(default_workspace);
 
     // 模擬載入一些初始化的 TUI 測試資料
     state.results = vec![
@@ -488,10 +493,28 @@ async fn run_tui_loop(default_workspace: &str) -> Result<(), Box<dyn std::error:
                     state.search_query.pop();
                 }
                 TuiEvent::Input(KeyCode::Enter) => {
-                    // 當按下 Enter，觸發非同步檢索
-                    // 這裡可以透過 tokio::spawn 去呼叫 crates/opendoc-storage，
-                    // 檢索完後再透過 tx.send(TuiEvent::FetchResults(data)) 丟回來更新 state
-                    println!("觸發檢索: {}", state.search_query);
+                    // 當按下 Enter，觸發非同步混合檢索與雙階段過濾 (對齊 BDD 規格)
+                    let query = state.search_query.clone();
+                    let mgr = Arc::clone(config_manager);
+                    let tx_res = tx.clone();
+
+                    tokio::spawn(async move {
+                        let chunks = mgr.search_and_rerank(&query, score_threshold);
+                        let mapped: Vec<TuiSearchResult> = chunks.into_iter().map(|c| {
+                            let f_name = c.metadata.get("source_path")
+                                .and_then(serde_json::Value::as_str)
+                                .unwrap_or("unknown")
+                                .to_string();
+                            
+                            TuiSearchResult {
+                                file_name: f_name,
+                                score: c.relevance_score.unwrap_or(0.0),
+                                snippet: c.content,
+                            }
+                        }).collect();
+
+                        let _ = tx_res.send(TuiEvent::FetchResults(mapped)).await;
+                    });
                 }
                 TuiEvent::FetchResults(new_results) => {
                     state.results = new_results;
