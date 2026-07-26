@@ -10,7 +10,7 @@ use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
 use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
-use opendoc_mcp::start_mcp_and_api_server;
+use opendoc_mcp::{start_mcp_and_api_server, SearchBackend};
 use walkdir::WalkDir;
 use reqwest::multipart;
 use crossterm::{
@@ -20,6 +20,13 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
+
+// ponytail: bridge between opendoc-storage and opendoc-mcp to avoid pulling lance into mcp's dep tree
+impl SearchBackend for ConfigManager {
+    fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+        ConfigManager::search_and_rerank(self, query, threshold)
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "opendocuments-rust")]
@@ -385,7 +392,8 @@ async fn main() {
         }
         Commands::Start { port } => {
             println!("🚀 正在啟動大一統 API & MCP 伺服器端 (Port: {port})...");
-            start_mcp_and_api_server(*port).await?;
+            let search: Arc<dyn SearchBackend> = Arc::clone(&config_manager);
+            start_mcp_and_api_server(*port, search).await?;
         }
         Commands::Stop => {
             println!("已向背景服務發送停止訊號。");
