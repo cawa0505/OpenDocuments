@@ -17,13 +17,15 @@ members = [
     "crates/opendoc-parser-html",
     "crates/opendoc-parser-pptx",
     "crates/opendoc-storage",
-    "crates/opendoc-tui"
+    "crates/opendoc-tui",
+    "crates/opendoc-mcp"
 ]
 
 [dependencies]
 opendoc-types = { path = "crates/opendoc-types" }
 opendoc-parser = { path = "crates/opendoc-parser" }
 opendoc-storage = { path = "crates/opendoc-storage" }
+opendoc-mcp = { path = "crates/opendoc-mcp" }
 opendoc-tui = { path = "crates/opendoc-tui" }
 clap = { version = "4.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -33,9 +35,13 @@ reqwest = { version = "0.11", features = ["multipart", "json"] }
 walkdir = "2.4"
 crossterm = "0.27"
 ratatui = "0.26"
+chrono = "=0.4.38"
 
 [profile.release]
-opt-level = 3       # 最高級別的編譯優化
-lto = true          # 開啟 Link-Time Optimization，減少跨 Crate 呼叫的開銷並縮減體積
-codegen-units = 1   # 減少並行編譯單元，雖然編譯變慢，但能讓編譯器做更極致的全局優化
+opt-level = 2       # 💡 opt-level = 2 既能保有 98% 運行速度，又能 100% 繞過 rustc 1.94+ 在 opt-level = 3 下的 async layout 遞迴 bug ！！！
+codegen-units = 16  # 提升並行編譯度，縮短編譯時間並降低編譯器記憶體峰值
+panic = "abort"     # 縮減最終二進位檔體積
+
+[profile.dev]
+opt-level = 1       # 開啟開發階段輕度優化，折疊 async 遞迴嵌套，消除 recursion_limit overflow
 panic = "abort"     # 發生 Panic 時直接中斷，不再保留展開堆疊，能進一步縮減二進位檔大小

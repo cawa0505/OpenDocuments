@@ -1,3 +1,4 @@
+#![recursion_limit = "512"]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::clone_on_ref_ptr)]
 #![warn(clippy::pedantic)]
@@ -9,6 +10,7 @@ use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
 use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
+use opendoc_mcp::start_mcp_and_api_server;
 use walkdir::WalkDir;
 use reqwest::multipart;
 use crossterm::{
@@ -382,7 +384,8 @@ async fn main() {
             }
         }
         Commands::Start { port } => {
-            println!("正在啟動 API & MCP 服務端 (Port: {port})...");
+            println!("🚀 正在啟動大一統 API & MCP 伺服器端 (Port: {port})...");
+            start_mcp_and_api_server(*port).await?;
         }
         Commands::Stop => {
             println!("已向背景服務發送停止訊號。");
