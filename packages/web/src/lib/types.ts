@@ -101,6 +101,7 @@ export interface Workspace {
   mode: 'personal' | 'team'
   settings: Record<string, unknown>
   createdAt: string
+  isDefault?: boolean
 }
 
 export interface StatsResponse {

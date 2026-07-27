@@ -194,6 +194,13 @@ export async function syncGitHubConnector(): Promise<{ result: {
   return request('/admin/connectors/github/sync', { method: 'POST' })
 }
 
+interface BenchmarkRun {
+  model: string
+  metricName: string
+  metricValue: number
+  createdAt: string
+}
+
 export async function getModelBenchmarks(): Promise<{ benchmarks: Array<{
   name: string
   version: string
@@ -202,7 +209,33 @@ export async function getModelBenchmarks(): Promise<{ benchmarks: Array<{
   generation: { latencyMs: number; tokensPerSec: number } | { error: string } | null
   embedding: { latencyMs: number; textsPerSec: number } | { error: string } | null
 }> }> {
-  return request('/admin/benchmark')
+  const data = await request<{ runs: BenchmarkRun[] }>('/admin/benchmark')
+
+  // Group flat runs by model into structured benchmark entries
+  const byModel = new Map<string, BenchmarkRun[]>()
+  for (const run of data.runs) {
+    const existing = byModel.get(run.model) ?? []
+    existing.push(run)
+    byModel.set(run.model, existing)
+  }
+
+  const benchmarks = Array.from(byModel.entries()).map(([name, runs]) => {
+    const metrics = new Map(runs.map(r => [r.metricName, r.metricValue]))
+    return {
+      name,
+      version: '1.0',
+      capabilities: {} as Record<string, boolean | undefined>,
+      health: { healthy: true },
+      generation: metrics.has('latencyMs') || metrics.has('tokensPerSec')
+        ? { latencyMs: metrics.get('latencyMs') ?? 0, tokensPerSec: metrics.get('tokensPerSec') ?? 0 }
+        : null,
+      embedding: metrics.has('textsPerSec')
+        ? { latencyMs: 0, textsPerSec: metrics.get('textsPerSec')! }
+        : null,
+    }
+  })
+
+  return { benchmarks }
 }
 
 // Plugins

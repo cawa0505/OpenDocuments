@@ -13,3 +13,4 @@ async-trait = "0.1"
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros"] }
 tokio = { version = "1.0", features = ["full"] }
 lancedb = "0.10"
+arrow-schema = "52.2.0"

@@ -921,6 +921,7 @@ dependencies = [
  "matchit",
  "memchr",
  "mime",
+ "multer",
  "percent-encoding",
  "pin-project-lite",
  "rustversion",
@@ -4113,6 +4114,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "multer"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83e87776546dc87511aa5ee218730c92b666d7264ab6ed41f9d215af9cd5224b"
+dependencies = [
+ "bytes",
+ "encoding_rs",
+ "futures-util",
+ "http 1.4.2",
+ "httparse",
+ "memchr",
+ "mime",
+ "spin",
+ "version_check",
+]
+
+[[package]]
 name = "multimap"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4343,7 +4361,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "269bca4c2591a28585d6bf10d9ed0332b7d76900a1b02bec41bdc3a2cdcda107"
 
 [[package]]
-name = "open-documents-rust"
+name = "opendoc"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -4358,6 +4376,7 @@ dependencies = [
  "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
  "walkdir",
 ]
@@ -4368,13 +4387,21 @@ version = "0.1.0"
 dependencies = [
  "async-stream",
  "axum",
+ "chrono",
+ "futures",
  "futures-util",
+ "opendoc-parser",
+ "opendoc-storage",
  "opendoc-types",
+ "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
+ "tower",
  "tower-http 0.5.2",
  "uuid",
+ "walkdir",
 ]
 
 [[package]]
@@ -4497,6 +4524,7 @@ dependencies = [
 name = "opendoc-storage"
 version = "0.1.0"
 dependencies = [
+ "arrow-schema",
  "async-trait",
  "directories",
  "lancedb",

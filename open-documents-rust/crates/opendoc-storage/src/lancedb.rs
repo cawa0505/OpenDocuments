@@ -1,7 +1,8 @@
 use std::sync::Arc;
-use lancedb::arrow::datatypes::{DataType, Field, Schema};
+use arrow_schema::{DataType, Field, Schema};
 use lancedb::index::Index;
-use lancedb::query::Executable;
+use lancedb::index::scalar::{FtsIndexBuilder, FullTextSearchQuery};
+use lancedb::query::{ExecutableQuery, QueryBase};
 use serde_json::Value;
 
 /// 獲取與先前 Node.js (Apache Arrow 綁定) 100% 鋼鐵對齊的相容 Schema 
@@ -41,14 +42,17 @@ pub async fn verify_and_self_heal_fts(
     index_columns: &[&str],
 ) -> Result<(), lancedb::Error> {
     // 試著進行一次微型的 test 文字搜尋
-    let test_query = table.search("test");
+    let test_query = table
+        .query()
+        .full_text_search(FullTextSearchQuery::new("test".to_owned()));
     
     if test_query.execute().await.is_err() {
         eprintln!("⚠️ 檢測到舊 Table FTS 索引與當前 Rust SDK 版本衝突，正在自動重建全文檢索索引...");
         
         // 呼叫 create_index 自動重建，覆蓋毀損索引
         table
-            .create_index(index_columns, Index::Fts(Default::default()))
+            .create_index(index_columns, Index::FTS(FtsIndexBuilder::default()))
+            .execute()
             .await?;
         println!("🏆 全文檢索 FTS 索引自癒重建完畢 ！！！");
     }

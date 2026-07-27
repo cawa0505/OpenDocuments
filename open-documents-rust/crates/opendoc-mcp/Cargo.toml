@@ -5,11 +5,21 @@ edition = "2021"
 
 [dependencies]
 opendoc-types = { path = "../opendoc-types" }
+opendoc-storage = { path = "../opendoc-storage" }
+opendoc-parser = { path = "../opendoc-parser" }
 tokio = { version = "1.0", features = ["full"] }
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
 tower-http = { version = "0.5", features = ["fs", "cors"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4"] }
 futures-util = "0.3"
 async-stream = "0.3"
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+futures = "0.3"
+reqwest = { version = "0.11", features = ["multipart", "json"] }
+walkdir = "2"
+
+[dev-dependencies]
+tower = "0.5"

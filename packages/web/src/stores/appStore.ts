@@ -27,7 +27,7 @@ function getEffectiveTheme(theme: Theme): 'light' | 'dark' {
   return theme
 }
 
-const initialTheme = (typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-theme') as Theme : 'system') || 'system'
+const initialTheme = (typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-theme') as Theme : 'light') || 'light'
 const initialEffective = getEffectiveTheme(initialTheme)
 
 if (typeof document !== 'undefined') {

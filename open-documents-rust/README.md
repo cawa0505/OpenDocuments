@@ -92,6 +92,10 @@ cargo build --release -j 2
 ./target/release/open-documents-rust --help
 ```
 
+### Future Roadmap
+
+* **[WASM_ROADMAP.md](./WASM_ROADMAP.md)** — 將重度數據處理（chunking、解析、過濾）移至前端 WebAssembly，實現零上傳端側 RAG。
+
 ### Double-Track Deployment Strategy
 For maximum performance and system availability, OpenDocuments Rust supports dual-track configurations:
 1. **Native Mode (Linux/systemd)**: Deploys directly onto the host with a dedicated systemd user-unit, bypassing network translation layers for sub-5ms API response times.

@@ -26,8 +26,9 @@ pub struct DatabaseConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelConfig {
     pub default_workspace: String,
+    pub active_workspace: Option<String>,
     pub score_threshold: f32,
-    pub local_reranker_path: String,
+    pub local_reranker_path: Option<String>,
 }
 
 /// ~/.config/opendocuments/config.toml 對應的強型別結構
@@ -46,13 +47,14 @@ impl Default for AppConfig {
                 api_key: "".to_string(),
             },
             database: DatabaseConfig {
-                path: "~/.config/opendocuments/data".to_string(),
+                path: "~/.opendocuments".to_string(),
             },
-            model: ModelConfig {
-                default_workspace: "GraphifyOpt".to_string(),
-                score_threshold: 0.60,
-                local_reranker_path: "~/.config/opendocuments/models/bge-reranker-base.onnx".to_string(),
-            },
+model: ModelConfig {
+                     default_workspace: "GraphifyOpt".to_string(),
+                     active_workspace: None,
+                     score_threshold: 0.60,
+                     local_reranker_path: Some("~/.opendocuments/models/bge-reranker-base.onnx".to_string()),
+                 },
         }
     }
 }
@@ -148,6 +150,55 @@ impl ConfigManager {
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
+        // 💡 建立 documents 與 query_logs 必要的資料庫表，確保大一統後端運行無礙，100% 避免 Node 進程衝突
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                source_path TEXT,
+                file_type TEXT,
+                file_size_bytes INTEGER,
+                connector_id TEXT,
+                chunk_count INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL,
+                content_hash TEXT,
+                error_message TEXT,
+                workspace_id TEXT NOT NULL,
+                deleted_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME,
+                indexed_at DATETIME
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        // Migration: 為現有資料庫添加缺失的欄位
+        sqlx::query("ALTER TABLE documents ADD COLUMN source_path TEXT").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN file_type TEXT").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN file_size_bytes INTEGER").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN connector_id TEXT").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN content_hash TEXT").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN error_message TEXT").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN updated_at DATETIME").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE documents ADD COLUMN indexed_at DATETIME").execute(&pool).await.ok();
+        
+        // 兼容舊資料: 若無 title 欄位，用 name 欄位填入
+        sqlx::query("UPDATE documents SET title = name WHERE title IS NULL AND name IS NOT NULL").execute(&pool).await.ok();
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS query_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query TEXT NOT NULL,
+                profile TEXT NOT NULL,
+                confidence_score REAL,
+                response_time_ms INTEGER,
+                route TEXT,
+                feedback TEXT, -- 'positive', 'negative'
+                workspace_id TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
         // 💡 預留團隊與 SDK / Embeddable Widget 專屬金鑰 (od_live_) 驗證資料表 ！！！
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS api_keys (
@@ -167,6 +218,34 @@ impl ConfigManager {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        // 💡 效能基準測試記錄表
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS benchmark_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                workspace_id TEXT NOT NULL,
+                model TEXT NOT NULL,
+                metric_name TEXT NOT NULL,
+                metric_value REAL NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        // 自動建立預設工作空間（若不存在），確保 WebUI 啟動時有資料可顯示
+        let default_workspace = &cfg.model.default_workspace;
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces WHERE id = ?")
+            .bind(default_workspace)
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        if count == 0 {
+            sqlx::query("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                .bind(default_workspace)
+                .bind(default_workspace)
+                .execute(&pool)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
 
         Ok(pool)
     }

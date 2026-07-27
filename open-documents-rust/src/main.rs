@@ -10,7 +10,7 @@ use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
 use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
-use opendoc_mcp::{start_mcp_and_api_server, SearchBackend};
+use opendoc_mcp::{start_mcp_and_api_server, run_mcp_stdio_server, SearchBackend};
 use walkdir::WalkDir;
 use reqwest::multipart;
 use crossterm::{
@@ -21,7 +21,6 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 
-// ponytail: newtype wrapper avoids orphan rule (both types from different crates)
 struct SearchWrapper(Arc<ConfigManager>);
 
 impl SearchBackend for SearchWrapper {
@@ -46,16 +45,10 @@ enum Commands {
     Tui,
 
     /// 對 RAG 知識庫進行快速終端問答
-    Ask {
-        /// 問答諮詢內容
+Ask {
         query: String,
-
-        /// 目標工作空間
         #[arg(short, long, default_value = "default")]
-        workspace: String,
-
-        /// 可選的集合過濾
-        #[arg(short, long)]
+        workspace: Option<String>,
         collections: Option<Vec<String>>,
     },
 
@@ -63,10 +56,9 @@ enum Commands {
     Search {
         /// 檢索關鍵字或語義句
         query: String,
-
         /// 目標工作空間
-        #[arg(short, long, default_value = "default")]
-        workspace: String,
+        #[arg(short, long)]
+        workspace: Option<String>,
 
         /// 相似度分數過濾門檻 (Score Filter 保險絲)
         #[arg(short, long, default_value_t = 0.6)]
@@ -89,11 +81,26 @@ enum Commands {
         sub: WorkspaceSubcommands,
     },
 
+    /// 自動配置與安裝大一統 Rust 版 MCP 服務到 OpenCode 設定檔
+    InstallOpencode {
+        /// 自訂 OpenCode 遠端主機 IP
+        #[arg(long, default_value = "192.168.77.200")]
+        host: String,
+
+        /// 自訂 OpenCode 遠端連接埠
+        #[arg(long, default_value_t = 3006)]
+        port: u16,
+    },
+
     /// 啟動 Axum API、MCP SSE 伺服器與 TUI 背景執行緒
     Start {
         /// Web API 與 MCP 連接埠
         #[arg(short, long, default_value_t = 3000)]
         port: u16,
+
+        /// 是否僅啟動 MCP Stdio 本地服務 (CQRS Write-Only 模式)
+        #[arg(long)]
+        mcp_only: bool,
     },
 
     /// 停止背景服務
@@ -132,26 +139,26 @@ enum DocumentSubcommands {
         /// 本地檔案或目錄路徑
         path: PathBuf,
         /// 工作空間
-        #[arg(short, long, default_value = "default")]
-        workspace: String,
+        #[arg(short, long)]
+        workspace: Option<String>,
     },
-    /// 列出當前索引的所有文件
+    /// 列出指定工作空間的文件
     List {
         /// 篩選工作空間
-        #[arg(short, long, default_value = "default")]
-        workspace: String,
+        #[arg(short, long)]
+        workspace: Option<String>,
     },
     /// 刪除指定 ID 的文件
     Delete {
         id: String,
-        #[arg(short, long, default_value = "default")]
-        workspace: String,
+        #[arg(short, long)]
+        workspace: Option<String>,
     },
     /// 重新索引指定 ID 的文件
     Reindex {
         id: String,
-        #[arg(short, long, default_value = "default")]
-        workspace: String,
+        #[arg(short, long)]
+        workspace: Option<String>,
     },
 }
 
@@ -171,6 +178,8 @@ enum WorkspaceSubcommands {
     Switch {
         name: String,
     },
+    /// 顯示當前作用中的工作空間
+    Show,
 }
 
 #[derive(Subcommand)]
@@ -199,9 +208,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     };
 
-    let app_cfg = config_manager.get_config().await;
+let app_cfg = config_manager.get_config().await;
 
-    match cli.command {
+     let resolve_ws = |opt_ws: Option<String>| -> String {
+         opt_ws.filter(|s| !s.is_empty())
+             .map(|s| s.trim().to_owned())
+             .or_else(|| app_cfg.model.active_workspace.clone())
+             .unwrap_or_else(|| app_cfg.model.default_workspace.clone())
+     };
+
+     match cli.command {
         Commands::Tui => {
             // 完美註冊全局 Panic Hook, 確保 TUI 崩潰時強制還原終端
             let default_hook = std::panic::take_hook();
@@ -215,51 +231,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             if let Err(e) = run_tui_loop(&config_manager).await {
                 eprintln!("💥 TUI 異常退出: {e}");
             }
+            // 物理防護：確保直接向作業系統交還控制權，防範背景常駐 Task 導致死鎖卡死
+            std::process::exit(0);
         }
         Commands::Ask { query, workspace, collections } => {
-            println!("正在向空間 '{workspace}' 提問: '{query}' ... (API 端點: {})", app_cfg.server.url);
+            let resolved_workspace = resolve_ws(workspace);
+            println!("正在向空間 '{resolved_workspace}' 提問: '{query}' .. (API 端點: {})", app_cfg.server.url);
             if let Some(cols) = collections {
                 println!("過濾集合: {cols:?}");
             }
         }
-        Commands::Search { query, workspace, threshold, limit } => {
+Commands::Search { query, workspace, threshold, limit } => {
+            let resolved_workspace = resolve_ws(workspace);
             println!(
-                "正在空間 '{workspace}' 檢索: '{query}' (門檻: {threshold}, 限制: {limit})... (API 端點: {})",
+                "正在空間 '{resolved_workspace}' 檢索: '{query}' (門檻: {threshold}, 限制: {limit}).. (API 端點: {})",
                 app_cfg.server.url
             );
         }
         Commands::Document { sub } => {
             match sub {
-                DocumentSubcommands::Index { path, workspace } => {
-                    let canon_path = match path.canonicalize() {
-                        Ok(p) => p,
-                        Err(e) => {
-                            eprintln!("💥 無法解析路徑 {path_display:?}: {e}", path_display = path.display());
-                            std::process::exit(1);
-                        }
-                    };
+DocumentSubcommands::Index { path, workspace } => {
+            let resolved_workspace = resolve_ws(workspace);
+            let canon_path = match path.canonicalize() {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("💥 無法解析路徑: {e}");
+                    std::process::exit(1);
+                }
+            };
 
-                    println!("🚀 啟動高效目錄索引:");
-                    println!("📦 目標工作空間: {workspace}");
-                    println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
-                    println!("{}", "-".repeat(50));
+            println!("🚀 啟動高效目錄索引:");
+            println!("📦 目標工作空間: {resolved_workspace}");
+            println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
+            println!("{}", "-".repeat(50));
 
-                    let ignored_dirs = [
-                        "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
-                        "__pycache__", "venv", ".env", "out"
-                    ];
+            let ignored_dirs = [
+                "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
+                "__pycache__", "venv", ".env", "out"
+            ];
 
-                    let supported_extensions = [
-                        ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
-                        ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx"
-                    ];
+            let supported_extensions = [
+                ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
+                ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx"
+            ];
 
-                    let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
-                    let client = reqwest::Client::new();
-                    let mut success_count = 0;
-                    let mut fail_count = 0;
+            let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
+            let client = reqwest::Client::new();
+            let mut success_count = 0;
+            let mut fail_count = 0;
 
-                    let walk = WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
+            let walk = WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
                         if let Some(name) = entry.file_name().to_str() {
                             !ignored_dirs.contains(&name) && !name.starts_with('.')
                         } else {
@@ -295,7 +316,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             Err(_) => file_name.to_string(),
                         };
 
-                        print!("[..] 上傳中: {rel_path} ...");
+                        print!("[..] 上傳中: {rel_path} ..");
                         if let Err(e) = io::Write::flush(&mut io::stdout()) {
                             eprintln!("\r[!!] 無法刷新終端: {e}");
                         }
@@ -327,12 +348,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             let form = multipart::Form::new().part("file", part);
 
-                            let req_res = client.post(&upload_url)
-                                .header("X-Workspace", &workspace)
-                                .multipart(form)
-                                .timeout(Duration::from_secs(180)) // 3 mins timeout
-                                .send()
-                                .await;
+let req_res = client.post(&upload_url)
+                                 .header("X-Workspace", &resolved_workspace)
+                                 .multipart(form)
+                                 .timeout(Duration::from_secs(180)) // 3 mins timeout
+                                 .send()
+                                 .await;
 
                             match req_res {
                                 Ok(resp) => {
@@ -366,36 +387,357 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     println!("🎉 索引完成! 成功: {success_count}, 失敗: {fail_count}");
                 }
                 DocumentSubcommands::List { workspace } => {
-                    println!("正在列出 '{workspace}' 空間下的文件...");
+                    let ws = resolve_ws(workspace);
+                    println!("正在列出 '{ws}' 空間下的文件..");
+
+                    let client = reqwest::Client::new();
+                    let url = format!("{}/api/v1/documents", app_cfg.server.url);
+                    let resp = match client.get(&url)
+                        .header("X-Workspace", &ws)
+                        .send()
+                        .await
+                    {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!("💥 連線失敗: {e}");
+                            std::process::exit(1);
+                        }
+                    };
+
+                    if !resp.status().is_success() {
+                        eprintln!("💥 伺服器回傳: {}", resp.status());
+                        std::process::exit(1);
+                    }
+
+                    let body: serde_json::Value = match resp.json().await {
+                        Ok(v) => v,
+                        Err(e) => {
+                            eprintln!("💥 解析回應失敗: {e}");
+                            std::process::exit(1);
+                        }
+                    };
+
+                    let docs = match body.get("documents").and_then(|d| d.as_array()) {
+                        Some(arr) => arr,
+                        None => {
+                            println!("（無文件）");
+                            return Ok(());
+                        }
+                    };
+
+                    if docs.is_empty() {
+                        println!("（無文件）");
+                        return Ok(());
+                    }
+
+                    println!("{:<4} {:<40} {:<10} {:<10} {:<8}", "ID", "標題", "類型", "狀態", "Chunks");
+                    println!("{}", "-".repeat(80));
+                    for doc in docs {
+                        let id_short = doc.get("id").and_then(|v| v.as_str()).unwrap_or("?")[..8].to_string();
+                        let title = doc.get("title").and_then(|v| v.as_str()).unwrap_or("?");
+                        let source_type = doc.get("source_type").and_then(|v| v.as_str()).unwrap_or("?");
+                        let status = doc.get("status").and_then(|v| v.as_str()).unwrap_or("?");
+                        let chunks = doc.get("chunk_count").and_then(|v| v.as_i64()).unwrap_or(0);
+                        println!("{:<4} {:<40} {:<10} {:<10} {:<8}", id_short, title, source_type, status, chunks);
+                    }
+                    println!("\n共 {} 個文件", docs.len());
                 }
                 DocumentSubcommands::Delete { id, workspace } => {
-                    println!("正在從 '{workspace}' 刪除文件 ID: {id}");
+                    let ws = resolve_ws(workspace);
+                    println!("正在從 '{ws}' 刪除文件 ID: {id}");
+
+                    let client = reqwest::Client::new();
+                    let url = format!("{}/api/v1/documents/{}", app_cfg.server.url, id);
+                    let resp = match client.delete(&url)
+                        .header("X-Workspace", &ws)
+                        .send()
+                        .await
+                    {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!("💥 連線失敗: {e}");
+                            std::process::exit(1);
+                        }
+                    };
+
+                    if resp.status().is_success() {
+                        println!("✅ 已刪除文件 {id}");
+                    } else {
+                        eprintln!("💥 刪除失敗: {}", resp.status());
+                    }
                 }
                 DocumentSubcommands::Reindex { id, workspace } => {
-                    println!("正在對 '{workspace}' 重新索引文件 ID: {id}");
+                    let ws = resolve_ws(workspace);
+                    println!("正在對 '{ws}' 重新索引文件 ID: {id}");
+
+                    let client = reqwest::Client::new();
+                    let url = format!("{}/api/v1/documents/{}/reindex", app_cfg.server.url, id);
+                    let resp = match client.post(&url)
+                        .header("X-Workspace", &ws)
+                        .send()
+                        .await
+                    {
+                        Ok(r) => r,
+                        Err(e) => {
+                            eprintln!("💥 連線失敗: {e}");
+                            std::process::exit(1);
+                        }
+                    };
+
+                    if resp.status().is_success() {
+                        println!("✅ 已觸發重新索引 {id}");
+                    } else {
+                        eprintln!("💥 重新索引失敗: {}", resp.status());
+                    }
                 }
             }
         }
         Commands::Workspace { sub } => {
-            match sub {
-                WorkspaceSubcommands::List => {
-                    println!("工作空間列表:");
+            let db_pool = match tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(config_manager.init_db_pool())
+            }) {
+                Ok(pool) => pool,
+                Err(e) => {
+                    eprintln!("💥 初始化資料庫連線失敗: {e}");
+                    std::process::exit(1);
                 }
-                WorkspaceSubcommands::Create { name } => {
-                    println!("已成功建立工作空間: {name}");
+            };
+match sub {
+                 WorkspaceSubcommands::List => {
+                     let rows: Vec<(String,)> = sqlx::query_as("SELECT id FROM workspaces")
+                         .fetch_all(&db_pool)
+                         .await
+                         .expect("查詢 workspaces 失敗");
+                     if rows.is_empty() {
+                         println!("目前沒有任何工作空間。");
+                     } else {
+                         println!("工作空間列表:");
+                         for row in rows {
+                             println!("  - {}", row.0);
+                         }
+                     }
+                 }
+                 WorkspaceSubcommands::Create { name } => {
+                     let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces WHERE id = ?")
+                         .bind(&name)
+                         .fetch_one(&db_pool)
+                         .await
+                         .expect("查詢失敗");
+                     if exists > 0 {
+                         println!("工作空間 '{name}' 已存在。");
+                     } else {
+                         sqlx::query("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                             .bind(&name)
+                             .bind(&name)
+                             .execute(&db_pool)
+                             .await
+                             .expect("建立工作空間失敗");
+                         println!("已成功建立工作空間: {name}");
+                     }
+                 }
+                 WorkspaceSubcommands::Delete { name } => {
+                     let default_workspace = config_manager.get_config().await.model.default_workspace;
+                     if name == default_workspace {
+                         eprintln!("💥 預設工作空間 '{name}' 不可刪除。");
+                         std::process::exit(1);
+                     }
+                     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces WHERE id = ?")
+                         .bind(&name)
+                         .fetch_one(&db_pool)
+                         .await
+                         .expect("查詢失敗");
+                     if count == 0 {
+                         println!("工作空間 '{name}' 不存在。");
+                     } else {
+                         sqlx::query("DELETE FROM documents WHERE workspace_id = ?")
+                             .bind(&name)
+                             .execute(&db_pool)
+                             .await
+                             .expect("刪除文件失敗");
+                         sqlx::query("DELETE FROM workspaces WHERE id = ?")
+                             .bind(&name)
+                             .execute(&db_pool)
+                             .await
+                             .expect("刪除工作空間失敗");
+                         println!("已成功刪除工作空間: {name}");
+                     }
+                 }
+                 WorkspaceSubcommands::Switch { name } => {
+                     let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces WHERE id = ?")
+                         .bind(&name)
+                         .fetch_one(&db_pool)
+                         .await
+                         .expect("查詢失敗");
+                     if exists == 0 {
+                         println!("工作空間 '{name}' 不存在。");
+                     } else {
+                         let mut cfg = config_manager.get_config().await;
+                         cfg.model.active_workspace = Some(name.clone());
+                         config_manager.update_config(cfg).await?;
+                         println!("切換預設工作空間至: {name}");
+                     }
+                 }
+                 WorkspaceSubcommands::Show => {
+                     let cfg = config_manager.get_config().await;
+                     let active = cfg.model.active_workspace.as_deref().unwrap_or("[未設定]");
+                     let default = &cfg.model.default_workspace;
+                     println!("預設工作空間: {default}");
+                     println!("作用中工作空間: {active}");
+                 }
+             }
+         }
+        Commands::InstallOpencode { host, port } => {
+            println!("🚀 啟動大一統 Rust 版 MCP 自動化註冊 (OpenCode)..");
+            
+            let home = match std::env::var("HOME") {
+                Ok(h) => h,
+                Err(_) => {
+                    eprintln!("💥 無法取得使用者家目錄 HOME 環境變數");
+                    std::process::exit(1);
                 }
-                WorkspaceSubcommands::Delete { name } => {
-                    println!("已成功刪除工作空間: {name}");
+            };
+            
+            let opencode_json_path = std::path::Path::new(&home)
+                .join(".config")
+                .join("opencode")
+                .join("opencode.json");
+
+            if !opencode_json_path.exists() {
+                eprintln!("💥 找不到 OpenCode 設定檔，預期路徑：{}", opencode_json_path.display());
+                std::process::exit(1);
+            }
+
+            println!("   - 讀取設定檔: {}", opencode_json_path.display());
+            let raw_content = match std::fs::read_to_string(&opencode_json_path) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("💥 讀取設定檔失敗: {e}");
+                    std::process::exit(1);
                 }
-                WorkspaceSubcommands::Switch { name } => {
-                    println!("切換預設工作空間至: {name}");
+            };
+
+            // 輕量化 JSON5 註解清理 (對齊 Hono 版本清理機制，防範 JSON 解析報錯)
+            let mut clean_raw = String::new();
+            let mut in_line_comment = false;
+            let mut in_block_comment = false;
+            let mut in_string = false;
+            let mut escaped = false;
+            let chars: Vec<char> = raw_content.chars().collect();
+            let mut i = 0;
+            while i < chars.len() {
+                let c = chars[i];
+                
+                if in_line_comment {
+                    if c == '\n' || c == '\r' {
+                        in_line_comment = false;
+                        clean_raw.push(c);
+                    }
+                } else if in_block_comment {
+                    if i + 1 < chars.len() && c == '*' && chars[i+1] == '/' {
+                        in_block_comment = false;
+                        i += 1;
+                    }
+                } else if in_string {
+                    if escaped {
+                        escaped = false;
+                    } else if c == '\\' {
+                        escaped = true;
+                    } else if c == '"' {
+                        in_string = false;
+                    }
+                    clean_raw.push(c);
+                } else {
+                    if i + 1 < chars.len() && c == '/' && chars[i+1] == '/' {
+                        in_line_comment = true;
+                        i += 1;
+                    } else if i + 1 < chars.len() && c == '/' && chars[i+1] == '*' {
+                        in_block_comment = true;
+                        i += 1;
+                    } else if c == '"' {
+                        in_string = true;
+                        clean_raw.push(c);
+                    } else {
+                        clean_raw.push(c);
+                    }
+                }
+                i += 1;
+            }
+
+            let mut config: serde_json::Value = match serde_json::from_str(&clean_raw) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("💥 解析 JSON 失敗 (可能包含複雜註解或尾隨逗號): {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            // 確保 mcp 節點存在
+            if config.get("mcp").is_none() {
+                if let Some(obj) = config.as_object_mut() {
+                    obj.insert("mcp".to_string(), serde_json::json!({}));
                 }
             }
+
+            if let Some(mcp_servers) = config.get_mut("mcp").and_then(|v| v.as_object_mut()) {
+                println!("   - 註冊大一統 Local 讀寫 (Stdio) MCP: opendoc");
+                let binary_path = format!("{home}/.cargo/bin/opendoc");
+                mcp_servers.insert(
+                    "opendoc".to_string(),
+                    serde_json::json!({
+                        "enabled": true,
+                        "type": "local",
+                        "command": [
+                            binary_path,
+                            "start",
+                            "--mcp-only"
+                        ]
+                    })
+                );
+
+                // 移除 Node 時代的 legacy CQRS 配置，達成單一進程大一統
+                mcp_servers.remove("opendocuments-read");
+                mcp_servers.remove("opendocuments-write");
+                mcp_servers.remove("opendocuments");
+                mcp_servers.remove("opendoc-read");
+                mcp_servers.remove("opendoc-write");
+            }
+
+            let updated_json = match serde_json::to_string_pretty(&config) {
+                Ok(j) => j,
+                Err(e) => {
+                    eprintln!("💥 序列化 JSON 失敗: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            if let Err(e) = std::fs::write(&opencode_json_path, updated_json) {
+                eprintln!("💥 寫入設定檔失敗: {e}");
+                std::process::exit(1);
+            }
+
+            println!("✅ opencode.json 已完美更新！");
+            println!("   - opendoc (Local Stdio) -> {} start --mcp-only", format!("{home}/.cargo/bin/opendoc"));
+            println!("👉 請重啟你的 OpenCode 客戶端以載入大一統 Rust 向量引擎！");
         }
-        Commands::Start { port } => {
-            println!("🚀 正在啟動大一統 API & MCP 伺服器端 (Port: {port})...");
+        Commands::Start { port, mcp_only } => {
             let search = Arc::new(SearchWrapper(Arc::clone(&config_manager))) as Arc<dyn SearchBackend>;
-            start_mcp_and_api_server(port, search).await?;
+            let db_pool = match tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(config_manager.init_db_pool())
+            }) {
+                Ok(pool) => pool,
+                Err(e) => {
+                    eprintln!("💥 初始化資料庫連線失敗: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            if mcp_only {
+                // 進入 stdio Local MCP 專用模式，絕不混淆
+                opendoc_mcp::run_mcp_stdio_server(search, Arc::clone(&config_manager), db_pool).await?;
+            } else {
+                println!("🚀 正在啟動大一統 API & MCP 伺服器端 (Port: {port})..");
+                start_mcp_and_api_server(port, search, Arc::clone(&config_manager), db_pool).await?;
+            }
         }
         Commands::Stop => {
             println!("已向背景服務發送停止訊號。");
@@ -403,12 +745,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Commands::Doctor => {
             println!("🔍 正在運行系統健康檢查:");
             println!("========================================");
-            println!("1. 讀取設定檔 [~/.config/opendocuments/config.toml] ...");
+            println!("1. 讀取設定檔 [~/.config/opendocuments/config.toml] ..");
             println!("   - 伺服器端點: {}", app_cfg.server.url);
             println!("   - 數據庫路徑: {}", app_cfg.database.path);
             println!("   - 預設工作空間: {}", app_cfg.model.default_workspace);
             println!("   - 檢索分數過濾門檻: {}", app_cfg.model.score_threshold);
-            println!("   - 重排模型路徑: {}", app_cfg.model.local_reranker_path);
+            println!("   - 重排模型路徑: {}", app_cfg.model.local_reranker_path.as_deref().unwrap_or("[未設定/使用預設]"));
             println!("\n2. 檢測設定檔實體路徑: {}", config_manager.get_config_path().to_string_lossy());
             println!("   - 狀態: [OK] 載入與持久化一切通暢！");
             println!("========================================");
@@ -416,7 +758,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Commands::Config { sub } => {
             match sub {
                 ConfigSubcommands::Get { key } => {
-                    println!("配置項 '{key}' ...");
+                    println!("配置項 '{key}' ..");
                 }
                 ConfigSubcommands::Set { key, value } => {
                     println!("已將 '{key}' 配置更新為 '{value}'");
