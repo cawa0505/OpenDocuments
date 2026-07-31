@@ -66,7 +66,7 @@ export function SettingsPage() {
     // 2. 異步在背景非阻塞執行耗時的大模型效能跑分（5~10秒，不卡死主頁面）
     try {
       const modelData = await getModelBenchmarks().catch(() => ({ benchmarks: [] as BenchmarkModel[] }))
-      setModels(modelData.benchmarks)
+      setModels(modelData.benchmarks ?? [])
     } catch (err) {
       console.warn('Failed to load benchmarks:', err)
     } finally {

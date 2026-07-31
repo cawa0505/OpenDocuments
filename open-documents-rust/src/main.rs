@@ -297,6 +297,8 @@ DocumentSubcommands::Index { path, workspace } => {
 
                         let file_path = entry.path();
                         let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) else { continue };
+                        // 真實絕對路徑（對齊 Node resolve(inputPath)），做為 x-source-path header 值
+                        let abs_source_path = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
 
                         if file_name.starts_with('.') {
                             continue;
@@ -350,6 +352,7 @@ DocumentSubcommands::Index { path, workspace } => {
 
 let req_res = client.post(&upload_url)
                                  .header("X-Workspace", &resolved_workspace)
+                                 .header("x-source-path", abs_source_path.to_string_lossy().into_owned())
                                  .multipart(form)
                                  .timeout(Duration::from_secs(180)) // 3 mins timeout
                                  .send()

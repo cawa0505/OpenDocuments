@@ -172,6 +172,55 @@ impl ConfigManager {
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
+        // Collections 與文件-集合關聯表（對齊 Node migration 002_add_versioning_collections.sql）
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS collections (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                description TEXT,
+                auto_rules TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS collection_documents (
+                collection_id TEXT REFERENCES collections(id) ON DELETE CASCADE,
+                document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+                PRIMARY KEY (collection_id, document_id)
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        // Conversations 與 Messages（對齊 Node migration 001_initial.sql）
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS conversations (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+                user_id TEXT,
+                title TEXT,
+                shared INTEGER DEFAULT 0,
+                share_token TEXT UNIQUE,
+                deleted_at TEXT DEFAULT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS messages (
+                id TEXT PRIMARY KEY,
+                conversation_id TEXT REFERENCES conversations(id) ON DELETE CASCADE,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                sources TEXT,
+                profile_used TEXT,
+                confidence_score REAL,
+                response_time_ms INTEGER,
+                created_at TEXT DEFAULT (datetime('now'))
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
         // Migration: 為現有資料庫添加缺失的欄位
         sqlx::query("ALTER TABLE documents ADD COLUMN source_path TEXT").execute(&pool).await.ok();
         sqlx::query("ALTER TABLE documents ADD COLUMN file_type TEXT").execute(&pool).await.ok();

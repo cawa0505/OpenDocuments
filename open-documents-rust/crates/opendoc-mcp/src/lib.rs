@@ -93,6 +93,27 @@ struct DocumentItem {
     workspace_id: String,
 }
 
+/// 將 documents 資料列映射為 DocumentItem（list_documents 與 list_collection_documents 共用）
+fn map_document_row(r: &sqlx::sqlite::SqliteRow) -> DocumentItem {
+    DocumentItem {
+        id: sqlx::Row::get::<String, _>(r, 0),
+        title: sqlx::Row::get::<String, _>(r, 1),
+        source_type: sqlx::Row::get::<String, _>(r, 2),
+        source_path: sqlx::Row::get::<Option<String>, _>(r, 3).unwrap_or_default(),
+        file_type: sqlx::Row::get::<Option<String>, _>(r, 4).unwrap_or_default(),
+        file_size_bytes: sqlx::Row::get::<Option<i64>, _>(r, 5),
+        connector_id: sqlx::Row::get::<Option<String>, _>(r, 6),
+        chunk_count: sqlx::Row::get::<i64, _>(r, 7),
+        status: sqlx::Row::get::<String, _>(r, 8),
+        content_hash: sqlx::Row::get::<Option<String>, _>(r, 9),
+        error_message: sqlx::Row::get::<Option<String>, _>(r, 10),
+        created_at: sqlx::Row::get::<String, _>(r, 11),
+        updated_at: sqlx::Row::get::<Option<String>, _>(r, 12).unwrap_or_default(),
+        indexed_at: sqlx::Row::get::<Option<String>, _>(r, 13),
+        workspace_id: sqlx::Row::get::<String, _>(r, 14),
+    }
+}
+
 async fn list_workspaces_handler(
     State(state): State<Arc<McpState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
@@ -132,7 +153,7 @@ async fn list_documents_handler(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let workspace = resolve_workspace(&state, &headers).await;
 
-    let rows: Vec<(String, String, String, Option<String>, Option<String>, Option<i64>, Option<String>, i64, String, Option<String>, Option<String>, String, Option<String>, Option<String>, String)> = sqlx::query_as(
+    let rows = sqlx::query(
         "SELECT id, title, source_type, source_path, file_type, file_size_bytes, connector_id, chunk_count, status, content_hash, error_message, datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), indexed_at, workspace_id FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
     )
     .bind(&workspace)
@@ -143,26 +164,7 @@ async fn list_documents_handler(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let mut documents = Vec::new();
-    for r in rows {
-        documents.push(DocumentItem {
-            id: r.0,
-            title: r.1,
-            source_type: r.2,
-            source_path: r.3.unwrap_or_default(),
-            file_type: r.4.unwrap_or_default(),
-            file_size_bytes: r.5,
-            connector_id: r.6,
-            chunk_count: r.7,
-            status: r.8,
-            content_hash: r.9,
-            error_message: r.10,
-            created_at: r.11,
-            updated_at: r.12.unwrap_or_default(),
-            indexed_at: r.13,
-            workspace_id: r.14,
-        });
-    }
+    let documents: Vec<DocumentItem> = rows.iter().map(map_document_row).collect();
 
     Ok(Json(json!({ "documents": documents })))
 }
@@ -245,7 +247,7 @@ async fn list_conversations_handler(
     let workspace_id = resolve_workspace(&state, &headers).await;
 
     let rows = sqlx::query(
-        "SELECT id, title, shared, created_at FROM conversations WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 100"
+        "SELECT id, title, shared, created_at, updated_at FROM conversations WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 100"
     )
     .bind(&workspace_id)
     .fetch_all(&state.db_pool)
@@ -262,6 +264,7 @@ async fn list_conversations_handler(
             "title": sqlx::Row::get::<String, _>(&r, 1),
             "shared": sqlx::Row::get::<i64, _>(&r, 2) == 1,
             "createdAt": sqlx::Row::get::<String, _>(&r, 3),
+            "updatedAt": sqlx::Row::get::<Option<String>, _>(&r, 4),
         }));
     }
 
@@ -753,8 +756,25 @@ async fn delete_document_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
     axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
     let workspace = resolve_workspace(&state, &headers).await;
+
+    // Node 契約 documents.ts:42：文件不存在（含其他 workspace）→ 404
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM documents WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+    )
+    .bind(&id)
+    .bind(&workspace)
+    .fetch_one(&state.db_pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if count == 0 {
+        return Ok((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Document not found" })),
+        ));
+    }
 
     sqlx::query("UPDATE documents SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND workspace_id = ?")
         .bind(&id)
@@ -763,7 +783,7 @@ async fn delete_document_handler(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(json!({ "deleted": true })))
+    Ok((StatusCode::OK, Json(json!({ "deleted": true }))))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -1112,6 +1132,465 @@ async fn query_feedback_handler(
     Ok(Json(QueryFeedbackResponse { success: true }))
 }
 
+// ── Frontend-contract feedback (POST /chat/feedback) ──────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatFeedbackRequest {
+    pub query_id: String,
+    pub feedback: String, // 'positive' or 'negative'
+}
+
+async fn chat_feedback_handler(
+    State(state): State<Arc<McpState>>,
+    Json(payload): Json<ChatFeedbackRequest>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
+    if payload.feedback != "positive" && payload.feedback != "negative" {
+        return Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            "feedback must be 'positive' or 'negative'".to_string(),
+        ));
+    }
+
+    sqlx::query("UPDATE query_logs SET feedback = ? WHERE id = ?")
+        .bind(&payload.feedback)
+        .bind(&payload.query_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("更新回饋紀錄失敗: {e}")))?;
+
+    Ok(Json(json!({ "saved": true })))
+}
+
+// ── Conversations CRUD ─────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct CreateConversationRequest {
+    pub title: Option<String>,
+}
+
+async fn create_conversation_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    payload: Option<Json<CreateConversationRequest>>,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    let workspace_id = resolve_workspace(&state, &headers).await;
+    let id = Uuid::new_v4().to_string();
+    let title = payload
+        .and_then(|Json(p)| p.title)
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+        .unwrap_or_default();
+
+    sqlx::query("INSERT INTO conversations (id, workspace_id, title, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))")
+        .bind(&id)
+        .bind(&workspace_id)
+        .bind(&title)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 建立 conversation 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let row = sqlx::query("SELECT created_at, updated_at FROM conversations WHERE id = ?")
+        .bind(&id)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 讀取 conversation 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "id": id,
+            "title": title,
+            "workspaceId": workspace_id,
+            "shared": false,
+            "createdAt": sqlx::Row::get::<String, _>(&row, 0),
+            "updatedAt": sqlx::Row::get::<String, _>(&row, 1),
+        })),
+    ))
+}
+
+async fn delete_conversation_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<String>,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .fetch_one(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 conversation 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if count == 0 {
+        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+    }
+
+    sqlx::query("UPDATE conversations SET deleted_at = datetime('now') WHERE id = ?")
+        .bind(&id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 刪除 conversation 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok((StatusCode::OK, Json(json!({ "deleted": true }))))
+}
+
+async fn list_conversation_messages_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<String>,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .fetch_one(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 conversation 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if count == 0 {
+        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+    }
+
+    let messages = conversation_messages_json(&state.db_pool, &id).await?;
+
+    Ok((StatusCode::OK, Json(json!({ "messages": messages }))))
+}
+
+/// Fetch messages for a conversation in the shared JSON shape.
+async fn conversation_messages_json(
+    db_pool: &sqlx::SqlitePool,
+    conversation_id: &str,
+) -> Result<Vec<serde_json::Value>, StatusCode> {
+    let rows = sqlx::query(
+        "SELECT id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at"
+    )
+    .bind(conversation_id)
+    .fetch_all(db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 messages 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let mut messages = Vec::new();
+    for r in rows {
+        messages.push(json!({
+            "id": sqlx::Row::get::<String, _>(&r, 0),
+            "conversationId": sqlx::Row::get::<String, _>(&r, 1),
+            "role": sqlx::Row::get::<String, _>(&r, 2),
+            "content": sqlx::Row::get::<String, _>(&r, 3),
+            "sources": sqlx::Row::get::<Option<String>, _>(&r, 4),
+            "profileUsed": sqlx::Row::get::<Option<String>, _>(&r, 5),
+            "confidenceScore": sqlx::Row::get::<Option<f64>, _>(&r, 6),
+            "responseTimeMs": sqlx::Row::get::<Option<i64>, _>(&r, 7),
+            "createdAt": sqlx::Row::get::<String, _>(&r, 8),
+        }));
+    }
+    Ok(messages)
+}
+
+// ── Conversation share ─────────────────────────────────────────
+
+async fn share_conversation_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(conversation_id): Path<String>,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+    )
+    .bind(&conversation_id)
+    .bind(&workspace_id)
+    .fetch_one(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 conversation 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if count == 0 {
+        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+    }
+
+    let token = uuid::Uuid::new_v4().simple().to_string();
+    sqlx::query(
+        "UPDATE conversations SET shared = 1, share_token = ? WHERE id = ? AND workspace_id = ?"
+    )
+    .bind(&token)
+    .bind(&conversation_id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 更新 share_token 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok((StatusCode::OK, Json(json!({ "shareUrl": format!("/shared/{}", token) }))))
+}
+
+async fn shared_conversation_handler(
+    State(state): State<Arc<McpState>>,
+    Path(token): Path<String>,
+) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
+    let row = sqlx::query(
+        "SELECT id, workspace_id, title, shared, share_token, created_at FROM conversations WHERE share_token = ?"
+    )
+    .bind(&token)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 shared conversation 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let Some(r) = row else {
+        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Not found" }))));
+    };
+
+    let conv_id = sqlx::Row::get::<String, _>(&r, 0);
+    let messages = conversation_messages_json(&state.db_pool, &conv_id).await?;
+    let conversation = json!({
+        "id": conv_id,
+        "workspace_id": sqlx::Row::get::<String, _>(&r, 1),
+        "title": sqlx::Row::get::<String, _>(&r, 2),
+        "shared": sqlx::Row::get::<Option<i64>, _>(&r, 3).unwrap_or(0),
+        "share_token": sqlx::Row::get::<String, _>(&r, 4),
+        "created_at": sqlx::Row::get::<String, _>(&r, 5),
+    });
+
+    Ok((StatusCode::OK, Json(json!({ "conversation": conversation, "messages": messages }))))
+}
+
+// ── Collections CRUD ───────────────────────────────────────────
+
+#[derive(Deserialize)]
+pub struct CreateCollectionRequest {
+    pub name: String,
+    pub description: Option<String>,
+}
+
+async fn create_collection_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Json(payload): Json<CreateCollectionRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+    let name = payload.name.trim().to_string();
+    if name.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Collection name required" }))));
+    }
+
+    let workspace_id = resolve_workspace(&state, &headers).await;
+    let id = Uuid::new_v4().to_string();
+    let description = payload.description;
+
+    sqlx::query("INSERT INTO collections (id, workspace_id, name, description) VALUES (?, ?, ?, ?)")
+        .bind(&id)
+        .bind(&workspace_id)
+        .bind(&name)
+        .bind(&description)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 建立 collection 失敗: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+        })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "id": id, "name": name, "description": description.unwrap_or_default() })),
+    ))
+}
+
+async fn delete_collection_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    sqlx::query("DELETE FROM collections WHERE id = ? AND workspace_id = ?")
+        .bind(&id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 刪除 collection 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(json!({ "deleted": true })))
+}
+
+async fn add_collection_document_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path((collection_id, document_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if collection_id.trim().is_empty() || document_id.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Collection and document ids required" })),
+        ));
+    }
+
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    sqlx::query(
+        "INSERT OR IGNORE INTO collection_documents (collection_id, document_id) SELECT c.id, d.id FROM collections c JOIN documents d ON d.id = ? WHERE c.id = ? AND c.workspace_id = ? AND d.workspace_id = ?"
+    )
+    .bind(&document_id)
+    .bind(&collection_id)
+    .bind(&workspace_id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 加入文件至集合失敗: {e}");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+    })?;
+
+    Ok(Json(json!({ "added": true })))
+}
+
+async fn remove_collection_document_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path((collection_id, document_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if collection_id.trim().is_empty() || document_id.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Collection and document ids required" })),
+        ));
+    }
+
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    sqlx::query(
+        "DELETE FROM collection_documents WHERE collection_id = ? AND document_id = ? AND EXISTS (SELECT 1 FROM collections WHERE id = ? AND workspace_id = ?) AND EXISTS (SELECT 1 FROM documents WHERE id = ? AND workspace_id = ?)"
+    )
+    .bind(&collection_id)
+    .bind(&document_id)
+    .bind(&collection_id)
+    .bind(&workspace_id)
+    .bind(&document_id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 移除文件自集合失敗: {e}");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+    })?;
+
+    Ok(Json(json!({ "removed": true })))
+}
+
+async fn list_collection_documents_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let workspace_id = resolve_workspace(&state, &headers).await;
+
+    let collection_row = sqlx::query(
+        "SELECT id, name, description, datetime(created_at, 'localtime') FROM collections WHERE id = ? AND workspace_id = ?"
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 collection 失敗: {e}");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+    })?;
+
+    let Some(cr) = collection_row else {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Collection not found" })),
+        ));
+    };
+
+    let rows = sqlx::query(
+        "SELECT d.id, d.title, d.source_type, d.source_path, d.file_type, d.file_size_bytes, d.connector_id, d.chunk_count, d.status, d.content_hash, d.error_message, datetime(d.created_at, 'localtime'), datetime(d.updated_at, 'localtime'), d.indexed_at, d.workspace_id FROM collection_documents cd JOIN collections c ON c.id = cd.collection_id JOIN documents d ON d.id = cd.document_id WHERE cd.collection_id = ? AND c.workspace_id = ? AND d.workspace_id = ? AND d.deleted_at IS NULL"
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .bind(&workspace_id)
+    .fetch_all(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢集合文件失敗: {e}");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+    })?;
+
+    let documents: Vec<DocumentItem> = rows.iter().map(map_document_row).collect();
+
+    Ok(Json(json!({
+        "collection": {
+            "id": sqlx::Row::get::<String, _>(&cr, 0),
+            "name": sqlx::Row::get::<String, _>(&cr, 1),
+            "description": sqlx::Row::get::<Option<String>, _>(&cr, 2).unwrap_or_default(),
+            "createdAt": sqlx::Row::get::<String, _>(&cr, 3),
+        },
+        "documents": documents,
+    })))
+}
+
+// ── Stats (frontend contract GET /stats) ───────────────────────
+
+async fn stats_handler(
+    State(state): State<Arc<McpState>>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let documents: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL")
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 統計 documents 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let workspaces: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces")
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 統計 workspaces 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(json!({
+        "documents": documents,
+        "workspaces": workspaces,
+        "plugins": 0,
+        "pluginList": [],
+    })))
+}
+
 // ── Multipart / Upload Handler ─────────────────────────────────
 
 async fn upload_handler(
@@ -1157,6 +1636,18 @@ async fn upload_handler(
         ));
     }
 
+    // 2.5. 檔案大小上限 50 MiB（對齊 Node documents.ts:55-58 行為：413 + JSON error body）
+    const MAX_FILE_SIZE: usize = 50 * 1024 * 1024;
+    if file_bytes.len() > MAX_FILE_SIZE {
+        return Err((
+            axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+            format!(
+                r#"{{"error":"File too large: {:.1}MB (max 50MB)"}}"#,
+                file_bytes.len() as f64 / 1024.0 / 1024.0
+            ),
+        ));
+    }
+
     // 3. 💡 【防護機制】在暫存目錄中建立安全的隨機檔名暫存實體檔案，並加上副檔名，確保解析不爆記憶體
     let temp_dir = std::env::temp_dir();
     let temp_file_id = uuid::Uuid::new_v4().to_string();
@@ -1197,7 +1688,7 @@ async fn upload_handler(
 
     // 確保 workspace 存在，避免 FK constraint 失敗
     sqlx::query(
-        "INSERT OR IGNORE INTO workspaces (id, name, mode, is_default, created_at) VALUES (?, ?, 'personal', 0, CURRENT_TIMESTAMP)"
+        "INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
     )
     .bind(&workspace_id)
     .bind(&workspace_id)
@@ -1209,35 +1700,63 @@ async fn upload_handler(
 
     // 寫入 documents 資料庫
     let ext_display = ext_suffix.trim_start_matches('.').to_uppercase();
-    // source_path 用 workspace/檔名 確保跨 workspace 可區分
-    let source_path = format!("{}/{}", workspace_id, file_path_str);
+    // source_path：帶 x-source-path header 時原樣採用（CLI 傳真實絕對路徑，對齊 Node resolve(inputPath)）；
+    // 否則用 workspace/檔名 確保跨 workspace 可區分
+    let source_path = headers
+        .get("x-source-path")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| format!("{}/{}", workspace_id, file_path_str));
     let file_size = file_bytes.len() as i64;
 
-    sqlx::query(
-        "INSERT INTO documents (id, title, source_type, source_path, file_type, file_size_bytes, status, chunk_count, workspace_id, created_at, indexed_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'indexed', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON CONFLICT(id) DO UPDATE SET
-         title = excluded.title,
-         source_path = excluded.source_path,
-         file_type = excluded.file_type,
-         file_size_bytes = excluded.file_size_bytes,
-         chunk_count = excluded.chunk_count,
-         indexed_at = CURRENT_TIMESTAMP"
+    // 去重鍵：(workspace_id, source_path) — 已存在且未刪除 → 更新既有文件（reindex，沿用 document id），否則新增
+    let existing_id: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM documents WHERE workspace_id = ? AND source_path = ? AND deleted_at IS NULL"
     )
-    .bind(&temp_file_id)
-    .bind(&file_path_str)
-    .bind(&ext_display)
-    .bind(&source_path)
-    .bind(&ext_display)
-    .bind(file_size)
-    .bind(chunks_count as i64)
     .bind(&workspace_id)
-    .execute(&state.db_pool)
+    .bind(&source_path)
+    .fetch_optional(&state.db_pool)
     .await
-    .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("寫入資料庫失敗: {e}")))?;
+    .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("查詢既有文件失敗: {e}")))?;
+
+    let document_id = match existing_id {
+        Some(id) => {
+            sqlx::query(
+                "UPDATE documents SET title = ?, file_type = ?, file_size_bytes = ?, chunk_count = ?, status = 'indexed', updated_at = CURRENT_TIMESTAMP, indexed_at = CURRENT_TIMESTAMP WHERE id = ?"
+            )
+            .bind(&file_path_str)
+            .bind(&ext_display)
+            .bind(file_size)
+            .bind(chunks_count as i64)
+            .bind(&id)
+            .execute(&state.db_pool)
+            .await
+            .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("更新既有文件失敗: {e}")))?;
+            id
+        }
+        None => {
+            sqlx::query(
+                "INSERT INTO documents (id, title, source_type, source_path, file_type, file_size_bytes, status, chunk_count, workspace_id, created_at, indexed_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'indexed', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            )
+            .bind(&temp_file_id)
+            .bind(&file_path_str)
+            .bind(&ext_display)
+            .bind(&source_path)
+            .bind(&ext_display)
+            .bind(file_size)
+            .bind(chunks_count as i64)
+            .bind(&workspace_id)
+            .execute(&state.db_pool)
+            .await
+            .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("寫入資料庫失敗: {e}")))?;
+            temp_file_id
+        }
+    };
 
     Ok(Json(UploadResponse {
-        document_id: temp_file_id.clone(),
+        document_id,
         chunks: chunks_count,
         status: "indexed".to_string(),
     }))
@@ -1761,11 +2280,35 @@ async fn chat_stream_handler(
     State(state): State<Arc<McpState>>,
     axum::http::request::Parts { headers, .. }: axum::http::request::Parts,
     Json(req): Json<ChatStreamRequest>,
-) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
+) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, (StatusCode, Json<serde_json::Value>)> {
     let workspace = resolve_workspace(&state, &headers).await;
     let query_id = Uuid::new_v4().to_string();
     let profile = req.profile.unwrap_or_else(|| "balanced".to_string());
     let conversation_id = req.conversation_id;
+
+    // Node 契約 chat.ts:127：conversationId 不存在（或已刪除）→ 404
+    if let Some(cid) = &conversation_id {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+        )
+        .bind(cid)
+        .bind(&workspace)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal server error" })),
+            )
+        })?;
+
+        if count == 0 {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Conversation not found" })),
+            ));
+        }
+    }
     let threshold = match profile.as_str() {
         "fast" => 0.50,
         "precise" => 0.70,
@@ -1822,7 +2365,7 @@ async fn chat_stream_handler(
         Ok(Event::default().event("done").data(done_json)),
     ]);
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 // Non-streaming chat endpoint
@@ -1918,11 +2461,19 @@ pub async fn start_mcp_and_api_server(
         .route("/workbench", get(workbench_handler))
         .route("/documents", get(list_documents_handler))
         .route("/documents/upload", post(upload_handler))
-        .route("/documents/:id", delete(delete_document_handler))
+        .route("/documents/:id", get(get_document_handler).delete(delete_document_handler))
         .route("/workspaces", get(list_workspaces_handler).post(create_workspace_handler))
         .route("/workspaces/:id", delete(delete_workspace_handler))
-        .route("/collections", get(list_collections_handler))
-        .route("/conversations", get(list_conversations_handler))
+        .route("/collections", get(list_collections_handler).post(create_collection_handler))
+        .route("/collections/:id", delete(delete_collection_handler))
+        .route("/collections/:id/documents", get(list_collection_documents_handler))
+        .route("/collections/:id/documents/:docId", post(add_collection_document_handler).delete(remove_collection_document_handler))
+        .route("/conversations", get(list_conversations_handler).post(create_conversation_handler))
+        .route("/conversations/:id", delete(delete_conversation_handler))
+        .route("/conversations/:id/messages", get(list_conversation_messages_handler))
+        .route("/conversations/:id/share", post(share_conversation_handler))
+        .route("/shared/:token", get(shared_conversation_handler))
+        .route("/api/v1/shared/:token", get(shared_conversation_handler))
         .route("/dictionary", get(get_dictionary_handler).post(add_dictionary_handler))
         .route("/dictionary/:id", delete(delete_dictionary_handler))
         .route("/dictionary/import-seed", post(import_seed_handler))
@@ -1933,8 +2484,12 @@ pub async fn start_mcp_and_api_server(
         .route("/admin/query-logs", get(get_admin_query_logs_handler))
         .route("/query/log", post(query_log_handler))
         .route("/query/feedback", post(query_feedback_handler))
+        .route("/chat/feedback", post(chat_feedback_handler))
         .route("/chat", post(chat_handler))
-        .route("/chat/stream", post(chat_stream_handler));
+        .route("/chat/stream", post(chat_stream_handler))
+        .route("/stats", get(stats_handler))
+        // 放寬 multipart 內建 2MB 上限到 60MiB，讓 upload_handler 自己的 50MiB 檢查（Node 相容 413）優先生效
+        .layer(axum::extract::DefaultBodyLimit::max(60 * 1024 * 1024));
 
     let serve_dir = ServeDir::new("./dist")
         .not_found_service(tower_http::services::ServeFile::new("./dist/index.html"));
@@ -1990,7 +2545,22 @@ mod tests {
         ).execute(&db_pool).await.unwrap();
 
         sqlx::query(
-            "CREATE TABLE conversations (id TEXT PRIMARY KEY, workspace_id TEXT, user_id TEXT, title TEXT, shared INTEGER DEFAULT 0, deleted_at TEXT DEFAULT NULL, created_at TEXT DEFAULT (datetime('now')))"
+            "CREATE TABLE collection_documents (collection_id TEXT REFERENCES collections(id) ON DELETE CASCADE, document_id TEXT REFERENCES documents(id) ON DELETE CASCADE, PRIMARY KEY (collection_id, document_id))"
+        ).execute(&db_pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE conversations (id TEXT PRIMARY KEY, workspace_id TEXT, user_id TEXT, title TEXT, shared INTEGER DEFAULT 0, share_token TEXT, deleted_at TEXT DEFAULT NULL, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT)"
+        ).execute(&db_pool).await.unwrap();
+
+        // Migration: 為現有 conversations 資料表補上 updated_at 欄位（已存在則忽略）
+        match sqlx::query("ALTER TABLE conversations ADD COLUMN updated_at TEXT").execute(&db_pool).await {
+            Ok(_) => {}
+            Err(e) if e.to_string().contains("duplicate column") => {}
+            Err(e) => panic!("ALTER TABLE conversations ADD COLUMN updated_at 失敗: {e}"),
+        }
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, sources TEXT, profile_used TEXT, confidence_score REAL, response_time_ms INTEGER, created_at TEXT DEFAULT (datetime('now')))"
         ).execute(&db_pool).await.unwrap();
 
         sqlx::query(
@@ -2022,13 +2592,46 @@ mod tests {
         }
     }
 
+    const TEST_BOUNDARY: &str = "----opendoc-test-boundary";
+
+    fn multipart_upload_body(filename: &str, content: &[u8]) -> Vec<u8> {
+        let mut body = Vec::new();
+        body.extend_from_slice(
+            format!("--{TEST_BOUNDARY}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\nContent-Type: application/octet-stream\r\n\r\n").as_bytes(),
+        );
+        body.extend_from_slice(content);
+        body.extend_from_slice(format!("\r\n--{TEST_BOUNDARY}--\r\n").as_bytes());
+        body
+    }
+
+    fn upload_request(workspace: &str, body: Vec<u8>, source_path: Option<&str>) -> Request<axum::body::Body> {
+        let mut builder = Request::builder()
+            .method("POST")
+            .uri("/documents/upload")
+            .header("X-Workspace", workspace)
+            .header("content-type", format!("multipart/form-data; boundary={TEST_BOUNDARY}"));
+        if let Some(sp) = source_path {
+            builder = builder.header("x-source-path", sp);
+        }
+        builder.body(axum::body::Body::from(body)).unwrap()
+    }
+
     fn build_router(state: Arc<McpState>) -> Router {
         Router::new()
             .route("/health", get(health_handler))
             .route("/workspaces", get(list_workspaces_handler))
             .route("/documents", get(list_documents_handler))
-            .route("/collections", get(list_collections_handler))
-            .route("/conversations", get(list_conversations_handler))
+            .route("/documents/upload", post(upload_handler))
+            .route("/collections", get(list_collections_handler).post(create_collection_handler))
+            .route("/collections/:id", delete(delete_collection_handler))
+            .route("/collections/:id/documents", get(list_collection_documents_handler))
+            .route("/collections/:id/documents/:docId", post(add_collection_document_handler).delete(remove_collection_document_handler))
+            .route("/conversations", get(list_conversations_handler).post(create_conversation_handler))
+            .route("/conversations/:id", delete(delete_conversation_handler))
+            .route("/conversations/:id/messages", get(list_conversation_messages_handler))
+        .route("/conversations/:id/share", post(share_conversation_handler))
+        .route("/shared/:token", get(shared_conversation_handler))
+        .route("/api/v1/shared/:token", get(shared_conversation_handler))
             .route("/dictionary", get(get_dictionary_handler).post(add_dictionary_handler))
             .route("/dictionary/:id", delete(delete_dictionary_handler))
             .route("/dictionary/import-seed", post(import_seed_handler))
@@ -2037,9 +2640,13 @@ mod tests {
             .route("/admin/benchmark", get(get_admin_benchmark_handler))
             .route("/admin/connectors", get(get_admin_connectors_handler))
             .route("/admin/query-logs", get(get_admin_query_logs_handler))
-            .route("/documents/:id", get(get_document_handler))
+            .route("/documents/:id", get(get_document_handler).delete(delete_document_handler))
             .route("/chat", post(chat_handler))
+            .route("/chat/feedback", post(chat_feedback_handler))
+            .route("/chat/stream", post(chat_stream_handler))
+            .route("/stats", get(stats_handler))
             .route("/workbench", get(workbench_handler))
+            .layer(axum::extract::DefaultBodyLimit::max(60 * 1024 * 1024))
             .with_state(state)
     }
 
@@ -2284,8 +2891,191 @@ mod tests {
          assert!(json.get("chunks").is_some(), "前端期望 chunks 欄位");
          assert!(json.get("status").is_some(), "前端期望 status 欄位");
 assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不認識）");
-          assert!(json.get("message").is_none(), "不應該有 message 欄位（前端不認識）");
-      }
+           assert!(json.get("message").is_none(), "不應該有 message 欄位（前端不認識）");
+       }
+
+    #[tokio::test]
+    async fn test_upload_dedup_same_workspace_reuses_document() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 第一次上傳 dup.md
+        let body = multipart_upload_body("dup.md", b"hello world first version");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "第一次上傳應成功");
+        let first: serde_json::Value =
+            serde_json::from_slice(&axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap()).unwrap();
+        let first_id = first.get("documentId").and_then(|v| v.as_str()).unwrap().to_string();
+        assert_eq!(first.get("status").and_then(|v| v.as_str()).unwrap(), "indexed");
+
+        // 第二次上傳同名檔案（內容不同）
+        let second_content = "hello world second version much longer content for reindex";
+        let body = multipart_upload_body("dup.md", second_content.as_bytes());
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "第二次上傳應成功");
+        let second: serde_json::Value =
+            serde_json::from_slice(&axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap()).unwrap();
+        let second_id = second.get("documentId").and_then(|v| v.as_str()).unwrap().to_string();
+
+        assert_eq!(first_id, second_id, "同 workspace 重複上傳同檔必須回傳相同 documentId");
+
+        // DB: 只有一列
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = 'homelab' AND source_path = 'homelab/dup.md'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(count, 1, "同 workspace 重複上傳同檔只能有一列");
+
+        // 且已 reindex（status='indexed'、file_size_bytes 為第二次內容長度）
+        let (status, size): (String, i64) = sqlx::query_as("SELECT status, file_size_bytes FROM documents WHERE id = ?")
+            .bind(&first_id)
+            .fetch_one(&db_pool)
+            .await
+            .unwrap();
+        assert_eq!(status, "indexed");
+        assert_eq!(size, second_content.len() as i64, "reindex 後 file_size_bytes 應為最新上傳內容大小");
+    }
+
+    #[tokio::test]
+    async fn test_document_delete_not_found_returns_404() {
+        let state = build_test_state().await;
+
+        // 不存在的文件 id → 404（Node 契約 documents.ts:42）
+        let res = build_router(state)
+            .oneshot(Request::builder()
+                .method("DELETE")
+                .uri("/documents/nonexistent-id")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND, "不存在的文件必須回傳 404（Node 契約）");
+    }
+
+    #[tokio::test]
+    async fn test_upload_dedup_different_workspaces_separate_rows() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        let body = multipart_upload_body("dup.md", b"same file name, two workspaces");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let id_a: String = {
+            let v: serde_json::Value =
+                serde_json::from_slice(&axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap()).unwrap();
+            v.get("documentId").and_then(|x| x.as_str()).unwrap().to_string()
+        };
+
+        let body = multipart_upload_body("dup.md", b"same file name, two workspaces");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("OpenDocuments", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let id_b: String = {
+            let v: serde_json::Value =
+                serde_json::from_slice(&axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap()).unwrap();
+            v.get("documentId").and_then(|x| x.as_str()).unwrap().to_string()
+        };
+
+        assert_ne!(id_a, id_b, "不同 workspace 的同名檔案必須是不同的文件");
+
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT source_path, workspace_id FROM documents WHERE title = 'dup.md' ORDER BY workspace_id"
+        )
+        .fetch_all(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(rows.len(), 2, "兩個 workspace 應各自有一列");
+        let paths: Vec<String> = rows.iter().map(|(p, _)| p.clone()).collect();
+        assert!(paths.contains(&"homelab/dup.md".to_string()));
+        assert!(paths.contains(&"OpenDocuments/dup.md".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_upload_source_path_header_override() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 帶 x-source-path header → 原樣儲存（不帶 workspace 前綴）
+        let body = multipart_upload_body("A.md", b"absolute path document");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, Some("/mnt/data/docs/A.md")))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let source_path: String = sqlx::query_scalar(
+            "SELECT source_path FROM documents WHERE workspace_id = 'homelab' AND title = 'A.md'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(source_path, "/mnt/data/docs/A.md", "x-source-path 應原樣作為 source_path");
+
+        // 同 basename 不同目錄（不同絕對路徑）→ 各自獨立文件，互不碰撞
+        let body = multipart_upload_body("A.md", b"absolute path document");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, Some("/mnt/data/other-dir/A.md")))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = 'homelab' AND title = 'A.md'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(count, 2, "不同目錄的同名檔案（絕對路徑不同）應各自建立為獨立文件");
+
+        // 無 header → workspace/basename
+        let body = multipart_upload_body("B.md", b"manual upload");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let source_path: String = sqlx::query_scalar(
+            "SELECT source_path FROM documents WHERE workspace_id = 'homelab' AND title = 'B.md'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(source_path, "homelab/B.md");
+    }
+
+    #[tokio::test]
+    async fn test_upload_rejects_over_50mb() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        let oversized = vec![0u8; 50 * 1024 * 1024 + 1];
+        let body = multipart_upload_body("huge.md", &oversized);
+        let res = build_router(state.clone())
+            .oneshot(upload_request("homelab", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE, "超過 50MiB 應回傳 413");
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = 'homelab' AND title = 'huge.md'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(count, 0, "413 時不得寫入任何列");
+    }
 
     #[tokio::test]
     async fn test_chat_handler_returns_query_result() {
@@ -2331,8 +3121,10 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
              .await
              .unwrap();
          assert_eq!(res.status(), StatusCode::OK);
-         let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let status = res.status();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        eprintln!("DEBUG status/body: {:?} / {:?}", status, String::from_utf8_lossy(&body));
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
          assert_eq!(json.get("id").and_then(|v| v.as_str()).unwrap(), "doc1");
          assert_eq!(json.get("title").and_then(|v| v.as_str()).unwrap(), "test.md");
          assert_eq!(json.get("source_path").and_then(|v| v.as_str()).unwrap(), "docs/test.md");
@@ -2355,4 +3147,645 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
              .unwrap();
          assert_eq!(res.status(), StatusCode::NOT_FOUND);
      }
- }
+
+    #[tokio::test]
+    async fn test_chat_feedback_updates_query_log() {
+        let state = build_test_state().await;
+        let log_id: i64 = sqlx::query_scalar("SELECT id FROM query_logs LIMIT 1")
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+
+        let req_body = serde_json::json!({ "queryId": log_id.to_string(), "feedback": "positive" });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat/feedback")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("saved").and_then(|v| v.as_bool()).unwrap(), true);
+
+        let stored: String = sqlx::query_scalar("SELECT feedback FROM query_logs WHERE id = ?")
+            .bind(log_id)
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+        assert_eq!(stored, "positive");
+    }
+
+    #[tokio::test]
+    async fn test_chat_feedback_rejects_invalid_value() {
+        let state = build_test_state().await;
+        let req_body = serde_json::json!({ "queryId": "1", "feedback": "meh" });
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat/feedback")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_rejects_unknown_conversation() {
+        let state = build_test_state().await;
+
+        // 不存在的 conversationId → 404（Node 契約 chat.ts:127）
+        let req_body = serde_json::json!({ "query": "test", "conversationId": "nonexistent-convo" });
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat/stream")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::NOT_FOUND,
+            "不存在的 conversationId 必須回傳 404（Node 契約）"
+        );
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("error").and_then(|v| v.as_str()).unwrap(),
+            "Conversation not found"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_conversation_create_messages_delete_flow() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 1. create conversation
+        let req_body = serde_json::json!({ "title": "New chat" });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/conversations")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("title").and_then(|v| v.as_str()).unwrap(), "New chat");
+        assert_eq!(json.get("workspaceId").and_then(|v| v.as_str()).unwrap(), "homelab");
+        assert_eq!(json.get("shared").and_then(|v| v.as_bool()).unwrap(), false);
+        assert!(json.get("createdAt").is_some(), "應有 camelCase createdAt");
+        assert!(json.get("updatedAt").is_some(), "應有 camelCase updatedAt");
+        let conv_id = json.get("id").and_then(|v| v.as_str()).unwrap().to_string();
+
+        // 2. insert a message, fetch via API
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, profile_used, confidence_score, response_time_ms) VALUES ('msg1', ?, 'assistant', 'hello', 'hybrid', 0.9, 100)"
+        )
+        .bind(&conv_id)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/conversations/{conv_id}/messages"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let messages = json.get("messages").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].get("conversationId").and_then(|v| v.as_str()).unwrap(), conv_id);
+        assert_eq!(messages[0].get("role").and_then(|v| v.as_str()).unwrap(), "assistant");
+        assert_eq!(messages[0].get("profileUsed").and_then(|v| v.as_str()).unwrap(), "hybrid");
+        assert_eq!(messages[0].get("confidenceScore").and_then(|v| v.as_f64()).unwrap(), 0.9);
+        assert_eq!(messages[0].get("responseTimeMs").and_then(|v| v.as_i64()).unwrap(), 100);
+        assert!(messages[0].get("createdAt").is_some());
+
+        // 3. delete → soft delete; messages 404 afterwards
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(format!("/conversations/{conv_id}"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("deleted").and_then(|v| v.as_bool()).unwrap(), true);
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/conversations/{conv_id}/messages"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+
+        // 4. unknown id → 404
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri("/conversations/does-not-exist")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_conversation_share_creates_token() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 先建立對話
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/conversations")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_vec(&serde_json::json!({ "title": "Share me" })).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let conv_id = json.get("id").and_then(|v| v.as_str()).unwrap().to_string();
+
+        // share
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/conversations/{}/share", conv_id))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let share_url = json
+            .get("shareUrl")
+            .and_then(|v| v.as_str())
+            .expect("應有 shareUrl")
+            .to_string();
+        assert!(
+            share_url.starts_with("/shared/"),
+            "shareUrl 格式: {share_url}"
+        );
+        let token = share_url.trim_start_matches("/shared/");
+
+        // DB 狀態
+        let (shared, stored_token): (i64, String) = sqlx::query_as(
+            "SELECT shared, share_token FROM conversations WHERE id = ?",
+        )
+        .bind(&conv_id)
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(shared, 1, "shared 必須為 1");
+        assert_eq!(stored_token, token, "share_token 必須等於回傳 token");
+        assert_eq!(stored_token.len(), 32, "token 必須為 32 字元 hex");
+    }
+
+    #[tokio::test]
+    async fn test_conversation_share_unknown_404() {
+        let state = build_test_state().await;
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/conversations/nonexistent-id/share")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("error").and_then(|v| v.as_str()).unwrap(),
+            "Conversation not found"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_shared_view_returns_conversation() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 直接插對話 + share_token
+        sqlx::query(
+            "INSERT INTO conversations (id, workspace_id, title, shared, share_token) VALUES ('conv-shared', 'homelab', 'Public chat', 1, '0123456789abcdef0123456789abcdef')",
+        )
+        .execute(&db_pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, profile_used, confidence_score, response_time_ms) VALUES ('msg-shared', 'conv-shared', 'assistant', 'hi', 'hybrid', 0.9, 100)",
+        )
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/v1/shared/0123456789abcdef0123456789abcdef")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let conv = json.get("conversation").expect("應有 conversation");
+        assert_eq!(
+            conv.get("title").and_then(|v| v.as_str()).unwrap(),
+            "Public chat"
+        );
+        assert_eq!(
+            conv.get("share_token").and_then(|v| v.as_str()).unwrap(),
+            "0123456789abcdef0123456789abcdef",
+            "conversation 為原始 row（含 share_token）"
+        );
+        let messages = json.get("messages").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(messages.len(), 1);
+        assert_eq!(
+            messages[0].get("content").and_then(|v| v.as_str()).unwrap(),
+            "hi"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_shared_view_invalid_token_404() {
+        let state = build_test_state().await;
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/v1/shared/deadbeefdeadbeefdeadbeefdeadbeef")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("error").and_then(|v| v.as_str()).unwrap(),
+            "Not found"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_collections_create_and_delete() {
+        let state = build_test_state().await;
+
+        // empty/whitespace name → 400
+        let req_body = serde_json::json!({ "name": "   " });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/collections")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+        // create
+        let req_body = serde_json::json!({ "name": "Research", "description": "papers" });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/collections")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("name").and_then(|v| v.as_str()).unwrap(), "Research");
+        assert_eq!(json.get("description").and_then(|v| v.as_str()).unwrap(), "papers");
+        let coll_id = json.get("id").and_then(|v| v.as_str()).unwrap().to_string();
+
+        // delete
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(format!("/collections/{coll_id}"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("deleted").and_then(|v| v.as_bool()).unwrap(), true);
+    }
+
+    fn add_document_request(collection_id: &str, document_id: &str) -> Request<axum::body::Body> {
+        Request::builder()
+            .method("POST")
+            .uri(format!("/collections/{collection_id}/documents/{document_id}"))
+            .header("X-Workspace", "homelab")
+            .body(axum::body::Body::empty())
+            .unwrap()
+    }
+
+    async fn create_test_collection(state: &Arc<McpState>) -> String {
+        let req_body = serde_json::json!({ "name": "Research", "description": "papers" });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/collections")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        json.get("id").and_then(|v| v.as_str()).unwrap().to_string()
+    }
+
+    async fn insert_test_document(state: &Arc<McpState>, id: &str) {
+        sqlx::query(
+            "INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES (?, ?, 'markdown', 'docs/test.md', 'indexed', 1, 'homelab')"
+        )
+        .bind(id)
+        .bind(format!("{id}.md"))
+        .execute(&state.db_pool)
+        .await
+        .unwrap();
+    }
+
+    async fn collection_doc_count(state: &Arc<McpState>, collection_id: &str) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM collection_documents WHERE collection_id = ?")
+            .bind(collection_id)
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_collection_add_document() {
+        let state = build_test_state().await;
+        let coll_id = create_test_collection(&state).await;
+        insert_test_document(&state, "doc-add").await;
+
+        let res = build_router(state.clone()).oneshot(add_document_request(&coll_id, "doc-add")).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("added").and_then(|v| v.as_bool()).unwrap(), true);
+        assert_eq!(collection_doc_count(&state, &coll_id).await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_collection_add_missing_document_silent() {
+        let state = build_test_state().await;
+        let coll_id = create_test_collection(&state).await;
+
+        let res = build_router(state.clone()).oneshot(add_document_request(&coll_id, "no-such-doc")).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("added").and_then(|v| v.as_bool()).unwrap(), true);
+        assert_eq!(collection_doc_count(&state, &coll_id).await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_collection_add_duplicate_idempotent() {
+        let state = build_test_state().await;
+        let coll_id = create_test_collection(&state).await;
+        insert_test_document(&state, "doc-dup").await;
+
+        for _ in 0..2 {
+            let res = build_router(state.clone()).oneshot(add_document_request(&coll_id, "doc-dup")).await.unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+        assert_eq!(collection_doc_count(&state, &coll_id).await, 1);
+    }
+
+    #[tokio::test]
+    async fn test_collection_remove_document() {
+        let state = build_test_state().await;
+        let coll_id = create_test_collection(&state).await;
+        insert_test_document(&state, "doc-rm").await;
+        let _ = build_router(state.clone()).oneshot(add_document_request(&coll_id, "doc-rm")).await.unwrap();
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(format!("/collections/{coll_id}/documents/doc-rm"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("removed").and_then(|v| v.as_bool()).unwrap(), true);
+        assert_eq!(collection_doc_count(&state, &coll_id).await, 0);
+    }
+
+    #[tokio::test]
+    async fn test_collection_list_documents() {
+        let state = build_test_state().await;
+        let coll_id = create_test_collection(&state).await;
+        insert_test_document(&state, "doc-list-1").await;
+        insert_test_document(&state, "doc-list-2").await;
+        for d in ["doc-list-1", "doc-list-2"] {
+            let _ = build_router(state.clone()).oneshot(add_document_request(&coll_id, d)).await.unwrap();
+        }
+
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/collections/{coll_id}/documents"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+        let collection = json.get("collection").unwrap();
+        assert_eq!(collection.get("id").and_then(|v| v.as_str()).unwrap(), coll_id);
+        assert_eq!(collection.get("name").and_then(|v| v.as_str()).unwrap(), "Research");
+        assert_eq!(collection.get("description").and_then(|v| v.as_str()).unwrap(), "papers");
+        assert!(collection.get("createdAt").is_some(), "createdAt 應該存在 (camelCase)");
+        assert!(collection.get("created_at").is_none(), "不應該存在 snake_case 的 created_at");
+
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        let doc_ids: Vec<&str> = docs.iter().filter_map(|d| d.get("id").and_then(|v| v.as_str())).collect();
+        assert!(
+            doc_ids.contains(&"doc-list-1") && doc_ids.contains(&"doc-list-2"),
+            "documents 應包含兩個文件"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_collection_list_missing_collection_404() {
+        let state = build_test_state().await;
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .uri("/collections/does-not-exist/documents")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("error").and_then(|v| v.as_str()).unwrap(), "Collection not found");
+    }
+
+    #[tokio::test]
+    async fn test_stats_endpoint() {
+        let state = build_test_state().await;
+        let res = build_router(state)
+            .oneshot(Request::builder().uri("/stats").body(axum::body::Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("documents").and_then(|v| v.as_i64()).unwrap(), 1);
+        assert_eq!(json.get("workspaces").and_then(|v| v.as_i64()).unwrap(), 1);
+        assert_eq!(json.get("plugins").and_then(|v| v.as_i64()).unwrap(), 0);
+        assert_eq!(json.get("pluginList").and_then(|v| v.as_array()).unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_document_get_then_delete_same_route() {
+        // GET 與 DELETE 掛在同一路徑 (主 router 形狀)：驗證合併後兩者皆可用
+        let state = build_test_state().await;
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/documents/doc1")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri("/documents/doc1")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("deleted").and_then(|v| v.as_bool()).unwrap(), true);
+
+        // soft-delete 後 list 不應再包含該文件
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .uri("/documents")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert!(docs.is_empty(), "軟刪除後 documents 列表應為空");
+    }
+}
