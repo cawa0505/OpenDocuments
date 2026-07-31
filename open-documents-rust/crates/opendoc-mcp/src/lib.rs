@@ -307,6 +307,41 @@ async fn list_conversations_handler(
 }
 
 #[derive(Deserialize)]
+struct UpdateConversationReq {
+    title: Option<String>,
+}
+
+async fn update_conversation_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    axum::extract::Path(id): axum::extract::Path<String>,
+    Json(body): Json<UpdateConversationReq>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await
+        .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
+
+    let result = sqlx::query(
+        "UPDATE conversations SET title = COALESCE(?, title), updated_at = CURRENT_TIMESTAMP \
+         WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+    )
+    .bind(body.title.as_deref())
+    .bind(&id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 update conversation 失敗: {e}");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+    })?;
+
+    if result.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+    }
+
+    Ok(Json(json!({ "updated": true })))
+}
+
+#[derive(Deserialize)]
 struct CreateWorkspaceReq {
     #[serde(alias = "name")]
     id: String,
@@ -2603,7 +2638,7 @@ pub async fn start_mcp_and_api_server(
         .route("/collections/:id/documents", get(list_collection_documents_handler))
         .route("/collections/:id/documents/:docId", post(add_collection_document_handler).delete(remove_collection_document_handler))
         .route("/conversations", get(list_conversations_handler).post(create_conversation_handler))
-        .route("/conversations/:id", delete(delete_conversation_handler))
+        .route("/conversations/:id", delete(delete_conversation_handler).patch(update_conversation_handler))
         .route("/conversations/:id/messages", get(list_conversation_messages_handler))
         .route("/conversations/:id/share", post(share_conversation_handler))
         .route("/shared/:token", get(shared_conversation_handler))
@@ -2943,7 +2978,7 @@ mod tests {
             .route("/collections/:id/documents", get(list_collection_documents_handler))
             .route("/collections/:id/documents/:docId", post(add_collection_document_handler).delete(remove_collection_document_handler))
             .route("/conversations", get(list_conversations_handler).post(create_conversation_handler))
-            .route("/conversations/:id", delete(delete_conversation_handler))
+            .route("/conversations/:id", delete(delete_conversation_handler).patch(update_conversation_handler))
             .route("/conversations/:id/messages", get(list_conversation_messages_handler))
         .route("/conversations/:id/share", post(share_conversation_handler))
         .route("/shared/:token", get(shared_conversation_handler))
@@ -3012,6 +3047,46 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let cols = json.get("collections").and_then(|v| v.as_array()).unwrap();
         assert!(!cols.is_empty(), "collections 應該包含測試資料");
+    }
+
+    #[tokio::test]
+    async fn test_patch_conversation_title() {
+        let state = build_test_state().await;
+        // 先建立一個 conversation
+        let create_body = serde_json::json!({ "title": "original title" }).to_string();
+        let create_res = build_router(state.clone())
+            .oneshot(Request::builder().uri("/conversations").method("POST")
+                .header("X-Workspace", "homelab")
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(create_body)).unwrap())
+            .await.unwrap();
+        assert!(create_res.status().is_success());
+        let body = axum::body::to_bytes(create_res.into_body(), usize::MAX).await.unwrap();
+        let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let conv_id = created["id"].as_str().unwrap().to_string();
+
+        // PATCH 更新標題
+        let patch_body = serde_json::json!({ "title": "updated title" }).to_string();
+        let patch_res = build_router(state.clone())
+            .oneshot(Request::builder().uri(format!("/conversations/{conv_id}")).method("PATCH")
+                .header("X-Workspace", "homelab")
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(patch_body)).unwrap())
+            .await.unwrap();
+        assert_eq!(patch_res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(patch_res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["updated"], true);
+
+        // 不存在的 ID → 404
+        let miss_body = serde_json::json!({ "title": "x" }).to_string();
+        let miss_res = build_router(state.clone())
+            .oneshot(Request::builder().uri("/conversations/no-such-id").method("PATCH")
+                .header("X-Workspace", "homelab")
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(miss_body)).unwrap())
+            .await.unwrap();
+        assert_eq!(miss_res.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
