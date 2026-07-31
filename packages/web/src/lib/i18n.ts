@@ -917,7 +917,7 @@ const zhTW: Dictionary = {
   'activity.eyebrow': '系統運維診斷',
   'activity.title': '運作活動與效能大盤',
   'activity.subtitle': '即時監控伺服器延遲、向量儲存庫狀態，以及動態 LLM 雲端路徑的請求對齊分佈。',
-  'activity.plugins': '外掛模組狀態',
+  'activity.plugins': '內置模組狀態',
   'activity.connectors': '數據源連接器',
   'activity.logs': '問答日誌追蹤',
   'activity.queries': '總請求次數',

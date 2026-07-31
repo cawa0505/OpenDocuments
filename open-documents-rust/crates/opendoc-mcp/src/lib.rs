@@ -660,6 +660,36 @@ async fn get_admin_stats_handler(
     })))
 }
 
+async fn get_admin_plugins_handler() -> Json<serde_json::Value> {
+    let version = env!("CARGO_PKG_VERSION");
+
+    Json(json!({
+        "plugins": [
+            {
+                "name": "document-parser",
+                "type": "built-in",
+                "version": version,
+                "health": { "healthy": true, "message": "Built-in parser is available" },
+                "metrics": {}
+            },
+            {
+                "name": "text-chunker",
+                "type": "built-in",
+                "version": version,
+                "health": { "healthy": true, "message": "Built-in chunker is available" },
+                "metrics": {}
+            },
+            {
+                "name": "vector-store",
+                "type": "built-in",
+                "version": version,
+                "health": { "healthy": true, "message": "Built-in vector store is available" },
+                "metrics": {}
+            }
+        ]
+    }))
+}
+
 async fn get_admin_search_quality_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
@@ -2582,6 +2612,7 @@ pub async fn start_mcp_and_api_server(
         .route("/dictionary/:id", delete(delete_dictionary_handler))
         .route("/dictionary/import-seed", post(import_seed_handler))
         .route("/admin/stats", get(get_admin_stats_handler))
+        .route("/admin/plugins", get(get_admin_plugins_handler))
         .route("/admin/search-quality", get(get_admin_search_quality_handler))
         .route("/admin/benchmark", get(get_admin_benchmark_handler))
         .route("/admin/connectors", get(get_admin_connectors_handler))
@@ -2921,6 +2952,7 @@ mod tests {
             .route("/dictionary/:id", delete(delete_dictionary_handler))
             .route("/dictionary/import-seed", post(import_seed_handler))
             .route("/admin/stats", get(get_admin_stats_handler))
+            .route("/admin/plugins", get(get_admin_plugins_handler))
             .route("/admin/search-quality", get(get_admin_search_quality_handler))
             .route("/admin/benchmark", get(get_admin_benchmark_handler))
             .route("/admin/connectors", get(get_admin_connectors_handler))
@@ -3127,6 +3159,35 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let connectors = json.get("connectors").and_then(|v| v.as_array()).unwrap();
         assert!(!connectors.is_empty(), "connectors 應該包含測試資料");
+    }
+
+    #[tokio::test]
+    async fn test_admin_plugins_returns_built_in_modules() {
+        let state = build_test_state().await;
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/plugins")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let plugins = json.get("plugins").and_then(|v| v.as_array()).unwrap();
+        assert!(!plugins.is_empty(), "內置模組列表不應為空");
+        for plugin in plugins {
+            assert!(plugin.get("name").and_then(|v| v.as_str()).is_some());
+            assert_eq!(plugin.get("type").and_then(|v| v.as_str()), Some("built-in"));
+            assert!(plugin.get("version").and_then(|v| v.as_str()).is_some());
+            assert_eq!(
+                plugin.get("health").and_then(|v| v.get("healthy")).and_then(|v| v.as_bool()),
+                Some(true)
+            );
+            assert!(plugin.get("metrics").is_some());
+        }
     }
 
     #[tokio::test]
