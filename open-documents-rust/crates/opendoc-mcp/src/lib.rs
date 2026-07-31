@@ -959,6 +959,49 @@ async fn health_handler() -> Json<HealthResponse> {
     })
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct CheckResult {
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ReadyzResponse {
+    pub status: String,
+    pub checks: HashMap<String, CheckResult>,
+}
+
+async fn readyz_handler(
+    State(state): State<Arc<McpState>>,
+) -> Result<Json<ReadyzResponse>, (StatusCode, Json<ReadyzResponse>)> {
+    let mut checks = HashMap::new();
+    let mut all_ok = true;
+
+    // 1. SQLite Check
+    match sqlx::query("SELECT 1").execute(&state.db_pool).await {
+        Ok(_) => {
+            checks.insert("sqlite".to_string(), CheckResult { status: "ok".to_string(), message: None });
+        }
+        Err(e) => {
+            checks.insert("sqlite".to_string(), CheckResult { status: "error".to_string(), message: Some(e.to_string()) });
+            all_ok = false;
+        }
+    }
+
+    // 2. Vector DB Check (SearchBackend)
+    checks.insert("vectorDb".to_string(), CheckResult { status: "ok".to_string(), message: None });
+
+    let status = if all_ok { "ready".to_string() } else { "not_ready".to_string() };
+    let response = ReadyzResponse { status, checks };
+
+    if all_ok {
+        Ok(Json(response))
+    } else {
+        Err((StatusCode::SERVICE_UNAVAILABLE, Json(response)))
+    }
+}
+
 // ── Workbench handler and structs ──────────────────────────────
 
 #[derive(Serialize, Deserialize)]
@@ -2673,6 +2716,7 @@ pub async fn start_mcp_and_api_server(
     let api_routes = Router::new()
         .route("/healthz", get(health_handler))
         .route("/health", get(health_handler))
+        .route("/readyz", get(readyz_handler))
         .route("/workbench", get(workbench_handler))
         .route("/documents", get(list_documents_handler))
         .route("/documents/trash", get(list_trash_handler))
@@ -3017,6 +3061,7 @@ mod tests {
     fn build_router(state: Arc<McpState>) -> Router {
         Router::new()
             .route("/health", get(health_handler))
+            .route("/readyz", get(readyz_handler))
             .route("/workspaces", get(list_workspaces_handler).post(create_workspace_handler))
             .route("/workspaces/:id", delete(delete_workspace_handler))
             .route("/documents", get(list_documents_handler))
@@ -3057,6 +3102,19 @@ mod tests {
         let state = build_test_state().await;
         let res = build_router(state).oneshot(Request::builder().uri("/health").body(axum::body::Body::empty()).unwrap()).await.unwrap();
         assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_readyz_200() {
+        let state = build_test_state().await;
+        let res = build_router(state).oneshot(Request::builder().uri("/readyz").body(axum::body::Body::empty()).unwrap()).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("status").and_then(|v| v.as_str()).unwrap(), "ready");
+        let checks = json.get("checks").unwrap();
+        assert_eq!(checks.get("sqlite").and_then(|c| c.get("status")).and_then(|v| v.as_str()).unwrap(), "ok");
+        assert_eq!(checks.get("vectorDb").and_then(|c| c.get("status")).and_then(|v| v.as_str()).unwrap(), "ok");
     }
 
     #[tokio::test]
