@@ -281,15 +281,17 @@ impl ConfigManager {
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
         // 自動建立預設工作空間（若不存在），確保 WebUI 啟動時有資料可顯示
+        // 以 name 判斷存在性（UUID 遷移後 id 不再等於名稱；既有 id=name 的舊庫也能正確沿用）
         let default_workspace = &cfg.model.default_workspace;
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces WHERE id = ?")
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces WHERE name = ?")
             .bind(default_workspace)
             .fetch_one(&pool)
             .await
             .map_err(|e| e.to_string())?;
         if count == 0 {
+            let ws_id = uuid::Uuid::new_v4().to_string();
             sqlx::query("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
-                .bind(default_workspace)
+                .bind(&ws_id)
                 .bind(default_workspace)
                 .execute(&pool)
                 .await

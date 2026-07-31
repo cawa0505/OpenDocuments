@@ -38,16 +38,51 @@ pub struct McpState {
 }
 
 // ── Workspace resolver ────────────────────────────────────────
-/// Resolve workspace from X-Workspace header.
-/// Empty or missing header → configured default workspace.
-async fn resolve_workspace(state: &McpState, headers: &axum::http::HeaderMap) -> String {
-    let from_header = headers
+/// 將 X-Workspace header（id 或 name）解析成 workspace UUID id（Node getById ?? getByName 向後相容）。
+/// - header 非空：`SELECT id FROM workspaces WHERE id = ? OR name = ?` → 命中回 id；未命中 → 400（嚴格，不 auto-create）
+/// - header 缺/空：取 config default_workspace 名稱 → 同查詢 → 未命中 → 500（default 啟動必建，缺失 = invariant 破壞）
+async fn resolve_workspace_id(
+    state: &McpState,
+    headers: &axum::http::HeaderMap,
+) -> Result<String, StatusCode> {
+    let header_val = headers
         .get("x-workspace")
-        .and_then(|h| h.to_str().ok())
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.trim())
         .filter(|s| !s.is_empty());
-    match from_header {
-        Some(ws) => ws.to_string(),
-        None => state.config_manager.get_config().await.model.default_workspace.clone(),
+
+    let default_ws;
+    let lookup_name = match header_val {
+        Some(ws) => ws,
+        None => {
+            default_ws = state.config_manager.get_config().await.model.default_workspace;
+            default_ws.as_str()
+        }
+    };
+
+    let found: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1"
+    )
+    .bind(lookup_name)
+    .bind(lookup_name)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 解析工作空間失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match found {
+        Some(id) => Ok(id),
+        None => {
+            if header_val.is_some() {
+                // header 指定了未知 workspace → 嚴格 400
+                Err(StatusCode::BAD_REQUEST)
+            } else {
+                // default workspace 啟動必建，缺失代表 invariant 破壞
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
     }
 }
 
@@ -117,8 +152,8 @@ fn map_document_row(r: &sqlx::sqlite::SqliteRow) -> DocumentItem {
 async fn list_workspaces_handler(
     State(state): State<Arc<McpState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT id, datetime(created_at, 'localtime') FROM workspaces"
+    let rows: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT id, name, datetime(created_at, 'localtime') FROM workspaces"
     )
     .fetch_all(&state.db_pool)
     .await
@@ -133,13 +168,13 @@ async fn list_workspaces_handler(
 
     let mut workspaces = Vec::new();
     for row in rows {
-        let is_default = row.0 == default_ws_name;
+        let is_default = row.1 == default_ws_name || row.0 == default_ws_name;
         workspaces.push(WorkspaceItem {
-            id: row.0.clone(),
-            name: row.0.clone(),
+            id: row.0,
+            name: row.1,
             mode: "personal".to_string(),
             settings: json!({}),
-            created_at: row.1,
+            created_at: row.2,
             is_default,
         });
     }
@@ -151,7 +186,7 @@ async fn list_documents_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace = resolve_workspace(&state, &headers).await;
+    let workspace = resolve_workspace_id(&state, &headers).await?;
 
     let rows = sqlx::query(
         "SELECT id, title, source_type, source_path, file_type, file_size_bytes, connector_id, chunk_count, status, content_hash, error_message, datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), indexed_at, workspace_id FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
@@ -174,7 +209,7 @@ async fn get_document_handler(
     headers: axum::http::HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let row = sqlx::query(
         "SELECT id, title, source_type, source_path, file_type, file_size_bytes, connector_id, chunk_count, status, content_hash, error_message, datetime(created_at, 'localtime') as created_at, datetime(updated_at, 'localtime') as updated_at, indexed_at, workspace_id FROM documents WHERE id = ? AND workspace_id = ?"
@@ -217,7 +252,7 @@ async fn list_collections_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let rows = sqlx::query("SELECT id, name, description FROM collections WHERE workspace_id = ?")
         .bind(&workspace_id)
@@ -244,7 +279,7 @@ async fn list_conversations_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let rows = sqlx::query(
         "SELECT id, title, shared, created_at, updated_at FROM conversations WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 100"
@@ -273,6 +308,7 @@ async fn list_conversations_handler(
 
 #[derive(Deserialize)]
 struct CreateWorkspaceReq {
+    #[serde(alias = "name")]
     id: String,
 }
 
@@ -280,8 +316,10 @@ async fn create_workspace_handler(
     State(state): State<Arc<McpState>>,
     Json(payload): Json<CreateWorkspaceReq>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Node 契約：workspace id = randomUUID；name 用請求帶的 id 欄位
+    let id = Uuid::new_v4().to_string();
     sqlx::query("INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
-        .bind(&payload.id)
+        .bind(&id)
         .bind(&payload.id)
         .execute(&state.db_pool)
         .await
@@ -297,8 +335,17 @@ async fn delete_workspace_handler(
     State(state): State<Arc<McpState>>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    // UUID 遷移後 default workspace 的 id 是 UUID（不再等於名稱），改查 id 或 name 比對
     let default_workspace = state.config_manager.get_config().await.model.default_workspace;
-    if id == default_workspace {
+    let default_id: Option<String> = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = ?")
+        .bind(&default_workspace)
+        .fetch_optional(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 查詢預設工作空間失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    if default_id.as_ref() == Some(&id) || default_workspace == id {
         return Err(StatusCode::BAD_REQUEST);
     }
 
@@ -329,7 +376,7 @@ async fn get_dictionary_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let rows = sqlx::query("SELECT id, workspace_id, key, value, datetime(created_at, 'localtime') FROM dictionary WHERE workspace_id = ?")
         .bind(&workspace_id)
@@ -365,7 +412,7 @@ async fn add_dictionary_handler(
     headers: axum::http::HeaderMap,
     Json(req): Json<AddEntryReq>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let trimmed_key = req.key.trim().to_string();
     let trimmed_value = req.value.trim().to_string();
@@ -457,7 +504,7 @@ async fn import_seed_handler(
     headers: axum::http::HeaderMap,
     Json(req): Json<ImportSeedReq>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let glossary: std::collections::HashMap<&str, &str> = if req.language == "zh-TW" {
         vec![
@@ -581,7 +628,7 @@ async fn get_admin_stats_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace = resolve_workspace(&state, &headers).await;
+    let workspace = resolve_workspace_id(&state, &headers).await?;
 
     // 1. 統計 documents 與 chunks 數量
     let summary: (i64, i64) = sqlx::query_as(
@@ -617,7 +664,7 @@ async fn get_admin_search_quality_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace = resolve_workspace(&state, &headers).await;
+    let workspace = resolve_workspace_id(&state, &headers).await?;
 
     // 聚合 SQL
     let summary: (i64, f64, f64) = sqlx::query_as(
@@ -651,7 +698,7 @@ async fn get_admin_query_logs_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let query_rows = sqlx::query(
         "SELECT id, query, profile, confidence_score, response_time_ms, route, feedback, datetime(created_at, 'localtime') FROM query_logs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 100"
@@ -694,7 +741,7 @@ async fn get_admin_benchmark_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let rows = sqlx::query(
         "SELECT model, metric_name, metric_value, datetime(created_at, 'localtime') FROM benchmark_runs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 50"
@@ -724,7 +771,7 @@ async fn get_admin_connectors_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let rows = sqlx::query(
         "SELECT name, type, config, sync_interval_seconds, last_synced_at, status FROM connectors WHERE workspace_id = ? AND deleted_at IS NULL"
@@ -757,7 +804,7 @@ async fn delete_document_handler(
     headers: axum::http::HeaderMap,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace = resolve_workspace(&state, &headers).await;
+    let workspace = resolve_workspace_id(&state, &headers).await?;
 
     // Node 契約 documents.ts:42：文件不存在（含其他 workspace）→ 404
     let count: i64 = sqlx::query_scalar(
@@ -896,7 +943,9 @@ async fn workbench_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Value>, (axum::http::StatusCode, String)> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|status| (status, "Workspace not found".to_string()))?;
 
     // 1. 讀取 documents 總量與 chunks
     let corpus_counts = sqlx::query(
@@ -1073,7 +1122,9 @@ async fn query_log_handler(
     headers: axum::http::HeaderMap,
     Json(payload): Json<QueryLogRequest>,
 ) -> Result<Json<QueryLogResponse>, (axum::http::StatusCode, String)> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|status| (status, "Workspace not found".to_string()))?;
 
     let res = sqlx::query(
         "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id, created_at)
@@ -1174,7 +1225,7 @@ async fn create_conversation_handler(
     headers: axum::http::HeaderMap,
     payload: Option<Json<CreateConversationRequest>>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
     let id = Uuid::new_v4().to_string();
     let title = payload
         .and_then(|Json(p)| p.title)
@@ -1220,7 +1271,7 @@ async fn delete_conversation_handler(
     headers: axum::http::HeaderMap,
     Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
@@ -1255,7 +1306,7 @@ async fn list_conversation_messages_handler(
     headers: axum::http::HeaderMap,
     Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
@@ -1318,7 +1369,7 @@ async fn share_conversation_handler(
     headers: axum::http::HeaderMap,
     Path(conversation_id): Path<String>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     let count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
@@ -1404,7 +1455,9 @@ async fn create_collection_handler(
         return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Collection name required" }))));
     }
 
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
     let id = Uuid::new_v4().to_string();
     let description = payload.description;
 
@@ -1431,7 +1484,7 @@ async fn delete_collection_handler(
     headers: axum::http::HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
     sqlx::query("DELETE FROM collections WHERE id = ? AND workspace_id = ?")
         .bind(&id)
@@ -1458,7 +1511,9 @@ async fn add_collection_document_handler(
         ));
     }
 
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
 
     sqlx::query(
         "INSERT OR IGNORE INTO collection_documents (collection_id, document_id) SELECT c.id, d.id FROM collections c JOIN documents d ON d.id = ? WHERE c.id = ? AND c.workspace_id = ? AND d.workspace_id = ?"
@@ -1489,7 +1544,9 @@ async fn remove_collection_document_handler(
         ));
     }
 
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
 
     sqlx::query(
         "DELETE FROM collection_documents WHERE collection_id = ? AND document_id = ? AND EXISTS (SELECT 1 FROM collections WHERE id = ? AND workspace_id = ?) AND EXISTS (SELECT 1 FROM documents WHERE id = ? AND workspace_id = ?)"
@@ -1515,7 +1572,9 @@ async fn list_collection_documents_handler(
     headers: axum::http::HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
 
     let collection_row = sqlx::query(
         "SELECT id, name, description, datetime(created_at, 'localtime') FROM collections WHERE id = ? AND workspace_id = ?"
@@ -1598,8 +1657,40 @@ async fn upload_handler(
     headers: axum::http::HeaderMap,
     mut multipart: axum::extract::Multipart,
 ) -> Result<Json<UploadResponse>, (axum::http::StatusCode, String)> {
-    // 1. 取得 Header 中的工作空間 (預設 "default") 與集合識別碼 (預設 "default")
-    let workspace_id = resolve_workspace(&state, &headers).await;
+    // 1. 取得 Header 中的工作空間（id 或 name 雙查，Node getById ?? getByName）與集合識別碼 (預設 "default")
+    //     upload 路徑維持 lenient：缺 header 用 config default 名稱；未知 workspace 自動建立（Node parity），id 用 UUID
+    let raw_ws = match headers
+        .get("x-workspace")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    {
+        Some(s) => s,
+        None => state.config_manager.get_config().await.model.default_workspace.clone(),
+    };
+
+    // lenient upload: auto-create if missing (Node parity)
+    let workspace_id: String = match sqlx::query_scalar(
+        "SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1"
+    )
+    .bind(&raw_ws)
+    .bind(&raw_ws)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    {
+        Some(id) => id,
+        None => {
+            let new_id = Uuid::new_v4().to_string();
+            sqlx::query("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                .bind(&new_id)
+                .bind(&raw_ws)
+                .execute(&state.db_pool)
+                .await
+                .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+            new_id
+        }
+    };
 
     let collection_id = headers
         .get("x-collection")
@@ -1685,16 +1776,7 @@ async fn upload_handler(
 
     // 6. 持久化寫入 SQLite 資料庫 documents 表與 lancedb 向量庫 (或模擬)
     //    同時確保 WAL 與並行防護，100% 避免 Node.js 與 Rust 重複衝突
-
-    // 確保 workspace 存在，避免 FK constraint 失敗
-    sqlx::query(
-        "INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)"
-    )
-    .bind(&workspace_id)
-    .bind(&workspace_id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, format!("確保工作空間失敗: {e}")))?;
+    //    （workspace 已在步驟 1 以 id/name 雙查 + auto-create 解析為既有或新 UUID id）
 
     let file_path_str = original_name.clone().unwrap_or_else(|| format!("opendoc-{temp_file_id}"));
 
@@ -1832,7 +1914,7 @@ pub async fn message_handler(
                             "type": "object",
                             "properties": {
                                 "query": { "type": "string", "description": "Search query" },
-                                "workspace": { "type": "string", "description": "Workspace name", "default": "default" },
+                                "workspace": { "type": "string", "description": "Workspace name or UUID id（省略時使用 config 預設 workspace）" },
                                 "limit": { "type": "integer", "description": "Max results to return", "default": 5 }
                             },
                             "required": ["query"]
@@ -1882,7 +1964,6 @@ pub async fn message_handler(
                 }
                 "opendocuments_index_path" => {
                     let path_str = args["path"].as_str().unwrap_or("");
-                    let workspace = args["workspace"].as_str().unwrap_or("default");
 
                     let path_buf = std::path::PathBuf::from(path_str);
                     let results = if path_buf.exists() {
@@ -1903,6 +1984,17 @@ pub async fn message_handler(
                         }) {
                             c => c,
                         };
+
+                        // 省略 workspace 參數時：active_workspace 優先、回退 default_workspace（取「名稱」，server 端解析層會做 name→id）
+                        let workspace = args["workspace"].as_str()
+                            .map(|s| s.trim())
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| {
+                                app_cfg.model.active_workspace.clone()
+                                    .filter(|s| !s.is_empty())
+                                    .unwrap_or_else(|| app_cfg.model.default_workspace.clone())
+                            });
 
                         let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
                         let client = reqwest::Client::new();
@@ -1957,7 +2049,7 @@ pub async fn message_handler(
                             let req_res = tokio::task::block_in_place(|| {
                                 tokio::runtime::Handle::current().block_on(async {
                                     client.post(&upload_url)
-                                        .header("X-Workspace", workspace)
+                                        .header("X-Workspace", workspace.clone())
                                         .multipart(form)
                                         .timeout(std::time::Duration::from_secs(180))
                                         .send()
@@ -2077,7 +2169,7 @@ pub async fn run_mcp_stdio_server(
                                 "type": "object",
                                 "properties": {
                                     "query": { "type": "string", "description": "Search query" },
-                                    "workspace": { "type": "string", "description": "Workspace name", "default": "default" },
+                                    "workspace": { "type": "string", "description": "Workspace name or UUID id（省略時使用 config 預設 workspace）" },
                                     "limit": { "type": "integer", "description": "Max results to return", "default": 5 }
                                 },
                                 "required": ["query"]
@@ -2127,7 +2219,6 @@ pub async fn run_mcp_stdio_server(
                     }
                     "opendocuments_index_path" => {
                         let path_str = args["path"].as_str().unwrap_or("");
-                        let workspace = args["workspace"].as_str().unwrap_or("default");
 
                         let path_buf = std::path::PathBuf::from(path_str);
                         let results = if path_buf.exists() {
@@ -2148,6 +2239,17 @@ pub async fn run_mcp_stdio_server(
                             }) {
                                 c => c,
                             };
+
+                            // 省略 workspace 參數時：active_workspace 優先、回退 default_workspace（取「名稱」，server 端解析層會做 name→id）
+                            let workspace = args["workspace"].as_str()
+                                .map(|s| s.trim())
+                                .filter(|s| !s.is_empty())
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| {
+                                    app_cfg.model.active_workspace.clone()
+                                        .filter(|s| !s.is_empty())
+                                        .unwrap_or_else(|| app_cfg.model.default_workspace.clone())
+                                });
 
                             let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
                             let client = reqwest::Client::new();
@@ -2199,16 +2301,16 @@ pub async fn run_mcp_stdio_server(
                                 };
                                 let form = reqwest::multipart::Form::new().part("file", part);
 
-                                let req_res = tokio::task::block_in_place(|| {
-                                    tokio::runtime::Handle::current().block_on(async {
-                                        client.post(&upload_url)
-                                            .header("X-Workspace", workspace)
-                                            .multipart(form)
-                                            .timeout(std::time::Duration::from_secs(180))
-                                            .send()
-                                            .await
-                                    })
-                                });
+                                 let req_res = tokio::task::block_in_place(|| {
+                                     tokio::runtime::Handle::current().block_on(async {
+                                         client.post(&upload_url)
+                                             .header("X-Workspace", workspace.clone())
+                                             .multipart(form)
+                                             .timeout(std::time::Duration::from_secs(180))
+                                             .send()
+                                             .await
+                                     })
+                                 });
 
                                 match req_res {
                                     Ok(resp) if resp.status().is_success() => {
@@ -2281,7 +2383,9 @@ async fn chat_stream_handler(
     axum::http::request::Parts { headers, .. }: axum::http::request::Parts,
     Json(req): Json<ChatStreamRequest>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace = resolve_workspace(&state, &headers).await;
+    let workspace = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
     let query_id = Uuid::new_v4().to_string();
     let profile = req.profile.unwrap_or_else(|| "balanced".to_string());
     let conversation_id = req.conversation_id;
@@ -2382,7 +2486,7 @@ async fn chat_handler(
     headers: axum::http::HeaderMap,
     Json(req): Json<ChatRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace = resolve_workspace(&state, &headers).await;
+    let workspace = resolve_workspace_id(&state, &headers).await?;
     let query_id = Uuid::new_v4().to_string();
     let profile = req.profile.unwrap_or_else(|| "balanced".to_string());
     let threshold = match profile.as_str() {
@@ -2567,15 +2671,29 @@ mod tests {
             "CREATE TABLE benchmark_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id TEXT NOT NULL, model TEXT NOT NULL, metric_name TEXT NOT NULL, metric_value REAL NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
         ).execute(&db_pool).await.unwrap();
 
-        // 插入測試資料
-        sqlx::query("INSERT INTO workspaces (id, name) VALUES ('homelab', 'homelab')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES ('doc1', 'test.md', 'markdown', 'docs/test.md', 'indexed', 5, 'homelab')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, feedback, workspace_id) VALUES ('hello', 'hybrid', 0.85, 120, 'semantic', 'positive', 'homelab')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO dictionary (workspace_id, key, value) VALUES ('homelab', 'domain', 'opendoc')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO connectors (workspace_id, name, type, config) VALUES ('homelab', 'github', 'git', '{}')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO collections (workspace_id, name, description) VALUES ('homelab', 'default', 'default collection')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO conversations (workspace_id, title) VALUES ('homelab', 'First chat')").execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO benchmark_runs (workspace_id, model, metric_name, metric_value) VALUES ('homelab', 'ollama', 'recall', 0.92)").execute(&db_pool).await.unwrap();
+        // 插入測試資料（workspace id 用 UUID，name='homelab'；解析層做 name→id）
+        let cfg = opendoc_storage::ConfigManager::load_or_init().unwrap();
+        let default_name = cfg.get_config().await.model.default_workspace.clone();
+
+        let ws_id = Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO workspaces (id, name) VALUES (?, 'homelab')").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES ('doc1', 'test.md', 'markdown', 'docs/test.md', 'indexed', 5, ?)").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, feedback, workspace_id) VALUES ('hello', 'hybrid', 0.85, 120, 'semantic', 'positive', ?)").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO dictionary (workspace_id, key, value) VALUES (?, 'domain', 'opendoc')").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO connectors (workspace_id, name, type, config) VALUES (?, 'github', 'git', '{}')").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO collections (workspace_id, name, description) VALUES (?, 'default', 'default collection')").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO conversations (workspace_id, title) VALUES (?, 'First chat')").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO benchmark_runs (workspace_id, model, metric_name, metric_value) VALUES (?, 'ollama', 'recall', 0.92)").bind(&ws_id).execute(&db_pool).await.unwrap();
+
+        if default_name != "homelab" {
+            let default_ws_id = Uuid::new_v4().to_string();
+            sqlx::query("INSERT OR IGNORE INTO workspaces (id, name) VALUES (?, ?)")
+                .bind(&default_ws_id)
+                .bind(&default_name)
+                .execute(&db_pool)
+                .await
+                .unwrap();
+        }
 
         Arc::new(McpState {
             sessions: Arc::new(RwLock::new(HashMap::new())),
@@ -2585,7 +2703,173 @@ mod tests {
         })
     }
 
+    // ── Workspace UUID migration ─────────────────────────────────
+
+    async fn seed_workspace_id(db_pool: &sqlx::SqlitePool) -> String {
+        let row: String = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = 'homelab'")
+            .fetch_one(db_pool)
+            .await
+            .unwrap();
+        row
+    }
+
+    #[tokio::test]
+    async fn test_workspace_name_header_resolves_to_uuid() {
+        let state = build_test_state().await;
+        let ws_id = seed_workspace_id(&state.db_pool).await;
+        assert_ne!(ws_id, "homelab", "seed workspace id 必須是 UUID 而非 name");
+
+        // X-Workspace: homelab（name）→ 解析成 UUID id
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/conversations")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(r#"{"title":"resolver test"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("workspaceId").and_then(|v| v.as_str()).unwrap(),
+            ws_id,
+            "X-Workspace 送 name 時必須解析回 workspace 的 UUID id"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_workspace_uuid_header_accepts_raw_uuid() {
+        let state = build_test_state().await;
+        let ws_id = seed_workspace_id(&state.db_pool).await;
+
+        // X-Workspace: <uuid>（id 直傳，Node getById 向後相容）
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/conversations")
+                    .header("X-Workspace", &ws_id)
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(r#"{"title":"uuid direct"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("workspaceId").and_then(|v| v.as_str()).unwrap(),
+            ws_id,
+            "X-Workspace 直傳 UUID id 必須命中同一 workspace"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_workspace_unknown_header_strict_400() {
+        let state = build_test_state().await;
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/documents")
+                    .header("X-Workspace", "does-not-exist-ws")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::BAD_REQUEST,
+            "未知 workspace 必須嚴格 400（不 auto-create、不回空結果）"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_delete_default_workspace_by_uuid_rejected() {
+        let state = build_test_state().await;
+        let default_name = state.config_manager.get_config().await.model.default_workspace.clone();
+        let default_id: String = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = ?")
+            .bind(&default_name)
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+
+        // 刪除 default workspace（以 UUID id 直傳）→ 400
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(format!("/workspaces/{default_id}"))
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::BAD_REQUEST, "default workspace 不得刪除");
+
+        // 建立其他 workspace → 可以刪除
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/workspaces")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(r#"{"name":"scratch-ws"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let scratch_id: String = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = 'scratch-ws'")
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(format!("/workspaces/{scratch_id}"))
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "非 default workspace 可刪除");
+    }
+
+    #[tokio::test]
+    async fn test_upload_auto_creates_workspace_with_uuid_id() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        let body = multipart_upload_body("newfile.md", b"auto created workspace");
+        let res = build_router(state.clone())
+            .oneshot(upload_request("brand-new-ws", body, None))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let id: String = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = 'brand-new-ws'")
+            .fetch_one(&db_pool)
+            .await
+            .unwrap();
+        assert_ne!(id, "brand-new-ws", "auto-create 的 workspace id 必須是 UUID，不得 id=name");
+
+        let doc_ws: String = sqlx::query_scalar("SELECT workspace_id FROM documents WHERE title = 'newfile.md'")
+            .fetch_one(&db_pool)
+            .await
+            .unwrap();
+        assert_eq!(doc_ws, id, "上傳的文件必須歸屬在 auto-create 的 workspace 下");
+    }
+
     struct MockSearch;
+
     impl SearchBackend for MockSearch {
         fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
             vec![]
@@ -2619,7 +2903,8 @@ mod tests {
     fn build_router(state: Arc<McpState>) -> Router {
         Router::new()
             .route("/health", get(health_handler))
-            .route("/workspaces", get(list_workspaces_handler))
+            .route("/workspaces", get(list_workspaces_handler).post(create_workspace_handler))
+            .route("/workspaces/:id", delete(delete_workspace_handler))
             .route("/documents", get(list_documents_handler))
             .route("/documents/upload", post(upload_handler))
             .route("/collections", get(list_collections_handler).post(create_collection_handler))
@@ -2756,7 +3041,8 @@ mod tests {
         let state = build_test_state().await;
         // 先新增一個詞彙，在 db_pool 中，我們可以直接手動插入一個
         let db_pool = state.db_pool.clone();
-        sqlx::query("INSERT INTO dictionary (id, workspace_id, key, value) VALUES ('test-id-999', 'homelab', 'API', '應用程式介面')").execute(&db_pool).await.unwrap();
+        let ws_id = seed_workspace_id(&db_pool).await;
+        sqlx::query("INSERT INTO dictionary (id, workspace_id, key, value) VALUES ('test-id-999', ?, 'API', '應用程式介面')").bind(&ws_id).execute(&db_pool).await.unwrap();
 
         let res = build_router(state)
             .oneshot(
@@ -2925,10 +3211,13 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
 
         assert_eq!(first_id, second_id, "同 workspace 重複上傳同檔必須回傳相同 documentId");
 
-        // DB: 只有一列
+        // DB: 只有一列（無 header 上傳 → source_path = `{workspace_id}/{basename}`，workspace_id 為 UUID）
+        let ws_id = seed_workspace_id(&db_pool).await;
         let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM documents WHERE workspace_id = 'homelab' AND source_path = 'homelab/dup.md'"
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND source_path = ?"
         )
+        .bind(&ws_id)
+        .bind(format!("{ws_id}/dup.md"))
         .fetch_one(&db_pool)
         .await
         .unwrap();
@@ -2999,9 +3288,15 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         .await
         .unwrap();
         assert_eq!(rows.len(), 2, "兩個 workspace 應各自有一列");
+        // 無 header 上傳 → source_path = `{workspace_id}/{basename}`（workspace_id 均為 UUID）
+        let homelab_id = seed_workspace_id(&db_pool).await;
+        let open_docs_id: String = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = 'OpenDocuments'")
+            .fetch_one(&db_pool)
+            .await
+            .unwrap();
         let paths: Vec<String> = rows.iter().map(|(p, _)| p.clone()).collect();
-        assert!(paths.contains(&"homelab/dup.md".to_string()));
-        assert!(paths.contains(&"OpenDocuments/dup.md".to_string()));
+        assert!(paths.contains(&format!("{homelab_id}/dup.md")));
+        assert!(paths.contains(&format!("{open_docs_id}/dup.md")));
     }
 
     #[tokio::test]
@@ -3016,9 +3311,11 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
+        let ws_id = seed_workspace_id(&db_pool).await;
         let source_path: String = sqlx::query_scalar(
-            "SELECT source_path FROM documents WHERE workspace_id = 'homelab' AND title = 'A.md'"
+            "SELECT source_path FROM documents WHERE workspace_id = ? AND title = 'A.md'"
         )
+        .bind(&ws_id)
         .fetch_one(&db_pool)
         .await
         .unwrap();
@@ -3032,8 +3329,9 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
         let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM documents WHERE workspace_id = 'homelab' AND title = 'A.md'"
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND title = 'A.md'"
         )
+        .bind(&ws_id)
         .fetch_one(&db_pool)
         .await
         .unwrap();
@@ -3047,12 +3345,13 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK);
         let source_path: String = sqlx::query_scalar(
-            "SELECT source_path FROM documents WHERE workspace_id = 'homelab' AND title = 'B.md'"
+            "SELECT source_path FROM documents WHERE workspace_id = ? AND title = 'B.md'"
         )
+        .bind(&ws_id)
         .fetch_one(&db_pool)
         .await
         .unwrap();
-        assert_eq!(source_path, "homelab/B.md");
+        assert_eq!(source_path, format!("{ws_id}/B.md"), "無 header 時應為 workspace_id/basename");
     }
 
     #[tokio::test]
@@ -3068,9 +3367,11 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
             .unwrap();
         assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE, "超過 50MiB 應回傳 413");
 
+        let ws_id = seed_workspace_id(&db_pool).await;
         let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM documents WHERE workspace_id = 'homelab' AND title = 'huge.md'"
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND title = 'huge.md'"
         )
+        .bind(&ws_id)
         .fetch_one(&db_pool)
         .await
         .unwrap();
@@ -3252,7 +3553,8 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(json.get("title").and_then(|v| v.as_str()).unwrap(), "New chat");
-        assert_eq!(json.get("workspaceId").and_then(|v| v.as_str()).unwrap(), "homelab");
+        let ws_id = seed_workspace_id(&state.db_pool).await;
+        assert_eq!(json.get("workspaceId").and_then(|v| v.as_str()).unwrap(), ws_id);
         assert_eq!(json.get("shared").and_then(|v| v.as_bool()).unwrap(), false);
         assert!(json.get("createdAt").is_some(), "應有 camelCase createdAt");
         assert!(json.get("updatedAt").is_some(), "應有 camelCase updatedAt");
@@ -3426,9 +3728,11 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         let db_pool = state.db_pool.clone();
 
         // 直接插對話 + share_token
+        let ws_id = seed_workspace_id(&db_pool).await;
         sqlx::query(
-            "INSERT INTO conversations (id, workspace_id, title, shared, share_token) VALUES ('conv-shared', 'homelab', 'Public chat', 1, '0123456789abcdef0123456789abcdef')",
+            "INSERT INTO conversations (id, workspace_id, title, shared, share_token) VALUES ('conv-shared', ?, 'Public chat', 1, '0123456789abcdef0123456789abcdef')",
         )
+        .bind(&ws_id)
         .execute(&db_pool)
         .await
         .unwrap();
@@ -3581,11 +3885,13 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
     }
 
     async fn insert_test_document(state: &Arc<McpState>, id: &str) {
+        let ws_id = seed_workspace_id(&state.db_pool).await;
         sqlx::query(
-            "INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES (?, ?, 'markdown', 'docs/test.md', 'indexed', 1, 'homelab')"
+            "INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES (?, ?, 'markdown', 'docs/test.md', 'indexed', 1, ?)"
         )
         .bind(id)
         .bind(format!("{id}.md"))
+        .bind(&ws_id)
         .execute(&state.db_pool)
         .await
         .unwrap();

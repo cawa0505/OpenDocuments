@@ -44,7 +44,7 @@ export function WorkspacesPage() {
 
   const handleDelete = async (e: React.MouseEvent, workspace: Workspace) => {
     e.stopPropagation();
-    if (workspace.name === "default") return;
+    if (workspace.isDefault) return;
     const confirmed = window.confirm(
       t("workspaces.deleteConfirm", { name: workspace.name }),
     );
@@ -58,7 +58,8 @@ export function WorkspacesPage() {
         workspace.name === activeWorkspaceName ||
         workspace.id === activeWorkspaceName;
       if (isActive) {
-        localStorage.setItem("active-workspace", "default");
+        const defaultWs = workspaces.find((w) => w.isDefault);
+        localStorage.setItem("active-workspace", defaultWs?.name ?? "");
         window.location.reload();
       } else {
         await refresh();
@@ -198,7 +199,7 @@ export function WorkspacesPage() {
                               )}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
-                              <span className="font-mono">{workspace.id}</span>
+                              <span className="font-mono break-all">{workspace.id}</span>
                               <span>·</span>
                               <span>
                                 {t("docDetail.created")}{" "}

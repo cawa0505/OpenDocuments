@@ -4534,6 +4534,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "toml",
+ "uuid",
 ]
 
 [[package]]
