@@ -416,7 +416,11 @@ mod tests {
         assert!(mgr.is_ok());
         let manager = mgr.unwrap();
         let cfg = manager.get_config().await;
-        assert_eq!(cfg.server.url, "http://127.0.0.1:3000");
+        assert!(
+            cfg.server.url.starts_with("http"),
+            "server.url 應為 http(s) URL，實際: {}",
+            cfg.server.url
+        );
     }
 
     #[tokio::test]

@@ -67,7 +67,8 @@ mod tests {
     #[test]
     fn test_schema_comp_fields() {
         let schema = get_compat_schema(1024);
-        assert_eq!(schema.fields().len(), 6);
+        // 7 欄位：document_id, chunk_type, vector, content, workspace_id, collection_id, metadata_json
+        assert_eq!(schema.fields().len(), 7);
         
         let vec_field = schema.field_with_name("vector").unwrap();
         match vec_field.data_type() {
@@ -77,7 +78,7 @@ mod tests {
             _ => panic!("向量欄位型別不匹配！"),
         }
         
-        // 確保 relevance_score 與動態欄位的可空性
+        // 確保動態欄位（metadata_json）的可空性
         let metadata_field = schema.field_with_name("metadata_json").unwrap();
         assert!(metadata_field.is_nullable());
     }
