@@ -898,6 +898,52 @@ async fn delete_document_handler(
     Ok((StatusCode::OK, Json(json!({ "deleted": true }))))
 }
 
+async fn list_trash_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    let rows = sqlx::query(
+        "SELECT id, title, source_type, source_path, file_type, file_size_bytes, \
+         connector_id, chunk_count, status, content_hash, error_message, \
+         datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), \
+         indexed_at, workspace_id FROM documents WHERE workspace_id = ? AND deleted_at IS NOT NULL \
+         ORDER BY deleted_at DESC"
+    )
+    .bind(&workspace_id)
+    .fetch_all(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢垃圾桶 documents 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let docs: Vec<DocumentItem> = rows.iter().map(map_document_row).collect();
+    Ok(Json(json!({ "documents": docs })))
+}
+
+async fn restore_document_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await
+        .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
+
+    sqlx::query(
+        "UPDATE documents SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP \
+         WHERE id = ? AND workspace_id = ?"
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" }))))?;
+
+    Ok(Json(json!({ "restored": true })))
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct HealthResponse {
     pub status: String,
@@ -2629,7 +2675,9 @@ pub async fn start_mcp_and_api_server(
         .route("/health", get(health_handler))
         .route("/workbench", get(workbench_handler))
         .route("/documents", get(list_documents_handler))
+        .route("/documents/trash", get(list_trash_handler))
         .route("/documents/upload", post(upload_handler))
+        .route("/documents/:id/restore", post(restore_document_handler))
         .route("/documents/:id", get(get_document_handler).delete(delete_document_handler))
         .route("/workspaces", get(list_workspaces_handler).post(create_workspace_handler))
         .route("/workspaces/:id", delete(delete_workspace_handler))
@@ -2992,6 +3040,8 @@ mod tests {
             .route("/admin/benchmark", get(get_admin_benchmark_handler))
             .route("/admin/connectors", get(get_admin_connectors_handler))
             .route("/admin/query-logs", get(get_admin_query_logs_handler))
+            .route("/documents/trash", get(list_trash_handler))
+            .route("/documents/:id/restore", post(restore_document_handler))
             .route("/documents/:id", get(get_document_handler).delete(delete_document_handler))
             .route("/chat", post(chat_handler))
             .route("/chat/feedback", post(chat_feedback_handler))
@@ -4229,5 +4279,136 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
         assert!(docs.is_empty(), "軟刪除後 documents 列表應為空");
+    }
+
+    #[tokio::test]
+    async fn test_document_trash_and_restore() {
+        let state = build_test_state().await;
+
+        // 1. 初始垃圾桶應為空
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/documents/trash")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert!(docs.is_empty(), "初始垃圾桶應為空");
+
+        // 2. 軟刪除 doc1
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri("/documents/doc1")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        // 3. 垃圾桶現在應該包含 doc1
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/documents/trash")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(docs.len(), 1, "垃圾桶應該有 1 個文件");
+        assert_eq!(docs[0].get("id").and_then(|v| v.as_str()).unwrap(), "doc1");
+
+        // 4. 跨 workspace 垃圾桶隔離驗證 (OpenDocuments 應該看不到 doc1 在垃圾桶)
+        // 先建立 OpenDocuments 工作空間，否則 resolve_workspace_id 會回傳 400 Bad Request
+        let second_ws_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO workspaces (id, name) VALUES (?, 'OpenDocuments')")
+            .bind(&second_ws_id)
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/documents/trash")
+                    .header("X-Workspace", "OpenDocuments")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert!(docs.is_empty(), "跨工作空間不應能看到別人的垃圾桶內容");
+
+        // 5. 還原 doc1
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/documents/doc1/restore")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("restored").and_then(|v| v.as_bool()).unwrap(), true);
+
+        // 6. 還原後垃圾桶應變回空
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/documents/trash")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+                )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert!(docs.is_empty(), "還原後垃圾桶應為空");
+
+        // 7. 還原後正常 documents 列表應重新包含 doc1
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .uri("/documents")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(docs.len(), 1, "還原後 documents 列表應該恢復到 1 個文件");
+        assert_eq!(docs[0].get("id").and_then(|v| v.as_str()).unwrap(), "doc1");
     }
 }
