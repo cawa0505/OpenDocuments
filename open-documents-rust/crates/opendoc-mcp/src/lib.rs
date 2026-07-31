@@ -2534,15 +2534,19 @@ struct ChatStreamRequest {
 // ponytail: 直接用 search_and_rerank + 組裝答案；LLM streaming 加 when 需要
 async fn chat_stream_handler(
     State(state): State<Arc<McpState>>,
-    axum::http::request::Parts { headers, .. }: axum::http::request::Parts,
+    headers: axum::http::HeaderMap,
     Json(req): Json<ChatStreamRequest>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace = resolve_workspace_id(&state, &headers)
-        .await
-        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
+    let workspace = match resolve_workspace_id(&state, &headers).await {
+        Ok(w) => w,
+        Err(e) => {
+            eprintln!("💥 取得 workspace_id 失敗: {e}");
+            return Err((e, Json(json!({ "error": "invalid workspace" }))));
+        }
+    };
     let query_id = Uuid::new_v4().to_string();
     let profile = req.profile.unwrap_or_else(|| "balanced".to_string());
-    let conversation_id = req.conversation_id;
+    let mut conversation_id = req.conversation_id;
 
     // Node 契約 chat.ts:127：conversationId 不存在（或已刪除）→ 404
     if let Some(cid) = &conversation_id {
@@ -2566,6 +2570,22 @@ async fn chat_stream_handler(
                 Json(json!({ "error": "Conversation not found" })),
             ));
         }
+    } else {
+        // 💡 串流聊天在沒有提供 conversationId 時，自動生成一個 Uuid 並建立新的 conversation
+        let new_id = Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO conversations (id, workspace_id, title, created_at, updated_at) VALUES (?, ?, '新對話', datetime('now'), datetime('now'))")
+            .bind(&new_id)
+            .bind(&workspace)
+            .execute(&state.db_pool)
+            .await
+            .map_err(|e| {
+                eprintln!("💥 自動建立 conversation 失敗: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": "Failed to auto-create conversation" })),
+                )
+            })?;
+        conversation_id = Some(new_id);
     }
     let threshold = match profile.as_str() {
         "fast" => 0.50,
@@ -2616,6 +2636,63 @@ async fn chat_stream_handler(
         "conversationId": conversation_id,
     })).unwrap_or_default();
 
+    // 💡 寫入 query_logs 表
+    if let Err(e) = sqlx::query(
+        "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, 'rag', ?)"
+    )
+    .bind(&req.query)
+    .bind(&profile)
+    .bind(total_score)
+    .bind(100i64)
+    .bind(&workspace)
+    .execute(&state.db_pool)
+    .await {
+        eprintln!("💥 寫入 query_logs 失敗: {e}");
+    }
+
+    // 💡 將使用者 query 及助理 answer（含 metadata）寫入 messages 表
+    if let Some(cid) = &conversation_id {
+        let user_msg_id = Uuid::new_v4().to_string();
+        let assistant_msg_id = Uuid::new_v4().to_string();
+        let sources_str = serde_json::to_string(&sources_mapped).unwrap_or_default();
+
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'user', ?, datetime('now'))"
+        )
+        .bind(&user_msg_id)
+        .bind(cid)
+        .bind(&req.query)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 寫入 messages 失敗: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal server error" })),
+            )
+        })?;
+
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, datetime('now'))"
+        )
+        .bind(&assistant_msg_id)
+        .bind(cid)
+        .bind(&answer)
+        .bind(&sources_str)
+        .bind(&profile)
+        .bind(total_score)
+        .bind(100i64)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 寫入 messages 失敗: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Internal server error" })),
+            )
+        })?;
+    }
+
     let stream = futures_util::stream::iter(vec![
         Ok::<_, std::convert::Infallible>(Event::default().event("sources").data(sources_json)),
         Ok(Event::default().event("confidence").data(confidence_json)),
@@ -2633,6 +2710,8 @@ struct ChatRequest {
     query: String,
     #[serde(default)]
     profile: Option<String>,
+    #[serde(default, rename = "conversationId")]
+    conversation_id: Option<String>,
 }
 
 async fn chat_handler(
@@ -2643,6 +2722,27 @@ async fn chat_handler(
     let workspace = resolve_workspace_id(&state, &headers).await?;
     let query_id = Uuid::new_v4().to_string();
     let profile = req.profile.unwrap_or_else(|| "balanced".to_string());
+    let conversation_id = req.conversation_id;
+
+    // Node 契約 chat.ts:74：conversationId 不存在（或已刪除）→ 404
+    if let Some(cid) = &conversation_id {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+        )
+        .bind(cid)
+        .bind(&workspace)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 查詢 conversation 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        if count == 0 {
+            return Err(StatusCode::NOT_FOUND);
+        }
+    }
+
     let threshold = match profile.as_str() {
         "fast" => 0.50,
         "precise" => 0.70,
@@ -2686,6 +2786,60 @@ async fn chat_handler(
     let confidence_json = json!({
         "score": total_score, "level": level, "reason": reason
     });
+
+    // 💡 寫入 query_logs 表
+    sqlx::query(
+        "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .bind(&req.query)
+    .bind(&profile)
+    .bind(total_score)
+    .bind(100i64) // mock response time
+    .bind("rag")
+    .bind(&workspace)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 寫入 query_logs 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    // 💡 若提供 conversationId，將使用者 query 及助理 answer（含 metadata）寫入 messages 表
+    if let Some(cid) = &conversation_id {
+        let user_msg_id = Uuid::new_v4().to_string();
+        let assistant_msg_id = Uuid::new_v4().to_string();
+        let sources_str = serde_json::to_string(&sources_mapped).unwrap_or_default();
+
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'user', ?, datetime('now'))"
+        )
+        .bind(&user_msg_id)
+        .bind(cid)
+        .bind(&req.query)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 寫入 messages 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, datetime('now'))"
+        )
+        .bind(&assistant_msg_id)
+        .bind(cid)
+        .bind(&answer)
+        .bind(&sources_str)
+        .bind(&profile)
+        .bind(total_score)
+        .bind(100i64)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 寫入 messages 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    }
 
     Ok(Json(json!({
         "queryId": query_id,
@@ -2829,12 +2983,12 @@ mod tests {
             "CREATE TABLE benchmark_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id TEXT NOT NULL, model TEXT NOT NULL, metric_name TEXT NOT NULL, metric_value REAL NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
         ).execute(&db_pool).await.unwrap();
 
-        // 插入測試資料（workspace id 用 UUID，name='homelab'；解析層做 name→id）
-        let cfg = opendoc_storage::ConfigManager::load_or_init().unwrap();
-        let default_name = cfg.get_config().await.model.default_workspace.clone();
+    // 插入測試資料（workspace id 用 UUID，name='homelab'；解析層做 name→id）
+    let cfg = opendoc_storage::ConfigManager::load_or_init().unwrap();
+    let default_name = cfg.get_config().await.model.default_workspace.clone();
 
-        let ws_id = Uuid::new_v4().to_string();
-        sqlx::query("INSERT INTO workspaces (id, name) VALUES (?, 'homelab')").bind(&ws_id).execute(&db_pool).await.unwrap();
+    let ws_id = "75b9b1dd-4c99-4b7d-a362-24fae18d861d".to_string(); // 使用預期 UUID 或在 test-state 直接寫入，但 resolve_workspace_id 支援以 name = 'homelab' 查詢，並回傳 id。
+    sqlx::query("INSERT INTO workspaces (id, name) VALUES (?, 'homelab')").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES ('doc1', 'test.md', 'markdown', 'docs/test.md', 'indexed', 5, ?)").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, feedback, workspace_id) VALUES ('hello', 'hybrid', 0.85, 120, 'semantic', 'positive', ?)").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO dictionary (workspace_id, key, value) VALUES (?, 'domain', 'opendoc')").bind(&ws_id).execute(&db_pool).await.unwrap();
@@ -3772,6 +3926,144 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
             json.get("error").and_then(|v| v.as_str()).unwrap(),
             "Conversation not found"
         );
+    }
+
+    #[tokio::test]
+    async fn test_chat_handler_persistence() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 1. Create a conversation first
+        let req_body = serde_json::json!({ "title": "Chat and persist" });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/conversations")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let conv_json: Value = serde_json::from_slice(&body).unwrap();
+        let conv_id = conv_json.get("id").and_then(|v| v.as_str()).unwrap().to_string();
+
+        // 2. Call /chat with conversationId
+        let chat_body = serde_json::json!({
+            "query": "Who are you?",
+            "profile": "fast",
+            "conversationId": conv_id
+        });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&chat_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        // 3. Verify messages are written to DB (User message and Assistant message)
+        let messages: Vec<(String, String, Option<String>)> = sqlx::query_as(
+            "SELECT role, content, profile_used FROM messages WHERE conversation_id = ? ORDER BY created_at ASC"
+        )
+        .bind(&conv_id)
+        .fetch_all(&db_pool)
+        .await
+        .unwrap();
+
+        assert_eq!(messages.len(), 2, "Should persist exactly 2 messages (user & assistant)");
+        assert_eq!(messages[0].0, "user");
+        assert_eq!(messages[0].1, "Who are you?");
+        assert_eq!(messages[1].0, "assistant");
+        assert_eq!(messages[1].2, Some("fast".to_string()));
+
+        // 4. Verify query_logs are written
+        let query_log_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM query_logs WHERE query = 'Who are you?' AND profile = 'fast'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(query_log_count, 1, "Should log query to query_logs");
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_handler_persistence() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 1. Call /chat/stream without conversationId (should auto-create one)
+        let chat_body = serde_json::json!({
+            "query": "Stream with persistence",
+            "profile": "precise"
+        });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat/stream")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&chat_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let body_str = String::from_utf8(body.to_vec()).unwrap();
+        
+        // Extract conversationId from 'done' event in SSE stream
+        let mut conv_id = String::new();
+        for line in body_str.lines() {
+            if line.contains("\"conversationId\"") {
+                // Find where the JSON starts
+                if let Some(idx) = line.find('{') {
+                    let json_str = &line[idx..];
+                    if let Ok(json_val) = serde_json::from_str::<Value>(json_str) {
+                        if let Some(cid) = json_val.get("conversationId").and_then(|v| v.as_str()) {
+                            conv_id = cid.to_string();
+                        }
+                    }
+                }
+            }
+        }
+        assert!(!conv_id.is_empty(), "Should auto-create and return a conversationId in done event");
+
+        // 2. Verify messages are written (user and assistant)
+        let messages: Vec<(String, String, Option<String>)> = sqlx::query_as(
+            "SELECT role, content, profile_used FROM messages WHERE conversation_id = ? ORDER BY created_at ASC"
+        )
+        .bind(&conv_id)
+        .fetch_all(&db_pool)
+        .await
+        .unwrap();
+
+        assert_eq!(messages.len(), 2, "Should persist user and assistant messages for streaming too");
+        assert_eq!(messages[0].0, "user");
+        assert_eq!(messages[0].1, "Stream with persistence");
+        assert_eq!(messages[1].0, "assistant");
+        assert_eq!(messages[1].2, Some("precise".to_string()));
+
+        // 3. Verify query_logs are written
+        let query_log_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM query_logs WHERE query = 'Stream with persistence' AND profile = 'precise'"
+        )
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(query_log_count, 1);
     }
 
     #[tokio::test]
