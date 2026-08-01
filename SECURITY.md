@@ -8,11 +8,9 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly:
+If you discover a security vulnerability, please report it responsibly by creating a private security advisory on GitHub.
 
-1. **Do NOT open a public GitHub issue**
-2. Email: security@opendocuments.dev (or create a private security advisory on GitHub)
-3. Include:
+Include:
    - Description of the vulnerability
    - Steps to reproduce
    - Potential impact
