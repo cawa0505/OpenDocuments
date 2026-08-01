@@ -30,7 +30,7 @@ Here is a quick comparison between the legacy TypeScript/Node.js implementation 
 | Metric | Legacy (Node.js) | Modern (Rust Core) | Improvement |
 | :--- | :--- | :--- | :--- |
 | **Cold Start / Idle Memory** | ~180 MB | **~18 MB** | **90% RAM Saved** |
-| **Parsing & Chunking Latency** | 4.25 seconds | **0.09 seconds** | **47x Faster** |
+| **Parsing & Chunking Latency** | ~14.25 seconds | **0.83 seconds** | **17x Faster** |
 | **Binary Size / Dependencies** | Thick `node_modules` | **Single Binary (with WebUI embedded)** | **Zero External Dependency** |
 
 <details>
@@ -40,9 +40,9 @@ Here is a quick comparison between the legacy TypeScript/Node.js implementation 
 # Environment: AMD Ryzen 7, 16GB RAM, Windows 11
 # Tool used: hyperfine --warmup 3
 
-Summary:
-  'opendocuments --parse admin_heavy.ods' ran
-    47.22 ± 1.15 times faster than 'node legacy-nodejs/index.js --parse admin_heavy.ods'
+Benchmark 1: opendoc document index admin_heavy.xlsx
+  Time (mean ± σ):     827.0 ms ±   6.2 ms    [User: 22.2 ms, System: 12.2 ms]
+  Range (min … max):   819.6 ms … 835.5 ms    10 runs
 ```
 </details>
 
