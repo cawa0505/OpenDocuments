@@ -7,6 +7,7 @@ edition = "2021"
 opendoc-types = { path = "../opendoc-types" }
 opendoc-storage = { path = "../opendoc-storage" }
 opendoc-parser = { path = "../opendoc-parser" }
+opendoc-llm = { path = "../opendoc-llm" }
 tokio = { version = "1.0", features = ["full"] }
 axum = { version = "0.7", features = ["multipart"] }
 tower-http = { version = "0.5", features = ["fs", "cors"] }

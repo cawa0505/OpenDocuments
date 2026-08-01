@@ -901,6 +901,230 @@ async fn get_admin_connectors_handler(
     Ok(Json(json!({ "connectors": connectors })))
 }
 
+// ── BYOK LLM provider handlers ──────────────────────────────
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmProviderUpsertRequest {
+    pub name: String,
+    pub provider: String,
+    pub base_url: String,
+    pub model: String,
+    pub api_key: Option<String>,
+    pub is_active: Option<bool>,
+}
+
+async fn list_llm_providers_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+    let rows = sqlx::query(
+        "SELECT id, name, provider, base_url, model, is_active, datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), api_key != '' as has_key \
+         FROM llm_providers WHERE workspace_id = ? ORDER BY created_at"
+    )
+    .bind(&workspace_id)
+    .fetch_all(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 llm_providers 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let mut providers = Vec::new();
+    for r in rows {
+        providers.push(json!({
+            "id": sqlx::Row::get::<String, _>(&r, 0),
+            "name": sqlx::Row::get::<String, _>(&r, 1),
+            "provider": sqlx::Row::get::<String, _>(&r, 2),
+            "baseUrl": sqlx::Row::get::<String, _>(&r, 3),
+            "model": sqlx::Row::get::<String, _>(&r, 4),
+            "isActive": sqlx::Row::get::<i64, _>(&r, 5) == 1,
+            "createdAt": sqlx::Row::get::<Option<String>, _>(&r, 6).unwrap_or_default(),
+            "updatedAt": sqlx::Row::get::<Option<String>, _>(&r, 7).unwrap_or_default(),
+            "hasApiKey": sqlx::Row::get::<i64, _>(&r, 8) == 1,
+        }));
+    }
+
+    Ok(Json(json!({ "providers": providers })))
+}
+
+async fn upsert_llm_provider_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Json(payload): Json<LlmProviderUpsertRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await
+        .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
+
+    let existing_row = sqlx::query("SELECT id, api_key FROM llm_providers WHERE workspace_id = ? AND name = ?")
+        .bind(&workspace_id)
+        .bind(&payload.name)
+        .fetch_optional(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 查詢既有 provider 失敗: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() })))
+        })?;
+
+    let existing = existing_row.map(|r| {
+        (sqlx::Row::get::<String, _>(&r, 0), sqlx::Row::get::<String, _>(&r, 1))
+    });
+
+    let id = existing.as_ref().map(|(id, _)| id.clone()).unwrap_or_else(|| Uuid::new_v4().to_string());
+    let api_key = match payload.api_key {
+        Some(k) if !k.trim().is_empty() => k,
+        _ => existing.as_ref().map(|(_, key)| key.clone()).unwrap_or_default(),
+    };
+
+    let is_active = if payload.is_active.unwrap_or(false) { 1 } else { 0 };
+
+    if is_active == 1 {
+        sqlx::query("UPDATE llm_providers SET is_active = 0 WHERE workspace_id = ?")
+            .bind(&workspace_id)
+            .execute(&state.db_pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    }
+
+    sqlx::query(
+        "INSERT INTO llm_providers (id, workspace_id, name, provider, base_url, model, api_key, is_active) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?) \
+         ON CONFLICT(workspace_id, name) DO UPDATE SET \
+            provider = excluded.provider, \
+            base_url = excluded.base_url, \
+            model = excluded.model, \
+            api_key = excluded.api_key, \
+            is_active = excluded.is_active, \
+            updated_at = datetime('now', 'localtime')"
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .bind(&payload.name)
+    .bind(&payload.provider)
+    .bind(&payload.base_url)
+    .bind(&payload.model)
+    .bind(&api_key)
+    .bind(is_active)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 Upsert provider 失敗: {e}");
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() })))
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "id": id,
+            "name": payload.name,
+            "provider": payload.provider,
+            "baseUrl": payload.base_url,
+            "model": payload.model,
+            "isActive": is_active == 1,
+            "hasApiKey": !api_key.is_empty(),
+        })),
+    ))
+}
+
+async fn delete_llm_provider_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    let result = sqlx::query("DELETE FROM llm_providers WHERE id = ? AND workspace_id = ?")
+        .bind(&id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 刪除 provider 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    Ok(Json(json!({ "deleted": true })))
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmTestRequest {
+    pub provider_id: Option<String>,
+    pub base_url: Option<String>,
+    pub model: Option<String>,
+    pub api_key: Option<String>,
+}
+
+async fn test_llm_provider_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Json(payload): Json<LlmTestRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await
+        .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
+
+    let (base_url, model, api_key) = if let Some(pid) = payload.provider_id {
+        let row = sqlx::query("SELECT base_url, model, api_key FROM llm_providers WHERE id = ? AND workspace_id = ?")
+            .bind(&pid)
+            .bind(&workspace_id)
+            .fetch_optional(&state.db_pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        match row {
+            Some(r) => {
+                let url: String = sqlx::Row::get(&r, 0);
+                let md: String = sqlx::Row::get(&r, 1);
+                let key: String = sqlx::Row::get(&r, 2);
+                (url, md, Some(key))
+            }
+            None => return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Provider not found" })))),
+        }
+    } else {
+        let url = payload.base_url.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Missing base_url" }))))?;
+        let md = payload.model.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Missing model" }))))?;
+        let key = payload.api_key;
+        (url, md, key)
+    };
+
+    let cfg = opendoc_llm::LlmProvider {
+        name: "test".to_string(),
+        base_url,
+        model,
+        api_key,
+    };
+
+    let client = opendoc_llm::LlmClient::new(cfg);
+    let messages = vec![opendoc_llm::ChatMessage::user("say: pong")];
+    let opts = opendoc_llm::CompletionOptions {
+        temperature: Some(0.1),
+        max_tokens: Some(10),
+        system_prompt: None,
+    };
+
+    let start = std::time::Instant::now();
+    match client.complete(messages, &opts).await {
+        Ok(reply) => {
+            let latency = start.elapsed().as_millis() as u64;
+            Ok(Json(json!({
+                "ok": true,
+                "reply": reply.trim(),
+                "latencyMs": latency,
+            })))
+        }
+        Err(e) => {
+            Err((StatusCode::BAD_GATEWAY, Json(json!({
+                "ok": false,
+                "error": e.to_string(),
+            }))))
+        }
+    }
+}
+
 async fn delete_document_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
@@ -2765,11 +2989,74 @@ async fn get_history_context(db_pool: &sqlx::SqlitePool, conversation_id: &str) 
 }
 
 // ponytail: 直接用 search_and_rerank + 組裝答案；LLM streaming 加 when 需要
+
+// ── BYOK LLM Helpers ──
+async fn get_active_llm_client(db_pool: &sqlx::SqlitePool, workspace_id: &str) -> Option<opendoc_llm::LlmClient> {
+    let row_res = sqlx::query(
+        "SELECT name, provider, base_url, model, api_key FROM llm_providers WHERE workspace_id = ? AND is_active = 1 LIMIT 1"
+    )
+    .bind(workspace_id)
+    .fetch_optional(db_pool)
+    .await;
+
+    match row_res {
+        Ok(Some(row)) => {
+            let name: String = sqlx::Row::get(&row, 0);
+            let _provider_name: String = sqlx::Row::get(&row, 1);
+            let base_url: String = sqlx::Row::get(&row, 2);
+            let model: String = sqlx::Row::get(&row, 3);
+            let api_key: String = sqlx::Row::get(&row, 4);
+
+            let api_key_opt = if api_key.is_empty() { None } else { Some(api_key) };
+
+            let provider = opendoc_llm::LlmProvider {
+                name,
+                base_url,
+                model,
+                api_key: api_key_opt,
+            };
+            Some(opendoc_llm::LlmClient::new(provider))
+        }
+        _ => None,
+    }
+}
+
+async fn get_history_messages(db_pool: &sqlx::SqlitePool, conversation_id: &str) -> Vec<opendoc_llm::ChatMessage> {
+    let rows_res = sqlx::query(
+        "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 6"
+    )
+    .bind(conversation_id)
+    .fetch_all(db_pool)
+    .await;
+
+    match rows_res {
+        Ok(rows) => {
+            let mut msgs = Vec::new();
+            for r in rows.into_iter().rev() {
+                let role: String = sqlx::Row::get(&r, 0);
+                let content: String = sqlx::Row::get(&r, 1);
+                if role.to_lowercase() == "user" {
+                    msgs.push(opendoc_llm::ChatMessage::user(content));
+                } else if role.to_lowercase() == "assistant" {
+                    msgs.push(opendoc_llm::ChatMessage::assistant(content));
+                }
+            }
+            msgs
+        }
+        Err(e) => {
+            eprintln!("💥 讀取對話歷史強型別失敗: {e}");
+            Vec::new()
+        }
+    }
+}
+
 async fn chat_stream_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
     Json(req): Json<ChatStreamRequest>,
-) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<Sse<std::pin::Pin<Box<dyn Stream<Item = Result<Event, std::convert::Infallible>> + Send>>>, (StatusCode, Json<serde_json::Value>)> {
+    use futures_util::StreamExt;
+
     let workspace = match resolve_workspace_id(&state, &headers).await {
         Ok(w) => w,
         Err(e) => {
@@ -2873,76 +3160,196 @@ async fn chat_stream_handler(
     let confidence_json = serde_json::to_string(&json!({
         "score": total_score, "level": level, "reason": reason
     })).unwrap_or_default();
-    let done_json = serde_json::to_string(&json!({
-        "queryId": query_id, "route": "rag", "profile": profile,
-        "conversationId": conversation_id,
-    })).unwrap_or_default();
 
-    // 💡 寫入 query_logs 表
-    if let Err(e) = sqlx::query(
-        "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, 'rag', ?)"
-    )
-    .bind(&req.query)
-    .bind(&profile)
-    .bind(total_score)
-    .bind(100i64)
-    .bind(&workspace)
-    .execute(&state.db_pool)
-    .await {
-        eprintln!("💥 寫入 query_logs 失敗: {e}");
+    let llm_client_opt = get_active_llm_client(&state.db_pool, &workspace).await;
+
+    if let Some(llm_client) = llm_client_opt {
+        let sources_json_clone = sources_json.clone();
+        let confidence_json_clone = confidence_json.clone();
+
+        let context_str = if limited.is_empty() {
+            "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string()
+        } else {
+            limited.iter().enumerate().map(|(i, r)| {
+                format!("[文獻 {}] 來源: {}\n内容: {}", i + 1, r.file_path, r.content)
+            }).collect::<Vec<_>>().join("\n\n")
+        };
+
+        let system_prompt = format!(
+            "你是一個專業的本地知識庫助理。請根據以下提供的 [本地文獻] 來回答使用者的問題。\n\
+            如果文獻中沒有提到相關資訊，請誠實說明「本地文獻未提及」，不要虛構事實。回答時請維持繁體中文語系。\n\n\
+            [本地文獻]\n{}",
+            context_str
+        );
+
+        let cid_clone = conversation_id.clone();
+        let query_clone = req.query.clone();
+        let profile_clone = profile.clone();
+        let workspace_clone = workspace.clone();
+        let query_id_clone = query_id.clone();
+        let state_clone = state.clone();
+        let sources_mapped_clone = sources_mapped.clone();
+
+        let mut messages = if let Some(cid) = &conversation_id {
+            get_history_messages(&state.db_pool, cid).await
+        } else {
+            Vec::new()
+        };
+        messages.push(opendoc_llm::ChatMessage::user(&req.query));
+
+        let opts = opendoc_llm::CompletionOptions {
+            temperature: Some(0.3),
+            max_tokens: None,
+            system_prompt: Some(system_prompt),
+        };
+
+        let llm_stream_res = llm_client.stream(messages, &opts).await;
+
+        match llm_stream_res {
+            Ok(mut llm_stream) => {
+                let s = async_stream::stream! {
+                    yield Ok::<Event, std::convert::Infallible>(Event::default().event("sources").data(sources_json_clone));
+                    yield Ok::<Event, std::convert::Infallible>(Event::default().event("confidence").data(confidence_json_clone));
+
+                    let mut full_answer = String::new();
+
+                    while let Some(res) = llm_stream.next().await {
+                        match res {
+                            Ok(token) => {
+                                full_answer.push_str(&token);
+                                let chunk_data = serde_json::to_string(&token).unwrap_or_default();
+                                yield Ok::<Event, std::convert::Infallible>(Event::default().event("chunk").data(chunk_data));
+                            }
+                            Err(e) => {
+                                eprintln!("💥 LLM stream error: {e}");
+                                let error_data = serde_json::to_string(&json!({ "error": e.to_string() })).unwrap_or_default();
+                                yield Ok::<Event, std::convert::Infallible>(Event::default().event("error").data(error_data));
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some(cid) = &cid_clone {
+                        let user_msg_id = Uuid::new_v4().to_string();
+                        let assistant_msg_id = Uuid::new_v4().to_string();
+                        let sources_str = serde_json::to_string(&sources_mapped_clone).unwrap_or_default();
+
+                        let db = &state_clone.db_pool;
+
+                        if let Err(e) = sqlx::query(
+                            "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'user', ?, datetime('now'))"
+                        )
+                        .bind(&user_msg_id)
+                        .bind(cid)
+                        .bind(&query_clone)
+                        .execute(db)
+                        .await {
+                            eprintln!("💥 串流寫入 user messages 失敗: {e}");
+                        }
+
+                        if let Err(e) = sqlx::query(
+                            "INSERT INTO messages (id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, datetime('now'))"
+                        )
+                        .bind(&assistant_msg_id)
+                        .bind(cid)
+                        .bind(&full_answer)
+                        .bind(&sources_str)
+                        .bind(&profile_clone)
+                        .bind(total_score)
+                        .bind(100i64)
+                        .execute(db)
+                        .await {
+                            eprintln!("💥 串流寫入 assistant messages 失敗: {e}");
+                        }
+                    }
+
+                    if let Err(e) = sqlx::query(
+                        "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, 'rag', ?)"
+                    )
+                    .bind(&query_clone)
+                    .bind(&profile_clone)
+                    .bind(total_score)
+                    .bind(100i64)
+                    .bind(&workspace_clone)
+                    .execute(&state_clone.db_pool)
+                    .await {
+                        eprintln!("💥 串流寫入 query_logs 失敗: {e}");
+                    }
+
+                    let done_json = serde_json::to_string(&json!({
+                        "queryId": query_id_clone, "route": "rag", "profile": profile_clone,
+                        "conversationId": cid_clone,
+                    })).unwrap_or_default();
+                    yield Ok::<Event, std::convert::Infallible>(Event::default().event("done").data(done_json));
+                };
+
+                return Ok(Sse::new(Box::pin(s) as std::pin::Pin<Box<dyn Stream<Item = Result<Event, std::convert::Infallible>> + Send>>).keep_alive(KeepAlive::default()));
+            }
+            Err(e) => {
+                eprintln!("💥 取得 LLM Stream 失敗，Fallback 到 Echo 模式: {e}");
+            }
+        }
     }
 
-    // 💡 將使用者 query 及助理 answer（含 metadata）寫入 messages 表
-    if let Some(cid) = &conversation_id {
-        let user_msg_id = Uuid::new_v4().to_string();
-        let assistant_msg_id = Uuid::new_v4().to_string();
-        let sources_str = serde_json::to_string(&sources_mapped).unwrap_or_default();
+    // Fallback stream (concatenated chunks)
+    let s_fallback = async_stream::stream! {
+        yield Ok::<Event, std::convert::Infallible>(Event::default().event("sources").data(sources_json));
+        yield Ok::<Event, std::convert::Infallible>(Event::default().event("confidence").data(confidence_json));
+        yield Ok::<Event, std::convert::Infallible>(Event::default().event("chunk").data(serde_json::to_string(&answer).unwrap_or_default()));
 
-        sqlx::query(
-            "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'user', ?, datetime('now'))"
-        )
-        .bind(&user_msg_id)
-        .bind(cid)
-        .bind(&req.query)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 寫入 messages 失敗: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal server error" })),
+        if let Some(cid) = &conversation_id {
+            let user_msg_id = Uuid::new_v4().to_string();
+            let assistant_msg_id = Uuid::new_v4().to_string();
+            let sources_str = serde_json::to_string(&sources_mapped).unwrap_or_default();
+
+            if let Err(e) = sqlx::query(
+                "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'user', ?, datetime('now'))"
             )
-        })?;
+            .bind(&user_msg_id)
+            .bind(cid)
+            .bind(&req.query)
+            .execute(&state.db_pool)
+            .await {
+                eprintln!("💥 Fallback 寫入 user messages 失敗: {e}");
+            }
 
-        sqlx::query(
-            "INSERT INTO messages (id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, datetime('now'))"
+            if let Err(e) = sqlx::query(
+                "INSERT INTO messages (id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at) VALUES (?, ?, 'assistant', ?, ?, ?, ?, ?, datetime('now'))"
+            )
+            .bind(&assistant_msg_id)
+            .bind(cid)
+            .bind(&answer)
+            .bind(&sources_str)
+            .bind(&profile)
+            .bind(total_score)
+            .bind(100i64)
+            .execute(&state.db_pool)
+            .await {
+                eprintln!("💥 Fallback 寫入 assistant messages 失敗: {e}");
+            }
+        }
+
+        if let Err(e) = sqlx::query(
+            "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, 'rag', ?)"
         )
-        .bind(&assistant_msg_id)
-        .bind(cid)
-        .bind(&answer)
-        .bind(&sources_str)
+        .bind(&req.query)
         .bind(&profile)
         .bind(total_score)
         .bind(100i64)
+        .bind(&workspace)
         .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 寫入 messages 失敗: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Internal server error" })),
-            )
-        })?;
-    }
+        .await {
+            eprintln!("💥 Fallback 寫入 query_logs 失敗: {e}");
+        }
 
-    let stream = futures_util::stream::iter(vec![
-        Ok::<_, std::convert::Infallible>(Event::default().event("sources").data(sources_json)),
-        Ok(Event::default().event("confidence").data(confidence_json)),
-        Ok(Event::default().event("chunk").data(answer)),
-        Ok(Event::default().event("done").data(done_json)),
-    ]);
+        let done_json = serde_json::to_string(&json!({
+            "queryId": query_id, "route": "rag", "profile": profile,
+            "conversationId": conversation_id,
+        })).unwrap_or_default();
+        yield Ok::<Event, std::convert::Infallible>(Event::default().event("done").data(done_json));
+    };
 
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+    Ok(Sse::new(Box::pin(s_fallback) as std::pin::Pin<Box<dyn Stream<Item = Result<Event, std::convert::Infallible>> + Send>>).keep_alive(KeepAlive::default()))
 }
 
 // Non-streaming chat endpoint
@@ -3003,13 +3410,58 @@ async fn chat_handler(
     let results = state.search.search_and_rerank(&expanded_query, threshold);
     let limited: Vec<_> = results.into_iter().take(10).collect();
 
-    let answer = if limited.is_empty() {
-        "在現有文獻中未找到相關內容。".to_string()
-    } else {
-        limited.iter().enumerate().map(|(i, r)| {
-            format!("[{}] {}", i + 1, r.content.chars().take(500).collect::<String>())
-        }).collect::<Vec<_>>().join("\n\n")
-    };
+    let mut answer = String::new();
+    let mut generated_by_llm = false;
+
+    if let Some(llm_client) = get_active_llm_client(&state.db_pool, &workspace).await {
+        let context_str = if limited.is_empty() {
+            "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string()
+        } else {
+            limited.iter().enumerate().map(|(i, r)| {
+                format!("[文獻 {}] 來源: {}\n内容: {}", i + 1, r.file_path, r.content)
+            }).collect::<Vec<_>>().join("\n\n")
+        };
+
+        let system_prompt = format!(
+            "你是一個專業的本地知識庫助理。請根據以下提供的 [本地文獻] 來回答使用者的問題。\n\
+            如果文獻中沒有提到相關資訊，請誠實說明「本地文獻未提及」，不要虛構事實。回答時請維持繁體中文語系。\n\n\
+            [本地文獻]\n{}",
+            context_str
+        );
+
+        let mut messages = if let Some(cid) = &conversation_id {
+            get_history_messages(&state.db_pool, cid).await
+        } else {
+            Vec::new()
+        };
+        messages.push(opendoc_llm::ChatMessage::user(&req.query));
+
+        let opts = opendoc_llm::CompletionOptions {
+            temperature: Some(0.3),
+            max_tokens: None,
+            system_prompt: Some(system_prompt),
+        };
+
+        match llm_client.complete(messages, &opts).await {
+            Ok(generated) => {
+                answer = generated;
+                generated_by_llm = true;
+            }
+            Err(e) => {
+                eprintln!("💥 LLM 生成失敗，自動 Fallback 至 Echo 模式: {e}");
+            }
+        }
+    }
+
+    if !generated_by_llm {
+        answer = if limited.is_empty() {
+            "在現有文獻中未找到相關內容。".to_string()
+        } else {
+            limited.iter().enumerate().map(|(i, r)| {
+                format!("[{}] {}", i + 1, r.content.chars().take(500).collect::<String>())
+            }).collect::<Vec<_>>().join("\n\n")
+        };
+    }
 
     let total_score: f32 = if limited.is_empty() { 0.0 }
         else { limited.iter().map(|r| r.relevance_score.unwrap_or(0.0)).sum::<f32>() / limited.len() as f32 };
@@ -3039,21 +3491,18 @@ async fn chat_handler(
     });
 
     // 💡 寫入 query_logs 表
-    sqlx::query(
-        "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, ?, ?)"
+    if let Err(e) = sqlx::query(
+        "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, workspace_id) VALUES (?, ?, ?, ?, 'rag', ?)"
     )
     .bind(&req.query)
     .bind(&profile)
     .bind(total_score)
-    .bind(100i64) // mock response time
-    .bind("rag")
+    .bind(100i64)
     .bind(&workspace)
     .execute(&state.db_pool)
-    .await
-    .map_err(|e| {
+    .await {
         eprintln!("💥 寫入 query_logs 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    }
 
     // 💡 若提供 conversationId，將使用者 query 及助理 answer（含 metadata）寫入 messages 表
     if let Some(cid) = &conversation_id {
@@ -3152,6 +3601,9 @@ pub async fn start_mcp_and_api_server(
         .route("/admin/benchmark", get(get_admin_benchmark_handler))
         .route("/admin/connectors", get(get_admin_connectors_handler))
         .route("/admin/query-logs", get(get_admin_query_logs_handler))
+        .route("/admin/llm/providers", get(list_llm_providers_handler).post(upsert_llm_provider_handler))
+        .route("/admin/llm/providers/:id", delete(delete_llm_provider_handler))
+        .route("/admin/llm/test", post(test_llm_provider_handler))
         .route("/query/log", post(query_log_handler))
         .route("/query/feedback", post(query_feedback_handler))
         .route("/chat/feedback", post(chat_feedback_handler))
@@ -3208,6 +3660,10 @@ mod tests {
 
         sqlx::query(
             "CREATE TABLE connectors (id TEXT PRIMARY KEY, workspace_id TEXT, name TEXT NOT NULL, type TEXT NOT NULL, config TEXT NOT NULL DEFAULT '{}', sync_interval_seconds INTEGER DEFAULT 300, last_synced_at TEXT, status TEXT DEFAULT 'active', deleted_at TEXT DEFAULT NULL, created_at TEXT DEFAULT (datetime('now')))"
+        ).execute(&db_pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE llm_providers (id TEXT PRIMARY KEY, workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL, provider TEXT NOT NULL, base_url TEXT NOT NULL, model TEXT NOT NULL, api_key TEXT NOT NULL DEFAULT '', is_active INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), UNIQUE(workspace_id, name))"
         ).execute(&db_pool).await.unwrap();
 
         sqlx::query(
@@ -3504,6 +3960,9 @@ mod tests {
             .route("/admin/benchmark", get(get_admin_benchmark_handler))
             .route("/admin/connectors", get(get_admin_connectors_handler))
             .route("/admin/query-logs", get(get_admin_query_logs_handler))
+            .route("/admin/llm/providers", get(list_llm_providers_handler).post(upsert_llm_provider_handler))
+            .route("/admin/llm/providers/:id", delete(delete_llm_provider_handler))
+            .route("/admin/llm/test", post(test_llm_provider_handler))
             .route("/documents/trash", get(list_trash_handler))
             .route("/documents/:id/restore", post(restore_document_handler))
             .route("/documents/:id", get(get_document_handler).delete(delete_document_handler))
@@ -5379,5 +5838,198 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
         assert_eq!(docs.len(), 1, "還原後 documents 列表應該恢復到 1 個文件");
         assert_eq!(docs[0].get("id").and_then(|v| v.as_str()).unwrap(), "doc1");
+    }
+
+    #[tokio::test]
+    async fn test_llm_providers_crud() {
+        let state = build_test_state().await;
+        let app = build_router(state.clone());
+
+        // 1. GET 列表應為空
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/llm/providers")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let providers = json.get("providers").and_then(|v| v.as_array()).unwrap();
+        assert!(providers.is_empty(), "預設 LLM providers 應為空");
+
+        // 2. POST 建立 provider
+        let payload = json!({
+            "name": "deepseek-test",
+            "provider": "deepseek",
+            "baseUrl": "https://api.deepseek.com/v1",
+            "model": "deepseek-chat",
+            "apiKey": "sk-secret-key-123",
+            "isActive": true
+        });
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/admin/llm/providers")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&payload).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let created: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(created.get("name").and_then(|v| v.as_str()).unwrap(), "deepseek-test");
+        assert_eq!(created.get("isActive").and_then(|v| v.as_bool()).unwrap(), true);
+        assert_eq!(created.get("hasApiKey").and_then(|v| v.as_bool()).unwrap(), true);
+        let provider_id = created.get("id").and_then(|v| v.as_str()).unwrap().to_string();
+
+        // 3. GET 列表確認不洩漏 API Key 且 hasApiKey 為 true
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/llm/providers")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let list = json.get("providers").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(list.len(), 1);
+        let item = &list[0];
+        assert_eq!(item.get("id").and_then(|v| v.as_str()).unwrap(), &provider_id);
+        assert_eq!(item.get("hasApiKey").and_then(|v| v.as_bool()).unwrap(), true);
+        assert!(item.get("apiKey").is_none(), "安全防禦：列表絕不能回傳 apiKey 欄位");
+        assert!(item.get("api_key").is_none());
+
+        // 4. POST 更新：保持 API Key，修改 model 且設為 active
+        let update_payload = json!({
+            "name": "deepseek-test",
+            "provider": "deepseek",
+            "baseUrl": "https://api.deepseek.com/v2",
+            "model": "deepseek-coder",
+            "apiKey": "", // 留空代表保持原 key
+            "isActive": true
+        });
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/admin/llm/providers")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&update_payload).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let updated: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(updated.get("model").and_then(|v| v.as_str()).unwrap(), "deepseek-coder");
+        assert_eq!(updated.get("hasApiKey").and_then(|v| v.as_bool()).unwrap(), true, "既有 key 應該被保留");
+
+        // 5. 刪除測試
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(format!("/admin/llm/providers/{provider_id}"))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        // 驗證列表重新變空
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/llm/providers")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let list = json.get("providers").and_then(|v| v.as_array()).unwrap();
+        assert!(list.is_empty(), "刪除後列表應為空");
+    }
+
+    #[tokio::test]
+    async fn test_llm_provider_test_connection() {
+        // 建立 Mock Server 來模擬 OpenAI completions 回應
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mock_url = format!("http://{}", addr);
+
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                let mut buf = [0u8; 1024];
+                let _ = stream.read(&mut buf).await; // 讀取 request (不論內容)
+
+                let response_body = serde_json::json!({
+                    "choices": [{
+                        "message": {
+                            "role": "assistant",
+                            "content": "pong"
+                        }
+                    }]
+                }).to_string();
+
+                let http_response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                    response_body.len(),
+                    response_body
+                );
+                let _ = stream.write_all(http_response.as_bytes()).await;
+            }
+        });
+
+        let state = build_test_state().await;
+        let app = build_router(state.clone());
+
+        // 測試連線 (以臨時 config 呼叫)
+        let test_payload = json!({
+            "baseUrl": mock_url,
+            "model": "mock-model",
+            "apiKey": "mock-key"
+        });
+
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/admin/llm/test")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&test_payload).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("ok").and_then(|v| v.as_bool()).unwrap(), true);
+        assert_eq!(json.get("reply").and_then(|v| v.as_str()).unwrap(), "pong");
+        assert!(json.get("latencyMs").is_some());
     }
 }

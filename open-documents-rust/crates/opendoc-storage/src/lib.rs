@@ -231,6 +231,9 @@ impl ConfigManager {
         sqlx::query("ALTER TABLE documents ADD COLUMN updated_at DATETIME").execute(&pool).await.ok();
         sqlx::query("ALTER TABLE documents ADD COLUMN indexed_at DATETIME").execute(&pool).await.ok();
         
+        // BYOK LLM migrations
+        sqlx::query("ALTER TABLE llm_providers ADD COLUMN provider TEXT NOT NULL DEFAULT 'custom'").execute(&pool).await.ok();
+        
         // 兼容舊資料: 若無 title 欄位，用 name 欄位填入
         sqlx::query("UPDATE documents SET title = name WHERE title IS NULL AND name IS NOT NULL").execute(&pool).await.ok();
 
@@ -296,6 +299,23 @@ impl ConfigManager {
                 document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
                 tag_id TEXT REFERENCES tags(id) ON DELETE CASCADE,
                 PRIMARY KEY (document_id, tag_id)
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        // BYOK LLM provider 設定（金鑰僅存此處，執行期進記憶體，API 不回傳本體）
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS llm_providers (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                base_url TEXT NOT NULL,
+                model TEXT NOT NULL,
+                api_key TEXT NOT NULL DEFAULT '',
+                is_active INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(workspace_id, name)
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 

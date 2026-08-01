@@ -17,6 +17,7 @@ members = [
     "crates/opendoc-parser-html",
     "crates/opendoc-parser-pptx",
     "crates/opendoc-storage",
+    "crates/opendoc-llm",
     "crates/opendoc-tui",
     "crates/opendoc-mcp"
 ]
