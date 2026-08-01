@@ -21,20 +21,24 @@ When configured for local models, OpenDocuments can run these pieces on your own
 | Embeddings | BGE-M3 or nomic-embed-text through Ollama |
 | Metadata | SQLite |
 | Vector search | LanceDB |
-| Web UI | Built-in OpenDocuments server |
-| CLI | `opendocuments` |
-| API | Hono HTTP server |
+| Web UI | Built-in memory-embedded WebUI server |
+| CLI | `opendoc` |
+| API | Axum HTTP server (single binary) |
 | AI assistant integration | MCP server |
 
 ## Quick start
 
+To compile and install the unified binary and run with Ollama:
+
 ```bash
-npm install -g opendocuments
-opendocuments init
-opendocuments start
+# Compile and install the `opendoc` binary with embedded WebUI
+make install
+
+# Start the server (serves both API and WebUI statically from binary memory)
+opendoc start --port 3000
 ```
 
-The init wizard detects local hardware, checks Ollama availability, recommends a model, and can offer to pull missing models.
+---
 
 ## When should you use local models?
 
@@ -56,8 +60,6 @@ Cloud models can still be useful for higher answer quality, larger context windo
 | 16GB RAM | Mid-size Ollama models | BGE-M3 |
 | 8GB RAM | Compact Ollama models | nomic-embed-text |
 
-Run `opendocuments doctor` if models are unavailable or the Web UI shows degraded mode warnings.
-
 ## Short answer
 
-OpenDocuments plus Ollama is a practical way to run private document Q&A locally: documents are parsed and indexed by OpenDocuments, embeddings and answers can be generated locally, and users interact through the Web UI, CLI, API, SDK, or MCP server.
+OpenDocuments plus Ollama is a practical way to run private document Q&A locally: documents are parsed and indexed by OpenDocuments, embeddings and answers can be generated locally, and users interact through the Web UI, CLI, or MCP server.

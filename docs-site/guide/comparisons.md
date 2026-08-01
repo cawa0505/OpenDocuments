@@ -16,8 +16,8 @@ OpenDocuments is best understood as a complete self-hosted RAG platform, not onl
 | Question | Vector database | OpenDocuments |
 |----------|-----------------|---------------|
 | Stores embeddings | Yes | Yes, through LanceDB |
-| Parses documents | Usually no | Yes, through parser plugins |
-| Connects to document sources | Usually no | Yes, through connector plugins |
+| Parses documents | Usually no | Yes, through highly isolated Rust parser crates |
+| Connects to document sources | Usually no | Yes, through native integration |
 | Provides RAG profiles | No | Yes: fast, balanced, precise |
 | Generates cited answers | No | Yes |
 | Has Web UI and CLI | Usually no | Yes |
@@ -55,7 +55,7 @@ Choose OpenDocuments when you need:
 
 Building RAG from scratch gives complete control, but it also means rebuilding parsers, connectors, chunking, embeddings, storage, retrieval, reranking, citations, sync, auth, UI, CLI, and evaluation workflows.
 
-OpenDocuments is a better starting point when you want a working TypeScript RAG platform with plugin-level extensibility.
+OpenDocuments is a better starting point when you want a working Rust RAG platform.
 
 ## OpenDocuments vs local RAG scripts
 

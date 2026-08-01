@@ -50,7 +50,7 @@ pub async fn parse_file(
             let parser = TextParser;
             parser.parse(file_path, workspace_id, collection_id).await
         }
-        "rs" | "py" | "ts" | "js" | "go" | "java" | "cpp" | "h" | "cs" | "sh" | "yaml" | "yml" | "json" | "toml" => {
+        "rs" | "py" | "ts" | "tsx" | "js" | "jsx" | "go" | "java" | "cpp" | "h" | "cs" | "sh" | "yaml" | "yml" | "json" | "toml" | "css" | "sql" | "mdx" => {
             let parser = CodeParser;
             parser.parse(file_path, workspace_id, collection_id).await
         }
@@ -70,9 +70,17 @@ pub async fn parse_file(
             let parser = PptxParser;
             parser.parse(file_path, workspace_id, collection_id).await
         }
-        _ => Err(format!(
-            "No pure Rust parser plugin registered for extension: .{} (Original name: {:?}, physical path: {:?})",
-            ext, original_name, file_path
-        )),
+        _ => {
+            // 💡 【終極防護：自適應文字偵測】若為未知副檔名，但能成功以 UTF-8 格式讀取，則自動降級為純文字解析
+            if std::fs::read_to_string(file_path).is_ok() {
+                let parser = TextParser;
+                parser.parse(file_path, workspace_id, collection_id).await
+            } else {
+                Err(format!(
+                    "No pure Rust parser plugin registered for extension: .{} (Original name: {:?}, physical path: {:?})",
+                    ext, original_name, file_path
+                ))
+            }
+        }
     }
 }

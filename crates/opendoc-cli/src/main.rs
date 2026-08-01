@@ -825,20 +825,6 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
 
     let mut state = TuiAppState::new(default_workspace);
 
-    // 模擬載入一些初始化的 TUI 測試資料
-    state.results = vec![
-        TuiSearchResult {
-            file_name: "CHANGELOG.md".to_string(),
-            score: 0.89,
-            snippet: "修正：OpenDocuments MCP 在連線超時下的崩潰問題，合入 Reranker 阻斷。".to_string(),
-        },
-        TuiSearchResult {
-            file_name: "STRUCTURE.md".to_string(),
-            score: 0.65,
-            snippet: "Homelab 整合：arhat 主要工作機 (192.168.77.200) 部署 5x MCP 遠端容器。".to_string(),
-        },
-    ];
-
     // TUI 主事件循環
     loop {
         terminal.draw(|f| render_ui(f, &state))?;

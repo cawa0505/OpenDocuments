@@ -1,58 +1,180 @@
-# Deployment
+# 🚀 Deployment & Service Auto-Start Guide
 
-## Quick Start (npm)
+OpenDocuments compiles into a high-performance **Single Binary (`opendoc`)** containing both the Rust backend and the embedded React WebUI. You do not need Node.js, Docker, or any external assets to run it in production.
 
-```bash
-npm install -g opendocuments
-opendocuments init
-opendocuments start --port 3000
-```
+This guide details how to install the single binary and configure it to run automatically on system startup across **macOS, Windows, and Linux**.
 
-## Docker
+---
 
-### Cloud LLM
+## 📦 1. Build and Install
+
+To build the single binary with the embedded WebUI and install it to your user's cargo bin path (`~/.cargo/bin/opendoc`), simply use the root `Makefile`:
 
 ```bash
-docker compose up -d
+# Build frontend web assets and compile the Rust binary in release mode
+make install
 ```
 
-### Local LLM (Ollama)
-
+Verify the installation:
 ```bash
-docker compose --profile with-ollama up -d
+opendoc --version
 ```
 
-### With Environment Variables
-
+To run the unified server manually:
 ```bash
-# Pass .env file
-docker compose --env-file .env up -d
-
-# Or set individually
-OPENAI_API_KEY=sk-... docker compose up -d
+opendoc start --port 3000
 ```
+Your WebUI will be served instantly at `http://localhost:3000` with zero external directory requirements!
 
-### Custom Config
+---
 
-```bash
-docker run -d \
-  -v ./opendocuments.config.ts:/app/opendocuments.config.ts \
-  -v opendocuments-data:/data \
-  -p 3000:3000 \
-  opendocuments
-```
+## 🖥️ 2. Platform-Specific Auto-Start Configurations
 
-## Production Checklist
+### 🍎 A. macOS (using `launchd`)
 
-### Reverse Proxy (nginx)
+For macOS, the cleanest way to run `opendoc` as a persistent background daemon that starts automatically on user login is using a `LaunchAgent`.
+
+1. Create a plist configuration file under your user's LaunchAgents directory:
+   ```bash
+   nano ~/Library/LaunchAgents/org.opendocuments.opendoc.plist
+   ```
+
+2. Paste the following configuration (replace `YOUR_USERNAME` with your actual macOS username):
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key>
+       <string>org.opendocuments.opendoc</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>/Users/YOUR_USERNAME/.cargo/bin/opendoc</string>
+           <string>start</string>
+           <string>--port</string>
+           <string>3000</string>
+       </array>
+       <key>RunAtLoad</key>
+       <true/>
+       <key>KeepAlive</key>
+       <true/>
+       <key>StandardOutPath</key>
+       <string>/Users/YOUR_USERNAME/.opendocuments/stdout.log</string>
+       <key>StandardErrorPath</key>
+       <string>/Users/YOUR_USERNAME/.opendocuments/stderr.log</string>
+       <key>EnvironmentVariables</key>
+       <dict>
+           <key>PATH</key>
+           <string>/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin</string>
+       </dict>
+   </dict>
+   </plist>
+   ```
+
+3. Load and start the background agent:
+   ```bash
+   launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.opendocuments.opendoc.plist
+   ```
+
+4. To stop or remove the agent:
+   ```bash
+   launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/org.opendocuments.opendoc.plist
+   ```
+
+---
+
+### 🪟 B. Windows (using Windows Task Scheduler or Startup)
+
+For Windows, you can achieve persistent background execution using **Windows Task Scheduler** or **NSSM** (Non-Sucking Service Manager).
+
+#### Option 1: Windows Task Scheduler (Recommended)
+This method allows running silently in the background on startup without a visible Command Prompt window.
+
+1. Press `Win + R`, type `taskschd.msc`, and press Enter.
+2. Click **Create Basic Task...** in the right sidebar.
+3. **Name**: `OpenDocuments Daemon`
+4. **Trigger**: Select **When I log on**.
+5. **Action**: Select **Start a program**.
+6. **Program/script**: Browse to your compiled binary, e.g., `C:\Users\YOUR_USERNAME\.cargo\bin\opendoc.exe` (or your chosen path).
+7. **Add arguments**: `start --port 3000`
+8. Finish the wizard. Then right-click the newly created task in the list, choose **Properties**, and:
+   - On the **General** tab, check **Run whether user is logged on or not** or check **Run with highest privileges** if needed.
+   - On the **Conditions** tab, uncheck **Start the task only if the computer is on AC power**.
+
+#### Option 2: NSSM (Run as a true Windows Service)
+If you require OpenDocuments to run as a system-level Windows Service that restarts automatically:
+
+1. Download [NSSM](https://nssm.cc/) and place it in your PATH.
+2. Open Command Prompt as Administrator and execute:
+   ```cmd
+   nssm install OpenDocuments
+   ```
+3. In the GUI window that pops up:
+   - **Path**: `C:\Users\YOUR_USERNAME\.cargo\bin\opendoc.exe`
+   - **Arguments**: `start --port 3000`
+4. Click **Install service**. OpenDocuments will now run as a background service managed by Windows Services (`services.msc`).
+
+---
+
+### 🐧 C. Linux (using `systemd`)
+
+For Linux servers or workstations, creating a standard systemd service is the gold standard.
+
+1. Create a new service file:
+   ```bash
+   sudo nano /etc/systemd/system/opendoc.service
+   ```
+
+2. Paste the following configuration (replace `YOUR_USERNAME` and `YOUR_GROUP` with your Linux username and group):
+   ```ini
+   [Unit]
+   Description=OpenDocuments Unified Server
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=YOUR_USERNAME
+   Group=YOUR_GROUP
+   WorkingDirectory=/home/YOUR_USERNAME
+   ExecStart=/home/YOUR_USERNAME/.cargo/bin/opendoc start --port 3000
+   Restart=always
+   RestartSec=5
+   StandardOutput=append:/home/YOUR_USERNAME/.opendocuments/stdout.log
+   StandardError=append:/home/YOUR_USERNAME/.opendocuments/stderr.log
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. Reload systemd, enable the service to run on boot, and start it:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable opendoc.service
+   sudo systemctl start opendoc.service
+   ```
+
+4. Check the live status and logs:
+   ```bash
+   sudo systemctl status opendoc.service
+   journalctl -u opendoc.service -f
+   ```
+
+---
+
+## 🔒 3. Production Hardening Checklist
+
+When deploying OpenDocuments as a public or team service, always ensure the following safety measures are in place:
+
+### Reverse Proxy (Nginx Example)
+To secure your instance with SSL/TLS and run on a public port, configure an Nginx reverse proxy. Ensure SSE buffering is disabled for smooth response streaming:
 
 ```nginx
 server {
     listen 443 ssl;
-    server_name docs.company.com;
+    server_name docs.yourdomain.com;
 
-    ssl_certificate /etc/ssl/cert.pem;
-    ssl_certificate_key /etc/ssl/key.pem;
+    ssl_certificate /etc/letsencrypt/live/docs.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/docs.yourdomain.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -61,7 +183,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # SSE streaming support
+        # Mandatory SSE streaming support
         proxy_buffering off;
         proxy_cache off;
         proxy_read_timeout 300s;
@@ -69,51 +191,6 @@ server {
 }
 ```
 
-### Security
-
-- [ ] Enable `mode: 'team'` for multi-user deployments
-- [ ] Set up HTTPS via reverse proxy
-- [ ] Configure PII redaction if indexing sensitive documents
-- [ ] Enable audit logging
-- [ ] Set appropriate rate limits
-- [ ] Use `.env` for all API keys (never commit to git)
-
-### Data Persistence
-
-| Data | Default Location | Docker Volume |
-|------|-----------------|---------------|
-| SQLite DB | `~/.opendocuments/opendocuments.db` | `opendocuments-data` |
-| Vector DB | `~/.opendocuments/vectors/` | `opendocuments-data` |
-| Config | `./opendocuments.config.ts` | Bind mount |
-
-### Server Management
-
-```bash
-opendocuments start              # Start server
-opendocuments start --port 8080  # Custom port
-opendocuments stop               # Stop server
-opendocuments doctor             # Health check
-```
-
-## MCP Server
-
-Run as an MCP server for AI coding tools:
-
-```bash
-opendocuments start --mcp-only
-```
-
-Add to your AI tool's MCP config:
-
-```json
-{
-  "mcpServers": {
-    "opendocuments": {
-      "command": "opendocuments",
-      "args": ["start", "--mcp-only"]
-    }
-  }
-}
-```
-
-Compatible with Claude Code, Cursor, Windsurf, and any MCP client.
+### Security Best Practices
+- **SQLite Database Backup**: Set up a cron job to backup the workspace databases residing under your `~/.opendocuments/` directory.
+- **Firewall Isolation**: If `opendoc` is only accessed by local developers or an internal Tauri desktop shell, bind it strictly to loopback (`127.0.0.1`) or block external port 3000 via `ufw` / `iptables`.

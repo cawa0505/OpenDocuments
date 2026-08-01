@@ -52,8 +52,6 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/' },
       { text: 'API', link: '/api/' },
-      { text: 'Plugins', link: '/plugins/' },
-      { text: 'SDK', link: '/sdk/guide' },
       { text: 'GitHub', link: 'https://github.com/joungminsung/OpenDocuments' },
     ],
     sidebar: [
@@ -66,15 +64,6 @@ export default defineConfig({
         { text: 'Architecture', link: '/guide/architecture' },
         { text: 'Configuration', link: '/guide/configuration' },
         { text: 'Deployment', link: '/guide/deployment' },
-      ]},
-      { text: 'Plugins', items: [
-        { text: 'Overview', link: '/plugins/' },
-        { text: 'Parser API', link: '/plugins/parser-api' },
-        { text: 'Connector API', link: '/plugins/connector-api' },
-        { text: 'Model API', link: '/plugins/model-api' },
-      ]},
-      { text: 'SDK', items: [
-        { text: 'TypeScript Client', link: '/sdk/guide' },
       ]},
     ],
     socialLinks: [

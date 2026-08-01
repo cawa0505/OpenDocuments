@@ -1,6 +1,23 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::clone_on_ref_ptr)]
 
+pub mod utils;
+pub mod handlers;
+
+use utils::{resolve_workspace_id, map_document_row, clean_json_markdown, DocumentItem};
+use handlers::tags::{list_tags_handler, create_tag_handler, delete_tag_handler, tag_document_handler, untag_document_handler};
+use handlers::workspaces::{list_workspaces_handler, create_workspace_handler, delete_workspace_handler, WorkspaceItem};
+use handlers::dictionary::{get_dictionary_handler, add_dictionary_handler, delete_dictionary_handler, import_seed_handler};
+use handlers::conversations::{
+    list_conversations_handler, update_conversation_handler, create_conversation_handler,
+    delete_conversation_handler, list_conversation_messages_handler, share_conversation_handler,
+    shared_conversation_handler
+};
+use handlers::admin::{
+    get_admin_stats_handler, get_admin_plugins_handler, get_admin_search_quality_handler,
+    get_admin_query_logs_handler, get_admin_benchmark_handler, get_admin_connectors_handler
+};
+
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -8,9 +25,12 @@ use axum::{
     extract::{Path, Query, State},
     response::sse::{Event, KeepAlive, Sse},
     routing::{get, post, delete},
-    http::StatusCode,
+    http::{StatusCode, Uri, header, Response},
+    body::Body,
+    response::IntoResponse,
     Json, Router,
 };
+use rust_embed::RustEmbed;
 use futures_util::stream::Stream;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -37,67 +57,7 @@ pub struct McpState {
     pub db_pool: sqlx::SqlitePool,
 }
 
-// ── Workspace resolver ────────────────────────────────────────
-/// 將 X-Workspace header（id 或 name）解析成 workspace UUID id（Node getById ?? getByName 向後相容）。
-/// - header 非空：`SELECT id FROM workspaces WHERE id = ? OR name = ?` → 命中回 id；未命中 → 400（嚴格，不 auto-create）
-/// - header 缺/空：取 config default_workspace 名稱 → 同查詢 → 未命中 → 500（default 啟動必建，缺失 = invariant 破壞）
-async fn resolve_workspace_id(
-    state: &McpState,
-    headers: &axum::http::HeaderMap,
-) -> Result<String, StatusCode> {
-    let header_val = headers
-        .get("x-workspace")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty());
-
-    let default_ws;
-    let lookup_name = match header_val {
-        Some(ws) => ws,
-        None => {
-            default_ws = state.config_manager.get_config().await.model.default_workspace;
-            default_ws.as_str()
-        }
-    };
-
-    let found: Option<String> = sqlx::query_scalar(
-        "SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1"
-    )
-    .bind(lookup_name)
-    .bind(lookup_name)
-    .fetch_optional(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 解析工作空間失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    match found {
-        Some(id) => Ok(id),
-        None => {
-            if header_val.is_some() {
-                // header 指定了未知 workspace → 嚴格 400
-                Err(StatusCode::BAD_REQUEST)
-            } else {
-                // default workspace 啟動必建，缺失代表 invariant 破壞
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
-    }
-}
-
 // ── Health response ──────────────────────────────────────────
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct WorkspaceItem {
-    id: String,
-    name: String,
-    mode: String,
-    settings: serde_json::Value,
-    created_at: String,
-    is_default: bool,
-}
 
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -107,79 +67,6 @@ struct DictionaryEntry {
     key: String,
     value: String,
     created_at: String,
-}
-
-#[derive(Serialize)]
-struct DocumentItem {
-    id: String,
-    title: String,
-    source_type: String,
-    source_path: String,
-    file_type: String,
-    file_size_bytes: Option<i64>,
-    connector_id: Option<String>,
-    chunk_count: i64,
-    status: String,
-    content_hash: Option<String>,
-    error_message: Option<String>,
-    created_at: String,
-    updated_at: String,
-    indexed_at: Option<String>,
-    workspace_id: String,
-}
-
-/// 將 documents 資料列映射為 DocumentItem（list_documents 與 list_collection_documents 共用）
-fn map_document_row(r: &sqlx::sqlite::SqliteRow) -> DocumentItem {
-    DocumentItem {
-        id: sqlx::Row::get::<String, _>(r, 0),
-        title: sqlx::Row::get::<String, _>(r, 1),
-        source_type: sqlx::Row::get::<String, _>(r, 2),
-        source_path: sqlx::Row::get::<Option<String>, _>(r, 3).unwrap_or_default(),
-        file_type: sqlx::Row::get::<Option<String>, _>(r, 4).unwrap_or_default(),
-        file_size_bytes: sqlx::Row::get::<Option<i64>, _>(r, 5),
-        connector_id: sqlx::Row::get::<Option<String>, _>(r, 6),
-        chunk_count: sqlx::Row::get::<i64, _>(r, 7),
-        status: sqlx::Row::get::<String, _>(r, 8),
-        content_hash: sqlx::Row::get::<Option<String>, _>(r, 9),
-        error_message: sqlx::Row::get::<Option<String>, _>(r, 10),
-        created_at: sqlx::Row::get::<String, _>(r, 11),
-        updated_at: sqlx::Row::get::<Option<String>, _>(r, 12).unwrap_or_default(),
-        indexed_at: sqlx::Row::get::<Option<String>, _>(r, 13),
-        workspace_id: sqlx::Row::get::<String, _>(r, 14),
-    }
-}
-
-async fn list_workspaces_handler(
-    State(state): State<Arc<McpState>>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let rows: Vec<(String, String, String)> = sqlx::query_as(
-        "SELECT id, name, datetime(created_at, 'localtime') FROM workspaces"
-    )
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 workspaces 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    // 取得設定檔中的預設工作空間名稱
-    let config = state.config_manager.get_config().await;
-    let default_ws_name = config.model.default_workspace.clone();
-
-    let mut workspaces = Vec::new();
-    for row in rows {
-        let is_default = row.1 == default_ws_name || row.0 == default_ws_name;
-        workspaces.push(WorkspaceItem {
-            id: row.0,
-            name: row.1,
-            mode: "personal".to_string(),
-            settings: json!({}),
-            created_at: row.2,
-            is_default,
-        });
-    }
-
-    Ok(Json(json!({ "workspaces": workspaces })))
 }
 
 async fn list_documents_handler(
@@ -312,600 +199,6 @@ async fn list_collections_handler(
     Ok(Json(json!({ "collections": collections })))
 }
 
-async fn list_conversations_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let rows = sqlx::query(
-        "SELECT id, title, shared, created_at, updated_at FROM conversations WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 100"
-    )
-    .bind(&workspace_id)
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 conversations 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let mut conversations = Vec::new();
-    for r in rows {
-        conversations.push(json!({
-            "id": sqlx::Row::get::<String, _>(&r, 0),
-            "title": sqlx::Row::get::<String, _>(&r, 1),
-            "shared": sqlx::Row::get::<i64, _>(&r, 2) == 1,
-            "createdAt": sqlx::Row::get::<String, _>(&r, 3),
-            "updatedAt": sqlx::Row::get::<Option<String>, _>(&r, 4),
-        }));
-    }
-
-    Ok(Json(json!({ "conversations": conversations })))
-}
-
-#[derive(Deserialize)]
-struct UpdateConversationReq {
-    title: Option<String>,
-}
-
-async fn update_conversation_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    axum::extract::Path(id): axum::extract::Path<String>,
-    Json(body): Json<UpdateConversationReq>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await
-        .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
-
-    let result = sqlx::query(
-        "UPDATE conversations SET title = COALESCE(?, title), updated_at = CURRENT_TIMESTAMP \
-         WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
-    )
-    .bind(body.title.as_deref())
-    .bind(&id)
-    .bind(&workspace_id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 update conversation 失敗: {e}");
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
-    })?;
-
-    if result.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
-    }
-
-    Ok(Json(json!({ "updated": true })))
-}
-
-#[derive(Deserialize)]
-struct CreateWorkspaceReq {
-    #[serde(alias = "name")]
-    id: String,
-}
-
-async fn create_workspace_handler(
-    State(state): State<Arc<McpState>>,
-    Json(payload): Json<CreateWorkspaceReq>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    // Node 契約：workspace id = randomUUID；name 用請求帶的 id 欄位
-    let id = Uuid::new_v4().to_string();
-    sqlx::query("INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
-        .bind(&id)
-        .bind(&payload.id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 建立工作空間失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(json!({ "success": true })))
-}
-
-async fn delete_workspace_handler(
-    State(state): State<Arc<McpState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    // UUID 遷移後 default workspace 的 id 是 UUID（不再等於名稱），改查 id 或 name 比對
-    let default_workspace = state.config_manager.get_config().await.model.default_workspace;
-    let default_id: Option<String> = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = ?")
-        .bind(&default_workspace)
-        .fetch_optional(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 查詢預設工作空間失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    if default_id.as_ref() == Some(&id) || default_workspace == id {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    // 1. 軟刪除工作空間內的所有文件
-    sqlx::query("UPDATE documents SET deleted_at = CURRENT_TIMESTAMP WHERE workspace_id = ?")
-        .bind(&id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 刪除工作空間關聯文件失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    // 2. 物理刪除工作空間本身
-    sqlx::query("DELETE FROM workspaces WHERE id = ?")
-        .bind(&id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 刪除工作空間失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(json!({ "success": true })))
-}
-
-async fn get_dictionary_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let rows = sqlx::query("SELECT id, workspace_id, key, value, datetime(created_at, 'localtime') FROM dictionary WHERE workspace_id = ?")
-        .bind(&workspace_id)
-        .fetch_all(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 查詢 dictionary 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    let mut entries = Vec::new();
-    for r in rows {
-        entries.push(DictionaryEntry {
-            id: sqlx::Row::get(&r, 0),
-            workspace_id: sqlx::Row::get(&r, 1),
-            key: sqlx::Row::get(&r, 2),
-            value: sqlx::Row::get(&r, 3),
-            created_at: sqlx::Row::get::<Option<String>, _>(&r, 4).unwrap_or_default(),
-        });
-    }
-
-    Ok(Json(json!({ "entries": entries })))
-}
-
-#[derive(Deserialize)]
-struct AddEntryReq {
-    key: String,
-    value: String,
-}
-
-async fn add_dictionary_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Json(req): Json<AddEntryReq>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let trimmed_key = req.key.trim().to_string();
-    let trimmed_value = req.value.trim().to_string();
-
-    if trimmed_key.is_empty() || trimmed_value.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    // 檢查 key 是否在目前工作空間中已存在
-    let existing: Option<(String,)> = sqlx::query_as("SELECT id FROM dictionary WHERE workspace_id = ? AND key = ?")
-        .bind(&workspace_id)
-        .bind(&trimmed_key)
-        .fetch_optional(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 檢查 dictionary 鍵失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-
-    let entry = if let Some((id,)) = existing {
-        sqlx::query("UPDATE dictionary SET value = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?")
-            .bind(&trimmed_value)
-            .bind(&id)
-            .execute(&state.db_pool)
-            .await
-            .map_err(|e| {
-                eprintln!("💥 更新 dictionary 失敗: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
-
-        DictionaryEntry {
-            id,
-            workspace_id,
-            key: trimmed_key,
-            value: trimmed_value,
-            created_at: now,
-        }
-    } else {
-        let id = uuid::Uuid::new_v4().to_string();
-        sqlx::query("INSERT INTO dictionary (id, workspace_id, key, value, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)")
-            .bind(&id)
-            .bind(&workspace_id)
-            .bind(&trimmed_key)
-            .bind(&trimmed_value)
-            .execute(&state.db_pool)
-            .await
-            .map_err(|e| {
-                eprintln!("💥 插入 dictionary 失敗: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
-
-        DictionaryEntry {
-            id,
-            workspace_id,
-            key: trimmed_key,
-            value: trimmed_value,
-            created_at: now,
-        }
-    };
-
-    Ok(Json(json!(entry)))
-}
-
-async fn delete_dictionary_handler(
-    State(state): State<Arc<McpState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    sqlx::query("DELETE FROM dictionary WHERE id = ?")
-        .bind(&id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 刪除 dictionary 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(json!({ "deleted": true })))
-}
-
-#[derive(Deserialize)]
-struct ImportSeedReq {
-    language: String,
-}
-
-async fn import_seed_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Json(req): Json<ImportSeedReq>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let glossary: std::collections::HashMap<&str, &str> = if req.language == "zh-TW" {
-        vec![
-            ("認證", "authentication"), ("設定", "configuration"), ("部署", "deployment"),
-            ("安裝", "installation"), ("資料庫", "database"), ("伺服器", "server"),
-            ("客戶端", "client"), ("使用者", "user"), ("管理員", "admin"),
-            ("安全性", "security"), ("權限", "permission"), ("登入", "login"),
-            ("密碼", "password"), ("搜尋", "search"), ("文檔", "document"),
-            ("檔案", "file"), ("上傳", "upload"), ("下載", "download"),
-            ("錯誤", "error"), ("除錯", "debugging"), ("修復", "fix"),
-            ("測試", "test"), ("建置", "build"), ("執行", "run"),
-            ("函式", "function"), ("變數", "variable"), ("型態", "type"),
-            ("模組", "module"), ("套件", "package"), ("程式庫", "library"),
-            ("框架", "framework"), ("元件", "component"), ("介面", "interface"),
-            ("環境變數", "environment variable"), ("快取", "cache"), ("佇列", "queue"),
-            ("架構", "architecture"), ("微服務", "microservice"), ("設計", "design"),
-            ("模式", "pattern"), ("依賴", "dependency"), ("擴充性", "scalability"),
-            ("中介軟體", "middleware"), ("端點", "endpoint"), ("路由", "routing"),
-            ("閘道", "gateway"), ("代理", "proxy"), ("負載平衡", "load balancer"),
-            ("服務網格", "service mesh"), ("單體", "monolithic"), ("後端", "backend"),
-            ("前端", "frontend"), ("容器", "container"), ("管線", "pipeline"),
-            ("監控", "monitoring"), ("基礎設施", "infrastructure"), ("雲端", "cloud"),
-            ("健康檢查", "health check"), ("命名空間", "namespace"), ("節點", "node"),
-            ("服務", "service"), ("資料卷", "volume"), ("機密", "secret"),
-            ("備份", "backup"), ("還原", "restore"), ("查詢", "query"),
-            ("索引", "index"), ("交易", "transaction"), ("向量", "vector"),
-            ("嵌入", "embedding"), ("相似度", "similarity"), ("連線池", "connection pool"),
-            ("機器學習", "machine learning"), ("推論", "inference"), ("微調", "fine-tuning"),
-            ("模型", "model"), ("詞記", "token"), ("檢索增強生成", "retrieval augmented generation"),
-            ("切片", "chunking"), ("重排", "reranking")
-        ].into_iter().collect()
-    } else if req.language == "ko-KR" {
-        vec![
-            ("인증", "authentication"), ("설정", "configuration"), ("배포", "deployment"),
-            ("설치", "installation"), ("데이터베이스", "database"), ("서버", "server"),
-            ("클라이언트", "client"), ("사용자", "user"), ("관리자", "admin"),
-            ("보안", "security"), ("권한", "permission"), ("로그인", "login"),
-            ("비밀번호", "password"), ("검색", "search"), ("문서", "document"),
-            ("파일", "file"), ("업로드", "upload"), ("다운로드", "download"),
-            ("오류", "error"), ("디버깅", "debugging"), ("수정", "fix"),
-            ("테스트", "test"), ("빌드", "build"), ("실행", "run"),
-            ("함수", "function"), ("변수", "variable"), ("타입", "type"),
-            ("모듈", "module"), ("패키지", "package"), ("라이브러리", "library"),
-            ("프레임워크", "framework"), ("컴포넌트", "component"), ("인터페이스", "interface"),
-            ("환경 변수", "environment variable"), ("캐시", "cache"), ("큐", "queue"),
-            ("아키텍처", "architecture"), ("마이크로서비스", "microservice"), ("디자인", "design"),
-            ("패턴", "pattern"), ("의존성", "dependency"), ("확장성", "scalability"),
-            ("미들웨어", "middleware"), ("엔드포인트", "endpoint"), ("라우팅", "routing"),
-            ("게이트웨이", "gateway"), ("프록시", "proxy"), ("로드 밸런서", "load balancer"),
-            ("서비스 메시", "service mesh"), ("모놀리식", "monolithic"), ("백엔드", "backend"),
-            ("프론트엔드", "frontend"), ("컨테이너", "container"), ("파이프라인", "pipeline"),
-            ("모니터링", "monitoring"), ("인프라", "infrastructure"), ("클라우드", "cloud"),
-            ("헬스 체크", "health check"), ("네임스페이스", "namespace"), ("노드", "node"),
-            ("서비스", "service"), ("볼륨", "volume"), ("비밀", "secret"),
-            ("백업", "backup"), ("복구", "restore"), ("질의", "query"),
-            ("인덱스", "index"), ("트랜잭션", "transaction"), ("벡터", "vector"),
-            ("임베딩", "embedding"), ("유사도", "similarity"), ("커넥션 풀", "connection pool"),
-            ("머신 러닝", "machine learning"), ("추론", "inference"), ("파인 튜닝", "fine-tuning"),
-            ("모델", "model"), ("토큰", "token"), ("검색 증강 생성", "retrieval augmented generation"),
-            ("청킹", "chunking"), ("리랭킹", "reranking")
-        ].into_iter().collect()
-    } else {
-        return Err(StatusCode::BAD_REQUEST);
-    };
-
-    // 使用 Transaction 進行原子批量 UPSERT 寫入
-    let mut tx = state.db_pool.begin().await.map_err(|e| {
-        eprintln!("💥 無法開啟 Transaction: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    for (k, v) in glossary {
-        let trimmed_key = k.trim().to_string();
-        let trimmed_value = v.trim().to_string();
-
-        let existing: Option<(String,)> = sqlx::query_as("SELECT id FROM dictionary WHERE workspace_id = ? AND key = ?")
-            .bind(&workspace_id)
-            .bind(&trimmed_key)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(|e| {
-                eprintln!("💥 交易中查詢 dictionary 失敗: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?;
-
-        if let Some((id,)) = existing {
-            sqlx::query("UPDATE dictionary SET value = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?")
-                .bind(&trimmed_value)
-                .bind(&id)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| {
-                    eprintln!("💥 交易中更新 dictionary 失敗: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-        } else {
-            let id = uuid::Uuid::new_v4().to_string();
-            sqlx::query("INSERT INTO dictionary (id, workspace_id, key, value, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)")
-                .bind(&id)
-                .bind(&workspace_id)
-                .bind(&trimmed_key)
-                .bind(&trimmed_value)
-                .execute(&mut *tx)
-                .await
-                .map_err(|e| {
-                    eprintln!("💥 交易中插入 dictionary 失敗: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-        }
-    }
-
-    tx.commit().await.map_err(|e| {
-        eprintln!("💥 提交 Transaction 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(Json(json!({ "imported": true })))
-}
-
-async fn get_admin_stats_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace = resolve_workspace_id(&state, &headers).await?;
-
-    // 1. 統計 documents 與 chunks 數量
-    let summary: (i64, i64) = sqlx::query_as(
-        "SELECT COUNT(*), COALESCE(SUM(chunk_count), 0) FROM documents WHERE deleted_at IS NULL AND workspace_id = ?"
-    )
-    .bind(&workspace)
-    .fetch_one(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 stats 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    // 2. 統計 workspaces 總數
-    let workspaces_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM workspaces")
-        .fetch_one(&state.db_pool)
-        .await
-        .unwrap_or(1);
-
-    // 3. 回傳 WebUI 對齊結構 (包含對應的 stats 分布，空對應以防網頁崩潰)
-    Ok(Json(json!({
-        "documents": summary.0,
-        "chunks": summary.1,
-        "workspaces": workspaces_count,
-        "plugins": 0,
-        "sourceDistribution": {},
-        "statusDistribution": {},
-        "fileTypeDistribution": {},
-    })))
-}
-
-async fn get_admin_plugins_handler() -> Json<serde_json::Value> {
-    let version = env!("CARGO_PKG_VERSION");
-
-    Json(json!({
-        "plugins": [
-            {
-                "name": "document-parser",
-                "type": "built-in",
-                "version": version,
-                "health": { "healthy": true, "message": "Built-in parser is available" },
-                "metrics": {}
-            },
-            {
-                "name": "text-chunker",
-                "type": "built-in",
-                "version": version,
-                "health": { "healthy": true, "message": "Built-in chunker is available" },
-                "metrics": {}
-            },
-            {
-                "name": "vector-store",
-                "type": "built-in",
-                "version": version,
-                "health": { "healthy": true, "message": "Built-in vector store is available" },
-                "metrics": {}
-            }
-        ]
-    }))
-}
-
-async fn get_admin_search_quality_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace = resolve_workspace_id(&state, &headers).await?;
-
-    // 聚合 SQL
-    let summary: (i64, f64, f64) = sqlx::query_as(
-        "SELECT COUNT(*), COALESCE(AVG(confidence_score), 0.0), COALESCE(AVG(response_time_ms), 0.0) FROM query_logs WHERE workspace_id = ?"
-    )
-    .bind(&workspace)
-    .fetch_one(&state.db_pool)
-    .await
-    .unwrap_or((0, 0.0, 0.0));
-
-    // 統計回饋
-    let feedback: (i64, i64) = sqlx::query_as(
-        "SELECT SUM(CASE WHEN feedback = 'positive' THEN 1 ELSE 0 END), SUM(CASE WHEN feedback = 'negative' THEN 1 ELSE 0 END) FROM query_logs WHERE workspace_id = ?"
-    )
-    .bind(&workspace)
-    .fetch_one(&state.db_pool)
-    .await
-    .unwrap_or((0, 0));
-
-    Ok(Json(json!({
-        "totalQueries": summary.0,
-        "avgConfidence": (summary.1 * 100.0).round() / 100.0,
-        "avgResponseTimeMs": summary.2.round() as i64,
-        "intentDistribution": {},
-        "routeDistribution": {},
-        "feedback": { "positive": feedback.0, "negative": feedback.1 },
-    })))
-}
-
-async fn get_admin_query_logs_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let query_rows = sqlx::query(
-        "SELECT id, query, profile, confidence_score, response_time_ms, route, feedback, datetime(created_at, 'localtime') FROM query_logs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 100"
-    )
-    .bind(&workspace_id)
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 撈取日誌失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let mut logs = Vec::new();
-    for r in query_rows {
-        let id: i64 = sqlx::Row::get(&r, 0);
-        let query: String = sqlx::Row::get(&r, 1);
-        let profile: String = sqlx::Row::get(&r, 2);
-        let score: Option<f64> = sqlx::Row::get(&r, 3);
-        let time: Option<i64> = sqlx::Row::get(&r, 4);
-        let route: Option<String> = sqlx::Row::get(&r, 5);
-        let feedback: Option<String> = sqlx::Row::get(&r, 6);
-        let created_at: Option<String> = sqlx::Row::get(&r, 7);
-
-        logs.push(json!({
-            "id": id,
-            "query": query,
-            "profile": profile,
-            "confidenceScore": score,
-            "responseTimeMs": time,
-            "route": route,
-            "feedback": feedback,
-            "createdAt": created_at.unwrap_or_default(),
-        }));
-    }
-
-    Ok(Json(json!({ "logs": logs })))
-}
-
-async fn get_admin_benchmark_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let rows = sqlx::query(
-        "SELECT model, metric_name, metric_value, datetime(created_at, 'localtime') FROM benchmark_runs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 50"
-    )
-    .bind(&workspace_id)
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 benchmark 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let mut runs = Vec::new();
-    for r in rows {
-        runs.push(json!({
-            "model": sqlx::Row::get::<String, _>(&r, 0),
-            "metricName": sqlx::Row::get::<String, _>(&r, 1),
-            "metricValue": sqlx::Row::get::<f64, _>(&r, 2),
-            "createdAt": sqlx::Row::get::<String, _>(&r, 3),
-        }));
-    }
-
-    Ok(Json(json!({ "runs": runs })))
-}
-
-async fn get_admin_connectors_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let rows = sqlx::query(
-        "SELECT id, name, type, config, sync_interval_seconds, last_synced_at, status FROM connectors WHERE workspace_id = ? AND deleted_at IS NULL"
-    )
-    .bind(&workspace_id)
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 connectors 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let mut connectors = Vec::new();
-    for r in rows {
-        let config_str = sqlx::Row::get::<String, _>(&r, 3);
-        let config_val: serde_json::Value = serde_json::from_str(&config_str).unwrap_or(json!({}));
-        let repo = config_val.get("repo").and_then(|v| v.as_str()).map(|s| s.to_string());
-
-        connectors.push(json!({
-            "connectorId": sqlx::Row::get::<String, _>(&r, 0),
-            "name": sqlx::Row::get::<String, _>(&r, 1),
-            "type": sqlx::Row::get::<String, _>(&r, 2),
-            "config": config_str,
-            "syncIntervalSeconds": sqlx::Row::get::<i64, _>(&r, 4),
-            "lastSyncedAt": sqlx::Row::get::<Option<String>, _>(&r, 5).unwrap_or_default(),
-            "status": sqlx::Row::get::<String, _>(&r, 6),
-            "repo": repo,
-        }));
-    }
-
-    Ok(Json(json!({ "connectors": connectors })))
-}
 
 // ── BYOK LLM provider handlers ──────────────────────────────
 
@@ -1680,398 +973,7 @@ async fn chat_feedback_handler(
     Ok(Json(json!({ "saved": true })))
 }
 
-// ── Conversations CRUD ─────────────────────────────────────────
-
-#[derive(Deserialize)]
-pub struct CreateConversationRequest {
-    pub title: Option<String>,
-}
-
-async fn create_conversation_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    payload: Option<Json<CreateConversationRequest>>,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-    let id = Uuid::new_v4().to_string();
-    let title = payload
-        .and_then(|Json(p)| p.title)
-        .map(|t| t.trim().to_string())
-        .filter(|t| !t.is_empty())
-        .unwrap_or_default();
-
-    sqlx::query("INSERT INTO conversations (id, workspace_id, title, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))")
-        .bind(&id)
-        .bind(&workspace_id)
-        .bind(&title)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 建立 conversation 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    let row = sqlx::query("SELECT created_at, updated_at FROM conversations WHERE id = ?")
-        .bind(&id)
-        .fetch_one(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 讀取 conversation 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok((
-        StatusCode::CREATED,
-        Json(json!({
-            "id": id,
-            "title": title,
-            "workspaceId": workspace_id,
-            "shared": false,
-            "createdAt": sqlx::Row::get::<String, _>(&row, 0),
-            "updatedAt": sqlx::Row::get::<String, _>(&row, 1),
-        })),
-    ))
-}
-
-async fn delete_conversation_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Path(id): Path<String>,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
-    )
-    .bind(&id)
-    .bind(&workspace_id)
-    .fetch_one(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 conversation 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    if count == 0 {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
-    }
-
-    sqlx::query("UPDATE conversations SET deleted_at = datetime('now') WHERE id = ?")
-        .bind(&id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 刪除 conversation 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok((StatusCode::OK, Json(json!({ "deleted": true }))))
-}
-
-async fn list_conversation_messages_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Path(id): Path<String>,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
-    )
-    .bind(&id)
-    .bind(&workspace_id)
-    .fetch_one(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 conversation 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    if count == 0 {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
-    }
-
-    let messages = conversation_messages_json(&state.db_pool, &id).await?;
-
-    Ok((StatusCode::OK, Json(json!({ "messages": messages }))))
-}
-
-/// Fetch messages for a conversation in the shared JSON shape.
-async fn conversation_messages_json(
-    db_pool: &sqlx::SqlitePool,
-    conversation_id: &str,
-) -> Result<Vec<serde_json::Value>, StatusCode> {
-    let rows = sqlx::query(
-        "SELECT id, conversation_id, role, content, sources, profile_used, confidence_score, response_time_ms, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at"
-    )
-    .bind(conversation_id)
-    .fetch_all(db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 messages 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let mut messages = Vec::new();
-    for r in rows {
-        let raw_sources: Option<String> = sqlx::Row::get(&r, 4);
-        let sources_val = match raw_sources {
-            Some(s) if !s.is_empty() => {
-                serde_json::from_str::<Value>(&s).unwrap_or_else(|_| json!([]))
-            }
-            _ => json!([]),
-        };
-
-        messages.push(json!({
-            "id": sqlx::Row::get::<String, _>(&r, 0),
-            "conversationId": sqlx::Row::get::<String, _>(&r, 1),
-            "role": sqlx::Row::get::<String, _>(&r, 2),
-            "content": sqlx::Row::get::<String, _>(&r, 3),
-            "sources": sources_val,
-            "profileUsed": sqlx::Row::get::<Option<String>, _>(&r, 5),
-            "confidenceScore": sqlx::Row::get::<Option<f64>, _>(&r, 6),
-            "responseTimeMs": sqlx::Row::get::<Option<i64>, _>(&r, 7),
-            "createdAt": sqlx::Row::get::<String, _>(&r, 8),
-        }));
-    }
-    Ok(messages)
-}
-
-// ── Conversation share ─────────────────────────────────────────
-
-async fn share_conversation_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Path(conversation_id): Path<String>,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM conversations WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
-    )
-    .bind(&conversation_id)
-    .bind(&workspace_id)
-    .fetch_one(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 conversation 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    if count == 0 {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
-    }
-
-    let token = uuid::Uuid::new_v4().simple().to_string();
-    sqlx::query(
-        "UPDATE conversations SET shared = 1, share_token = ? WHERE id = ? AND workspace_id = ?"
-    )
-    .bind(&token)
-    .bind(&conversation_id)
-    .bind(&workspace_id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 更新 share_token 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok((StatusCode::OK, Json(json!({ "shareUrl": format!("/shared/{}", token) }))))
-}
-
-async fn shared_conversation_handler(
-    State(state): State<Arc<McpState>>,
-    Path(token): Path<String>,
-) -> Result<(StatusCode, Json<serde_json::Value>), StatusCode> {
-    let row = sqlx::query(
-        "SELECT id, workspace_id, title, shared, share_token, created_at FROM conversations WHERE share_token = ?"
-    )
-    .bind(&token)
-    .fetch_optional(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 shared conversation 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let Some(r) = row else {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Not found" }))));
-    };
-
-    let conv_id = sqlx::Row::get::<String, _>(&r, 0);
-    let messages = conversation_messages_json(&state.db_pool, &conv_id).await?;
-    let conversation = json!({
-        "id": conv_id,
-        "workspace_id": sqlx::Row::get::<String, _>(&r, 1),
-        "title": sqlx::Row::get::<String, _>(&r, 2),
-        "shared": sqlx::Row::get::<Option<i64>, _>(&r, 3).unwrap_or(0),
-        "share_token": sqlx::Row::get::<String, _>(&r, 4),
-        "created_at": sqlx::Row::get::<String, _>(&r, 5),
-    });
-
-    Ok((StatusCode::OK, Json(json!({ "conversation": conversation, "messages": messages }))))
-}
-
 // ── Tags CRUD ──────────────────────────────────────────────────
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct TagItem {
-    pub id: String,
-    pub workspace_id: String,
-    pub name: String,
-    pub color: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct CreateTagRequest {
-    pub name: String,
-    pub color: Option<String>,
-}
-
-async fn list_tags_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    let rows = sqlx::query("SELECT id, workspace_id, name, color FROM tags WHERE workspace_id = ? ORDER BY name")
-        .bind(&workspace_id)
-        .fetch_all(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 查詢 tags 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    let mut tags = Vec::new();
-    for r in rows {
-        tags.push(TagItem {
-            id: sqlx::Row::get::<String, _>(&r, 0),
-            workspace_id: sqlx::Row::get::<String, _>(&r, 1),
-            name: sqlx::Row::get::<String, _>(&r, 2),
-            color: sqlx::Row::get::<Option<String>, _>(&r, 3),
-        });
-    }
-
-    Ok(Json(json!({ "tags": tags })))
-}
-
-async fn create_tag_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Json(payload): Json<CreateTagRequest>,
-) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
-    let name = payload.name.trim().to_string();
-    if name.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Tag name required" }))));
-    }
-
-    let workspace_id = resolve_workspace_id(&state, &headers)
-        .await
-        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
-    let id = Uuid::new_v4().to_string();
-    let color = payload.color;
-
-    sqlx::query("INSERT INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)")
-        .bind(&id)
-        .bind(&workspace_id)
-        .bind(&name)
-        .bind(&color)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 建立 tag 失敗: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
-        })?;
-
-    Ok((
-        StatusCode::CREATED,
-        Json(json!({
-            "id": id,
-            "workspaceId": workspace_id,
-            "name": name,
-            "color": color,
-        })),
-    ))
-}
-
-async fn delete_tag_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Path(id): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    sqlx::query("DELETE FROM tags WHERE id = ? AND workspace_id = ?")
-        .bind(&id)
-        .bind(&workspace_id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 刪除 tag 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(json!({ "deleted": true })))
-}
-
-async fn tag_document_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Path((doc_id, tag_id)): Path<(String, String)>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    sqlx::query(
-        "INSERT OR IGNORE INTO document_tags (document_id, tag_id) \
-         SELECT d.id, t.id \
-         FROM documents d \
-         JOIN tags t ON t.id = ? \
-         WHERE d.id = ? AND d.workspace_id = ? AND t.workspace_id = ?"
-    )
-    .bind(&tag_id)
-    .bind(&doc_id)
-    .bind(&workspace_id)
-    .bind(&workspace_id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 文件貼標籤失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(Json(json!({ "tagged": true })))
-}
-
-async fn untag_document_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    Path((doc_id, tag_id)): Path<(String, String)>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await?;
-
-    sqlx::query(
-        "DELETE FROM document_tags \
-         WHERE document_id = ? AND tag_id = ? \
-         AND EXISTS (SELECT 1 FROM documents WHERE id = ? AND workspace_id = ?) \
-         AND EXISTS (SELECT 1 FROM tags WHERE id = ? AND workspace_id = ?)"
-    )
-    .bind(&doc_id)
-    .bind(&tag_id)
-    .bind(&doc_id)
-    .bind(&workspace_id)
-    .bind(&tag_id)
-    .bind(&workspace_id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 移除文件標籤失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(Json(json!({ "untagged": true })))
-}
 
 // ── Extracted Assets CRUD ──────────────────────────────────────
 
@@ -2084,21 +986,6 @@ pub struct ExtractAssetRequest {
     pub schema_definition: serde_json::Value,
     pub data_content: Option<serde_json::Value>,
     pub prompt: Option<String>,
-}
-
-fn clean_json_markdown(input: &str) -> String {
-    let mut s = input.trim();
-    if s.starts_with("```") {
-        if s.starts_with("```json") {
-            s = &s[7..];
-        } else {
-            s = &s[3..];
-        }
-    }
-    if s.ends_with("```") {
-        s = &s[..s.len() - 3];
-    }
-    s.trim().to_string()
 }
 
 async fn extract_asset_handler(
@@ -3877,6 +2764,51 @@ async fn chat_handler(
     })))
 }
 
+#[derive(RustEmbed)]
+#[folder = "../../apps/webui/dist/"]
+struct Assets;
+
+async fn static_handler(uri: Uri) -> impl IntoResponse {
+    let path = uri.path().trim_start_matches('/');
+    
+    // 如果路徑為空（首頁），使用 index.html
+    let mut asset_path = if path.is_empty() {
+        "index.html"
+    } else {
+        path
+    };
+
+    // 嘗試獲取資源
+    let mut file = Assets::get(asset_path);
+
+    // 如果找不到資源，為了支援 React 的 SPA 前端路由，一律回退至 index.html
+    if file.is_none() {
+        asset_path = "index.html";
+        file = Assets::get(asset_path);
+    }
+
+    match file {
+        Some(content) => {
+            let mime = mime_guess::from_path(asset_path).first_or_octet_stream();
+            Response::builder()
+                .header(header::CONTENT_TYPE, mime.as_ref())
+                .body(Body::from(content.data))
+                .unwrap_or_else(|_| {
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .unwrap()
+                })
+        }
+        None => {
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("404 Not Found"))
+                .unwrap()
+        }
+    }
+}
+
 pub async fn start_mcp_and_api_server(
     port: u16,
     search: Arc<dyn SearchBackend>,
@@ -3942,16 +2874,13 @@ pub async fn start_mcp_and_api_server(
         // 放寬 multipart 內建 2MB 上限到 60MiB，讓 upload_handler 自己的 50MiB 檢查（Node 相容 413）優先生效
         .layer(axum::extract::DefaultBodyLimit::max(60 * 1024 * 1024));
 
-    let serve_dir = ServeDir::new("./dist")
-        .not_found_service(tower_http::services::ServeFile::new("./dist/index.html"));
-
     let app = Router::new()
         .nest("/api/v1", api_routes)
         .route("/mcp/sse", get(sse_handler))
         .route("/api/mcp/sse", get(sse_handler))
         .route("/mcp/message", post(message_handler))
         .route("/api/mcp/message", post(message_handler))
-        .fallback_service(serve_dir)
+        .fallback(static_handler)
         .layer(CorsLayer::permissive())
         .with_state(mcp_state);
 

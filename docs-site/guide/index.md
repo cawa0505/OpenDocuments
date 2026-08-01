@@ -4,63 +4,62 @@ Get OpenDocuments running in under 5 minutes.
 
 ## Prerequisites
 
-- **Node.js 20+** ([download](https://nodejs.org))
+- **Rust toolchain (1.80+)** — installed via [rustup.rs](https://rustup.rs)
+- **Node.js (20+)** (only required to compile frontend web assets during installation)
 - **Ollama** (optional, for local LLM) — [download](https://ollama.com)
 
-## Install
+## Install from Source
+
+To compile and install the high-performance unified `opendoc` binary (which embeds the frontend WebUI directly):
 
 ```bash
-npm install -g opendocuments
+# Clone the repository
+git clone https://github.com/cawa0505/OpenDocuments.git
+cd OpenDocuments
+
+# Build the WebUI and install the Rust CLI automatically
+make install
 ```
 
-## Initialize
+This compiles and places the `opendoc` binary in your user's cargo binary path (e.g., `~/.cargo/bin` or `%USERPROFILE%\.cargo\bin`), which is automatically available in your PATH.
 
-```bash
-opendocuments init
-```
-
-The wizard will:
-1. Detect your hardware and recommend an LLM
-2. Auto-detect Ollama and offer to pull missing models
-3. Generate `opendocuments.config.ts` and `.env`
+---
 
 ## Start the Server
 
 ```bash
-opendocuments start
+opendoc start --port 3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you'll see a chat UI, document manager, and admin dashboard.
+Open [http://localhost:3000](http://localhost:3000) — you will see a beautiful chat UI, document manager, and admin stats dashboard. The frontend is served directly from the memory of the `opendoc` binary!
 
-## Index Documents
+---
+
+## Workspace & Document Indexing
+
+OpenDocuments works on **Workspaces** (isolated folders with independent SQLite databases and LanceDB vector stores).
 
 ```bash
-# Index a local directory
-opendocuments index ./docs
-
-# Watch mode (auto-reindex on changes)
-opendocuments index ./docs --watch
+# Index a local directory into your active workspace
+opendoc document index /path/to/docs
 ```
 
-Or drag-and-drop files in the Web UI.
+Or simply drag-and-drop your files directly onto the Web UI!
 
-## Ask Questions
+---
+
+## Ask Questions in Terminal (TUI)
+
+OpenDocuments features a high-performance terminal chat interface (TUI) for local operations:
 
 ```bash
-# Single question
-opendocuments ask "How does authentication work?"
-
-# Interactive REPL
-opendocuments ask
-
-# With specific profile
-opendocuments ask "Compare v2 vs v3 features" --profile precise
+opendoc tui
 ```
+
+---
 
 ## Next Steps
 
-- [Configuration](/guide/configuration) — customize models, connectors, and security
-- [Architecture](/guide/architecture) — understand the system design
-- [Plugin Development](/plugins/) — create custom parsers and connectors
-- [Deployment](/guide/deployment) — Docker and production setup
-- [TypeScript SDK](/sdk/guide) — programmatic access
+- [Deployment & Auto-Start](/guide/deployment) — run persistently on Windows, macOS, and Linux
+- [Architecture](/guide/architecture) — understand the single-binary Rust design
+- [MCP Server](/guide/mcp-knowledge-base) — hook OpenDocuments up as a local knowledge base for Claude Code and Cursor

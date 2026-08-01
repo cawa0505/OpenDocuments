@@ -26,9 +26,9 @@ features:
     title: Self-Hosted Knowledge Base
     details: Your data never leaves your network. Run locally with Ollama or connect to OpenAI, Claude, Gemini, Grok. Zero cloud dependency, zero vendor lock-in.
   - icon:
-      src: /icons/plugin.svg
-    title: Plugin Ecosystem
-    details: 22 built-in plugins — 9 parsers (PDF, DOCX, code, Jupyter), 8 connectors (GitHub, Notion, Drive), 5 AI models. Create your own with one CLI command.
+      src: /icons/plugin.svg:
+    title: Modular Parsers
+    details: Standalone sandboxed parsers for PDF, DOCX, XLSX, Jupyter, and code formats. Extremely fast and isolated in standalone crates under the Rust workspace.
   - icon:
       src: /icons/robot.svg
     title: MCP Server for AI Coding
@@ -72,12 +72,18 @@ Unlike cloud-only solutions, OpenDocuments can run **entirely on your own infras
 ### Quick Install
 
 ```bash
-npm install -g opendocuments
-opendocuments init    # Auto-detects Ollama, pulls models
-opendocuments start   # Opens Web UI at localhost:3000
+# Clone the repository
+git clone https://github.com/cawa0505/OpenDocuments.git
+cd OpenDocuments
+
+# Build and install the unified single-binary (built-in WebUI)
+make install
+
+# Start the unified server on port 8080
+opendoc start --port 8080
 ```
 
-Three commands. Under 5 minutes. [Get started →](/guide/)
+Under 5 minutes. [Get started →](/guide/)
 
 ### Learn more
 

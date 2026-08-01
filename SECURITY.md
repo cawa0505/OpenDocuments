@@ -4,7 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 1.x     | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
@@ -22,7 +22,6 @@ We will acknowledge receipt within 48 hours and aim to release a fix within 7 da
 
 ## Security Considerations
 
-- API keys should be stored in `.env` files, never in config files
-- In team mode, always use HTTPS in production
-- Review PII redaction settings before indexing sensitive documents
-- Widget embedding uses domain allowlisting - configure `widgetAllowedDomains` in production
+- **Secrets Isolation**: OpenDocuments does not persist cloud API keys (e.g. OpenAI, Anthropic) in standard environment variables at the OS level. All BYOK keys are safely stored in your local workspace SQLite table and loaded dynamically into memory only during runtime.
+- **Local Sandbox Execution**: All document parsing (`opendoc-parser-*`) is modularized. To prevent container-level escapes, it is highly recommended to run the unified binary on a secure, restricted user account.
+- **Workspace Access**: OpenDocuments workspace databases (`opendocuments.db`) and LanceDB vector spaces are created locally on disk inside the user's home folder (`~/.opendocuments/`). Ensure proper file permissions on this folder so that other system users cannot read raw database contents.

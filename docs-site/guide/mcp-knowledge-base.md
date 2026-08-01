@@ -26,7 +26,7 @@ Use this setup when you want an assistant to answer questions like:
 ## Start the MCP server
 
 ```bash
-opendocuments start --mcp-only
+opendoc start --mcp-only
 ```
 
 Then configure your MCP-compatible client to call the OpenDocuments command:
@@ -34,8 +34,8 @@ Then configure your MCP-compatible client to call the OpenDocuments command:
 ```json
 {
   "mcpServers": {
-    "opendocuments": {
-      "command": "opendocuments",
+    "opendoc": {
+      "command": "opendoc",
       "args": ["start", "--mcp-only"]
     }
   }
