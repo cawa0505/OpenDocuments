@@ -335,6 +335,22 @@ impl ConfigManager {
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
+        // MCP 伺服器配置表
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS mcp_servers (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                command TEXT NOT NULL,
+                args TEXT NOT NULL,
+                env TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now')),
+                UNIQUE(workspace_id, name)
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
         // 自動建立預設工作空間（若不存在），確保 WebUI 啟動時有資料可顯示
         // 以 name 判斷存在性（UUID 遷移後 id 不再等於名稱；既有 id=name 的舊庫也能正確沿用）
         let default_workspace = &cfg.model.default_workspace;

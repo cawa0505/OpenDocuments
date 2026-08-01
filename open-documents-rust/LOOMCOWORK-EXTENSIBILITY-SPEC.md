@@ -1,12 +1,12 @@
-# 🔌 Codex GUI (Phase 1) 自訂 Skills、MCP 串接與 WASM 插件生態規格書 (CODEX-GUI-EXTENSIBILITY-SPEC.md)
+# 🔌 LoomCowork (Phase 1) 自訂 Skills、MCP 串接與 WASM 插件生態規格書 (LOOMCOWORK-EXTENSIBILITY-SPEC.md)
 
-本文件定義並記錄了 Codex GUI 閉源商業化（Proprietary/Commercial）路線下，針對「自訂 Skills」、「MCP (Model Context Protocol) 核心」與「WASM 獨立沙盒插件生態」的完整產品與技術規格架構。
+本文件定義並記錄了 LoomCowork 閉源商業化（Proprietary/Commercial）路線下，針對「自訂 Skills」、「MCP (Model Context Protocol) 核心」與「WASM 獨立沙盒插件生態」的完整產品與技術規格架構。
 
 ---
 
 ## 🛠️ 1. 自訂 Skills (Custom Skills) 實作架構
 
-在 Codex GUI 的工作台定義中，一個 Skill（技能） 本質上就是：
+在 LoomCowork 的工作台定義中，一個 Skill（技能） 本質上就是：
 **一個特定的系統提示詞 (System Prompt) + 綁定一組特定的輸入 Schema + 預設的右欄渲染格式。**
 
 我們直接在前端提供一個「技能編輯 IDE 面板」（基於 Monaco Editor），免去使用者動態載入二進位的危險性。
@@ -53,7 +53,7 @@ MCP 是目前 Anthropic 主導、地表最強大的 AI 工具對接標準。它�
   }
 }
 ```
-* **工作原理**：當 Codex GUI 啟動時，Rust 的 `mcp-client` 會讀取此設定，利用 `std::process::Command` 在背景拉起這些 MCP Server 進程，並透過標準輸入輸出（Stdio）與其保持 JSON-RPC 通訊，動態獲取這些伺服器提供的 Tools 清單並與 LLM 共享。
+* **工作原理**：當 LoomCowork 啟動時，Rust 的 `mcp-client` 會讀取此設定，利用 `std::process::Command` 在背景拉起這些 MCP Server 進程，並透過標準輸入輸出（Stdio）與其保持 JSON-RPC 通訊，動態獲取這些伺服器提供的 Tools 清單並與 LLM 共享。
 
 ### 2.2 核心安全閘門：安全核准門戶 (UI Gatekeeper)
 當高級推理模型（如 Claude 3.5 Sonnet 或 o3）在思考過程中，判定需要調用某個 MCP 工具時（例如：將右欄整理好的 CSV 寫入使用者的實體硬碟），後端 Rust 絕不默默執行。
@@ -74,7 +74,7 @@ MCP 是目前 Anthropic 主導、地表最強大的 AI 工具對接標準。它�
 ## 📦 3. WASM 獨立沙盒插件生態 (WASM Sandboxed Plugins)
 
 將 RAG 與問卷系統獨立為 WASM 插件（沙盒擴充包），在閉源商業化（Tauri）的思維下，是一個極度性感的「付費解鎖機制」或「企業訂製生態」。
-這能讓 Codex GUI 核心保持極致輕量（~60MB），而將特定行業、特定髒亂數據的「高價值外掛引擎」交由 WASM 插件動態加載，且完全限制在 `wasmtime` 沙盒內安全執行，主程式免疫崩潰。
+這能讓 LoomCowork 核心保持極致輕量（~60MB），而將特定行業、特定髒亂數據的「高價值外掛引擎」交由 WASM 插件動態加載，且完全限制在 `wasmtime` 沙盒內安全執行，主程式免疫崩潰。
 
 以下為 4 大商業領域、共 12 個極具變現價值的 WASM 插件擴充包提案藍圖：
 
@@ -127,7 +127,7 @@ MCP 是目前 Anthropic 主導、地表最強大的 AI 工具對接標準。它�
 
 ## 💡 4. 閉源商業化變現哲學
 
-在 Codex GUI 的商業藍圖裡，這套設計的精妙之處在於：
+在 LoomCowork 的商業藍圖裡，這套設計的精妙之處在於：
 1. **主專案輕裝上陣**：核心底盤保持在 60MB 以內，無懈可擊的啟動速度，不含任何垃圾依賴。
 2. **安全隔離的插件體系**：WASM 沙盒隔離機制提供 100% 安全感，就算插件崩潰或存在惡意代碼，也絕對無法波及主程式與客戶的 OS。
 3. **高價值的行業護城河**：金融、醫療、開發者插件切中「剛性降本增效」痛點，能單獨作為付費擴充包銷售，毛利率極高，沒有雲端維運與 Token 邊際成本。

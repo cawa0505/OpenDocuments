@@ -1,6 +1,6 @@
-# 🌐 Codex GUI 功能規格書：靜態公開課程網站一鍵發布 (GitHub Pages)
+# 🌐 LoomCowork 功能規格書：靜態公開課程網站一鍵發布 (GitHub Pages)
 
-本規格書定義並記錄了 Codex GUI 閉源商業版下，針對「GitHub Pages 一鍵發布靜態公開課程網站」功能的完整產品、前端編織 (Jamstack) 與後端 Rust 原生 API 傳輸設計。
+本規格書定義並記錄了 LoomCowork 閉源商業版下，針對「GitHub Pages 一鍵發布靜態公開課程網站」功能的完整產品、前端編織 (Jamstack) 與後端 Rust 原生 API 傳輸設計。
 
 本功能充分利用桌面端 App 擁有本機最高系統權限的優勢，不依賴使用者本機的 Git 安裝與 SSH 複雜設定，而是直接透過後端 Rust 內建的 GitHub API 連接器進行輕量化直連，實現「零雲端維運成本、高隱私防禦、極致傻瓜化發布」的商業級出版閉環體驗。
 
@@ -81,7 +81,7 @@ pub async fn upload_course_file(
     let base64_content = base64::encode(content);
     
     let mut payload = serde_json::json!({
-        "message": "AI 編織教材自動更新 - 由 Codex GUI 發布",
+        "message": "AI 編織教材自動更新 - 由 LoomCowork 發布",
         "content": base64_content,
     });
     

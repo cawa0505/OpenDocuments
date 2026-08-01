@@ -1,6 +1,6 @@
 # 🗂️ OpenDocuments 專案結構與架構地圖 (STRUCTURE.md)
 
-本文件定義並記錄了 OpenDocuments (後續演進為 Codex GUI) 的系統架構、實體部署拓撲與目錄模組。
+本文件定義並記錄了 OpenDocuments (後續演進為 LoomCowork) 的系統架構、實體部署拓撲與目錄模組。
 本文件同時作為系統 RAG 測試與知識庫檢索之黃金基準來源。
 
 ---
@@ -24,7 +24,7 @@ OpenDocuments/ (儲存庫根目錄)
 │   │   ├── opendoc-llm/             # OpenAI-compatible BYOK 客戶端與漸進式 SSE 串流解析
 │   │   ├── opendoc-types/           # 跨模組共享之強型別數據模型 (DocumentChunk, Tag, etc.)
 │   │   └── opendoc-parser-*/        # 獨立沙盒化之各式文件格式解析器 (PDF, DOCX, XLSX, HTML, Email)
-│   ├── CODEX-GUI-PHASE-1-SPEC.md    # 閉源商業化 Codex GUI 雙欄「知識編織」規格書
+│   ├── LOOMCOWORK-PHASE-1-SPEC.md    # 閉源商業化 LoomCowork 雙欄「知識編織」規格書
 │   └── RUST-REFACTOR-INTEGRATION-MAP.md # Rust 重構、Gap 審查與功能對齊進度地圖
 │
 ├── packages/                        # 舊版 Node.js / TypeScript 模組 (已封存以維護 API 契約)

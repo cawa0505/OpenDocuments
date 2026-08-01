@@ -1,7 +1,7 @@
-# 🏫 Codex GUI 功能規格書：高中教務與行政資產編織系統
+# 🏫 LoomCowork 功能規格書：高中教務與行政資產編織系統
 
-本文件定義並記錄了將 Codex GUI (基於 Tauri 2.0 + Rust + LanceDB) 深度整合至高中學校教務、行政系統與課表時數編織的實務場景與技術規格。
-此模組作為 Codex GUI 在高度個資敏感校園環境中的殺手級落地應用。
+本文件定義並記錄了將 LoomCowork (基於 Tauri 2.0 + Rust + LanceDB) 深度整合至高中學校教務、行政系統與課表時數編織的實務場景與技術規格。
+此模組作為 LoomCowork 在高度個資敏感校園環境中的殺手級落地應用。
 
 ---
 
@@ -10,7 +10,7 @@
 高中的教務行政資料（學籍、成績、課表、教師兼代課鐘點費）涉及極度敏感的個人資料（受《個人資料保護法》保護）。
 傳統雲端 RAG 或 AI SaaS 軟體在進入校園時，會面臨校方資安主任與網管的嚴格審查，導致阻力重重。
 
-**Codex GUI 的核心優勢**：
+**LoomCowork 的核心優勢**：
 1. **純本機執行 (In-Memory & Local SQLite/LanceDB)**：所有的個資解析、課表比對、鐘點費矩陣推演，全部在本機 Process 進行，個資與數據絕不上雲。
 2. **BYOK (Bring Your Own Key)**：學校可自行填入教育部、縣市教育局專案 API Key，或本機 Ollama/TAIDE（台灣專屬大模型）API 節點，軟體服務不經手任何 Key，安全邊界拉滿。
 3. **極致的 Excel 友善輸出**：導出的 CSV 自動注入 UTF-8 BOM 頭 (`\uFEFF`)，保證行政人員雙擊打開時中文絕不亂碼。
@@ -36,7 +36,7 @@
 ### 3. 學生選修課成果展示與成績分析（對接 GitHub Pages 一鍵發布）
 * **痛點**：學校要發表多元選修、學習歷程成果、或是註冊組給班導師的落點動態分析，傳統系統導出的 PDF 極為單調難看。
 * **一鍵上線**：
-  * 註冊組長把學生選修成果（Markdown 或成績 CSV 數據）丟入 Codex GUI。
+  * 註冊組長把學生選修成果（Markdown 或成績 CSV 數據）丟入 LoomCowork。
   * 利用前端預置的 Jamstack Tailwind SSG 模板，在記憶體內編譯為精美的網頁與視覺化圖表檔案包（`index.html`、`assets/`）。
   * 呼叫內建的 Rust GitHub API 連接器，直連學校的 GitHub Pages Repo，一鍵全球 CDN 免費部署上線。
 

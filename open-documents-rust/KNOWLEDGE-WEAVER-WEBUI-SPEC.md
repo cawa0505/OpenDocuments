@@ -1,7 +1,7 @@
 # 📖 Private Knowledge Weaver (私有化知識編織工作站)
 ## WebUI 核心實作與前後端事件流規格書 (Phase 1)
 
-本文件紀錄了 **OpenDocuments / Codex GUI** 雙欄「知識編織工作台」的核心前端規格、通訊協定事件流、以及後端防禦與雙通道設計，便於未來隨時存取與討論。
+本文件紀錄了 **OpenDocuments / LoomCowork** 雙欄「知識編織工作台」的核心前端規格、通訊協定事件流、以及後端防禦與雙通道設計，便於未來隨時存取與討論。
 
 ---
 

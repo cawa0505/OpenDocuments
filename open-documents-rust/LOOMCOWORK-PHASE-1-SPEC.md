@@ -1,7 +1,7 @@
-# 📦 Codex GUI (Phase 1) 產品與技術規格書
+# 📦 LoomCowork (Phase 1) 產品與技術規格書
 
 ## 一、 產品核心定位與三大商業亮點
-Codex GUI 是一款私有化部署的 AI 數據與知識編織工作台（Knowledge Weaver IDE）。它不只是聊天工具，而是本機數據的生產力中樞。
+LoomCowork 是一款私有化部署的 AI 數據與知識編織工作台（Knowledge Weaver IDE）。它不只是聊天工具，而是本機數據的生產力中樞。
 
 * **亮點一：資產編織畫布（Asset Weaver Canvas）**
   打破傳統 AI 聊天室「對話完知識即死」的痛點。UI 採用雙欄設計，AI 提取的資料會直接在右欄「無中生有」長出結構化的 Markdown 教材或 CSV 數據表，使用者可直接在畫布中雙擊修改、調整章節，一鍵直接在本機硬碟生成實體專案檔，實現「對話即資產」。
