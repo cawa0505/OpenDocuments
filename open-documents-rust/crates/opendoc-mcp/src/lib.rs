@@ -1501,12 +1501,20 @@ async fn conversation_messages_json(
 
     let mut messages = Vec::new();
     for r in rows {
+        let raw_sources: Option<String> = sqlx::Row::get(&r, 4);
+        let sources_val = match raw_sources {
+            Some(s) if !s.is_empty() => {
+                serde_json::from_str::<Value>(&s).unwrap_or_else(|_| json!([]))
+            }
+            _ => json!([]),
+        };
+
         messages.push(json!({
             "id": sqlx::Row::get::<String, _>(&r, 0),
             "conversationId": sqlx::Row::get::<String, _>(&r, 1),
             "role": sqlx::Row::get::<String, _>(&r, 2),
             "content": sqlx::Row::get::<String, _>(&r, 3),
-            "sources": sqlx::Row::get::<Option<String>, _>(&r, 4),
+            "sources": sources_val,
             "profileUsed": sqlx::Row::get::<Option<String>, _>(&r, 5),
             "confidenceScore": sqlx::Row::get::<Option<f64>, _>(&r, 6),
             "responseTimeMs": sqlx::Row::get::<Option<i64>, _>(&r, 7),
@@ -2531,6 +2539,33 @@ struct ChatStreamRequest {
     conversation_id: Option<String>,
 }
 
+// ── Helper to fetch and format recent conversation messages for RAG context ──
+async fn get_history_context(db_pool: &sqlx::SqlitePool, conversation_id: &str) -> String {
+    let rows_res = sqlx::query(
+        "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 6"
+    )
+    .bind(conversation_id)
+    .fetch_all(db_pool)
+    .await;
+
+    match rows_res {
+        Ok(rows) => {
+            let mut formatted = Vec::new();
+            for r in rows.into_iter().rev() {
+                let role: String = sqlx::Row::get(&r, 0);
+                let content: String = sqlx::Row::get(&r, 1);
+                let display_role = if role.to_lowercase() == "user" { "User" } else { "Assistant" };
+                formatted.push(format!("{}: {}", display_role, content));
+            }
+            formatted.join("\n")
+        }
+        Err(e) => {
+            eprintln!("💥 讀取對話歷史失敗: {e}");
+            String::new()
+        }
+    }
+}
+
 // ponytail: 直接用 search_and_rerank + 組裝答案；LLM streaming 加 when 需要
 async fn chat_stream_handler(
     State(state): State<Arc<McpState>>,
@@ -2593,7 +2628,16 @@ async fn chat_stream_handler(
         _ => 0.60,
     };
 
-    let results = state.search.search_and_rerank(&req.query, threshold);
+    // 💡 Fetch and build RAG context from history in stream handler
+    let mut expanded_query = req.query.clone();
+    if let Some(cid) = &conversation_id {
+        let history = get_history_context(&state.db_pool, cid).await;
+        if !history.is_empty() {
+            expanded_query = format!("{}\n\n[Recent Conversation History]\n{}", req.query, history);
+        }
+    }
+
+    let results = state.search.search_and_rerank(&expanded_query, threshold);
     let limited: Vec<_> = results.into_iter().take(10).collect();
 
     let answer = if limited.is_empty() {
@@ -2749,7 +2793,16 @@ async fn chat_handler(
         _ => 0.60,
     };
 
-    let results = state.search.search_and_rerank(&req.query, threshold);
+    // 💡 Fetch and build RAG context from history in non-stream handler
+    let mut expanded_query = req.query.clone();
+    if let Some(cid) = &conversation_id {
+        let history = get_history_context(&state.db_pool, cid).await;
+        if !history.is_empty() {
+            expanded_query = format!("{}\n\n[Recent Conversation History]\n{}", req.query, history);
+        }
+    }
+
+    let results = state.search.search_and_rerank(&expanded_query, threshold);
     let limited: Vec<_> = results.into_iter().take(10).collect();
 
     let answer = if limited.is_empty() {
@@ -4064,6 +4117,114 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         .await
         .unwrap();
         assert_eq!(query_log_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_message_sources_deserialization() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 1. Create a workspace & conversation
+        let ws_id = seed_workspace_id(&db_pool).await;
+        let conv_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO conversations (id, title, workspace_id, shared, created_at, updated_at) VALUES (?, 'Test', ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
+        .bind(&conv_id)
+        .bind(&ws_id)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        // 2. Insert message with raw serialized sources JSON
+        let sources_json = serde_json::json!([
+            {
+                "documentId": "doc123",
+                "title": "Verified Rust Doc",
+                "score": 0.95,
+                "text": "Correct rust implementation."
+            }
+        ]);
+        let sources_str = serde_json::to_string(&sources_json).unwrap();
+        
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, sources, profile_used, created_at) VALUES (?, ?, 'assistant', 'Response', ?, 'precise', CURRENT_TIMESTAMP)"
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(&conv_id)
+        .bind(&sources_str)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        // 3. Request messages via API endpoint
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/conversations/{}/messages", conv_id))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let val: Value = serde_json::from_slice(&body).unwrap();
+        
+        // 4. Verify deserialized sources shape in messages response
+        let messages = val.get("messages").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(messages.len(), 1);
+        let msg = &messages[0];
+        let sources = msg.get("sources").unwrap();
+        
+        // If our deserialization works, "sources" should be parsed back to an Array, not a String
+        assert!(sources.is_array(), "Sources must be deserialized back into a JSON array");
+        assert_eq!(sources[0].get("documentId").unwrap().as_str().unwrap(), "doc123");
+    }
+
+    #[tokio::test]
+    async fn test_chat_and_stream_with_history_context() {
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+
+        // 1. Create workspace & conversation
+        let ws_id = seed_workspace_id(&db_pool).await;
+        let conv_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO conversations (id, title, workspace_id, shared, created_at, updated_at) VALUES (?, 'Test Context', ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+        )
+        .bind(&conv_id)
+        .bind(&ws_id)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        // 2. Insert some historical messages
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'user', 'What is Rust?', CURRENT_TIMESTAMP)"
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(&conv_id)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, ?, 'assistant', 'A memory safe systems language.', CURRENT_TIMESTAMP)"
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(&conv_id)
+        .execute(&db_pool)
+        .await
+        .unwrap();
+
+        // 3. Call get_history_context helper directly to verify formatting
+        let history = get_history_context(&db_pool, &conv_id).await;
+        assert!(history.contains("User: What is Rust?"));
+        assert!(history.contains("Assistant: A memory safe systems language."));
     }
 
     #[tokio::test]
