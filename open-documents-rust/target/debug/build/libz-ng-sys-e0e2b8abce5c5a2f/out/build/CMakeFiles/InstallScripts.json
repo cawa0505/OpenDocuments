@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

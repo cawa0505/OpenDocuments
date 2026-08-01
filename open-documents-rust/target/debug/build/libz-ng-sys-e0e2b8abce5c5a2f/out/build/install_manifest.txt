@@ -1,9 +1,0 @@
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/lib/libz-ng.a
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/include/zlib-ng.h
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/include/zlib_name_mangling-ng.h
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/include/zconf-ng.h
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/lib/pkgconfig/zlib-ng.pc
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/lib/cmake/zlib-ng/zlib-ng-targets.cmake
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/lib/cmake/zlib-ng/zlib-ng-targets-debug.cmake
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/lib/cmake/zlib-ng/zlib-ng-config.cmake
-/mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments/open-documents-rust/target/debug/build/libz-ng-sys-e0e2b8abce5c5a2f/out/lib/cmake/zlib-ng/zlib-ng-config-version.cmake
