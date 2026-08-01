@@ -319,6 +319,22 @@ impl ConfigManager {
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
+        // 知識萃取與編織資產表 (Extracted Assets Table)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS extracted_assets (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+                asset_type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                schema_definition TEXT NOT NULL, -- JSON 陣列，儲存欄位描述與類型
+                data_content TEXT NOT NULL,      -- JSON 陣列，儲存萃取出的真實物件資料
+                source_chunks TEXT NOT NULL,     -- JSON 陣列，儲存引用的原始 chunk id/source_path
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
         // 自動建立預設工作空間（若不存在），確保 WebUI 啟動時有資料可顯示
         // 以 name 判斷存在性（UUID 遷移後 id 不再等於名稱；既有 id=name 的舊庫也能正確沿用）
         let default_workspace = &cfg.model.default_workspace;
