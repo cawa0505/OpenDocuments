@@ -184,20 +184,57 @@ async fn list_workspaces_handler(
 
 async fn list_documents_handler(
     State(state): State<Arc<McpState>>,
+    Query(params): Query<HashMap<String, String>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let workspace = resolve_workspace_id(&state, &headers).await?;
 
-    let rows = sqlx::query(
-        "SELECT id, title, source_type, source_path, file_type, file_size_bytes, connector_id, chunk_count, status, content_hash, error_message, datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), indexed_at, workspace_id FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
-    )
-    .bind(&workspace)
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 documents 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let mut sql = "SELECT id, title, source_type, source_path, file_type, file_size_bytes, connector_id, chunk_count, status, content_hash, error_message, datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), indexed_at, workspace_id FROM documents WHERE workspace_id = ? AND deleted_at IS NULL".to_string();
+    let mut binds: Vec<String> = vec![workspace];
+
+    if let Some(status) = params.get("status") {
+        if !status.is_empty() && status != "all" {
+            sql.push_str(" AND status = ?");
+            binds.push(status.clone());
+        }
+    }
+
+    if let Some(source_type) = params.get("sourceType").or_else(|| params.get("source_type")) {
+        if !source_type.is_empty() && source_type != "all" {
+            sql.push_str(" AND source_type = ?");
+            binds.push(source_type.clone());
+        }
+    }
+
+    // Sorting columns allowlist
+    let sort_col = match params.get("sortBy").map(|s| s.as_str()) {
+        Some("title") => "title",
+        Some("chunks") => "chunk_count",
+        Some("updated") => "updated_at",
+        Some("created") | Some("createdAt") => "created_at",
+        Some("indexed") | Some("indexedAt") => "indexed_at",
+        _ => "created_at",
+    };
+
+    let sort_order = match params.get("order").map(|s| s.to_lowercase()) {
+        Some(ref o) if o == "asc" => "ASC",
+        _ => "DESC",
+    };
+
+    sql.push_str(&format!(" ORDER BY {} {}", sort_col, sort_order));
+
+    let mut query = sqlx::query(&sql);
+    for val in binds {
+        query = query.bind(val);
+    }
+
+    let rows = query
+        .fetch_all(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 查詢 documents 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let documents: Vec<DocumentItem> = rows.iter().map(map_document_row).collect();
 
@@ -1599,6 +1636,167 @@ async fn shared_conversation_handler(
     Ok((StatusCode::OK, Json(json!({ "conversation": conversation, "messages": messages }))))
 }
 
+// ── Tags CRUD ──────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TagItem {
+    pub id: String,
+    pub workspace_id: String,
+    pub name: String,
+    pub color: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateTagRequest {
+    pub name: String,
+    pub color: Option<String>,
+}
+
+async fn list_tags_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    let rows = sqlx::query("SELECT id, workspace_id, name, color FROM tags WHERE workspace_id = ? ORDER BY name")
+        .bind(&workspace_id)
+        .fetch_all(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 查詢 tags 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    let mut tags = Vec::new();
+    for r in rows {
+        tags.push(TagItem {
+            id: sqlx::Row::get::<String, _>(&r, 0),
+            workspace_id: sqlx::Row::get::<String, _>(&r, 1),
+            name: sqlx::Row::get::<String, _>(&r, 2),
+            color: sqlx::Row::get::<Option<String>, _>(&r, 3),
+        });
+    }
+
+    Ok(Json(json!({ "tags": tags })))
+}
+
+async fn create_tag_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Json(payload): Json<CreateTagRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
+    let name = payload.name.trim().to_string();
+    if name.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Tag name required" }))));
+    }
+
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
+    let id = Uuid::new_v4().to_string();
+    let color = payload.color;
+
+    sqlx::query("INSERT INTO tags (id, workspace_id, name, color) VALUES (?, ?, ?, ?)")
+        .bind(&id)
+        .bind(&workspace_id)
+        .bind(&name)
+        .bind(&color)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 建立 tag 失敗: {e}");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+        })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "id": id,
+            "workspaceId": workspace_id,
+            "name": name,
+            "color": color,
+        })),
+    ))
+}
+
+async fn delete_tag_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    sqlx::query("DELETE FROM tags WHERE id = ? AND workspace_id = ?")
+        .bind(&id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 刪除 tag 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(json!({ "deleted": true })))
+}
+
+async fn tag_document_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path((doc_id, tag_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    sqlx::query(
+        "INSERT OR IGNORE INTO document_tags (document_id, tag_id) \
+         SELECT d.id, t.id \
+         FROM documents d \
+         JOIN tags t ON t.id = ? \
+         WHERE d.id = ? AND d.workspace_id = ? AND t.workspace_id = ?"
+    )
+    .bind(&tag_id)
+    .bind(&doc_id)
+    .bind(&workspace_id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 文件貼標籤失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(json!({ "tagged": true })))
+}
+
+async fn untag_document_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path((doc_id, tag_id)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    sqlx::query(
+        "DELETE FROM document_tags \
+         WHERE document_id = ? AND tag_id = ? \
+         AND EXISTS (SELECT 1 FROM documents WHERE id = ? AND workspace_id = ?) \
+         AND EXISTS (SELECT 1 FROM tags WHERE id = ? AND workspace_id = ?)"
+    )
+    .bind(&doc_id)
+    .bind(&tag_id)
+    .bind(&doc_id)
+    .bind(&workspace_id)
+    .bind(&tag_id)
+    .bind(&workspace_id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 移除文件標籤失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(json!({ "untagged": true })))
+}
+
 // ── Collections CRUD ───────────────────────────────────────────
 
 #[derive(Deserialize)]
@@ -2921,6 +3119,9 @@ pub async fn start_mcp_and_api_server(
     });
 
     let api_routes = Router::new()
+        .route("/tags", get(list_tags_handler).post(create_tag_handler))
+        .route("/tags/:id", delete(delete_tag_handler))
+        .route("/documents/:docId/tags/:tagId", post(tag_document_handler).delete(untag_document_handler))
         .route("/healthz", get(health_handler))
         .route("/health", get(health_handler))
         .route("/readyz", get(readyz_handler))
@@ -3030,6 +3231,14 @@ mod tests {
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, sources TEXT, profile_used TEXT, confidence_score REAL, response_time_ms INTEGER, created_at TEXT DEFAULT (datetime('now')))"
+        ).execute(&db_pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, name TEXT NOT NULL, color TEXT, UNIQUE(workspace_id, name))"
+        ).execute(&db_pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS document_tags (document_id TEXT NOT NULL, tag_id TEXT NOT NULL, PRIMARY KEY (document_id, tag_id))"
         ).execute(&db_pool).await.unwrap();
 
         sqlx::query(
@@ -3269,6 +3478,9 @@ mod tests {
         Router::new()
             .route("/health", get(health_handler))
             .route("/readyz", get(readyz_handler))
+            .route("/tags", get(list_tags_handler).post(create_tag_handler))
+            .route("/tags/:id", delete(delete_tag_handler))
+            .route("/documents/:docId/tags/:tagId", post(tag_document_handler).delete(untag_document_handler))
             .route("/workspaces", get(list_workspaces_handler).post(create_workspace_handler))
             .route("/workspaces/:id", delete(delete_workspace_handler))
             .route("/documents", get(list_documents_handler))
@@ -3351,6 +3563,86 @@ mod tests {
         assert!(!docs.is_empty(), "documents 應該包含測試資料");
         assert_eq!(docs[0].get("title").and_then(|v| v.as_str()).unwrap(), "test.md");
         assert_eq!(docs[0].get("source_path").and_then(|v| v.as_str()).unwrap(), "docs/test.md");
+    }
+
+    #[tokio::test]
+    async fn test_list_documents_filtering_and_sorting() {
+        let state = build_test_state().await;
+        let ws_id = "75b9b1dd-4c99-4b7d-a362-24fae18d861d".to_string();
+
+        sqlx::query("INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES ('doc2', 'alpha.md', 'pdf', 'docs/alpha.pdf', 'failed', 10, ?)")
+            .bind(&ws_id)
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES ('doc3', 'zebra.md', 'markdown', 'docs/zebra.md', 'indexed', 2, ?)")
+            .bind(&ws_id)
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+
+        let app = build_router(state.clone());
+
+        let res = app.clone().oneshot(
+            Request::builder()
+                .uri("/documents?status=failed")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(docs.len(), 1);
+        assert_eq!(docs[0].get("id").unwrap().as_str().unwrap(), "doc2");
+
+        let res = app.clone().oneshot(
+            Request::builder()
+                .uri("/documents?sourceType=pdf")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(docs.len(), 1);
+        assert_eq!(docs[0].get("id").unwrap().as_str().unwrap(), "doc2");
+
+        let res = app.clone().oneshot(
+            Request::builder()
+                .uri("/documents?sortBy=title&order=asc")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(docs.len(), 3);
+        assert_eq!(docs[0].get("title").unwrap().as_str().unwrap(), "alpha.md");
+        assert_eq!(docs[1].get("title").unwrap().as_str().unwrap(), "test.md");
+        assert_eq!(docs[2].get("title").unwrap().as_str().unwrap(), "zebra.md");
+
+        let res = app.clone().oneshot(
+            Request::builder()
+                .uri("/documents?sortBy=chunks&order=desc")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let docs = json.get("documents").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(docs.len(), 3);
+        assert_eq!(docs[0].get("id").unwrap().as_str().unwrap(), "doc2");
+        assert_eq!(docs[1].get("id").unwrap().as_str().unwrap(), "doc1");
+        assert_eq!(docs[2].get("id").unwrap().as_str().unwrap(), "doc3");
     }
 
     #[tokio::test]
@@ -3614,8 +3906,174 @@ mod tests {
          assert!(connectors.get("total").is_some(), "connectors 必須包含 total 屬性");
      }
  
-     #[tokio::test]
-     async fn test_upload_response_matches_frontend_contract() {
+    #[tokio::test]
+    async fn test_tags_crud_and_document_association() {
+        let state = build_test_state().await;
+        let app = build_router(state.clone());
+
+        // Step 1: Create a tag
+        let create_tag_payload = json!({
+            "name": "Important",
+            "color": "#FF0000"
+        });
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/tags")
+                    .header("X-Workspace", "homelab")
+                    .header("content-type", "application/json")
+                    .body(axum::body::Body::from(serde_json::to_vec(&create_tag_payload).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let created_tag_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let tag_id = created_tag_json.get("id").unwrap().as_str().unwrap().to_string();
+        assert_eq!(created_tag_json.get("name").unwrap().as_str().unwrap(), "Important");
+
+        // Step 2: List tags
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/tags")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let list_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let tags_array = list_json.get("tags").unwrap().as_array().unwrap();
+        assert_eq!(tags_array.len(), 1);
+        assert_eq!(tags_array[0].get("name").unwrap().as_str().unwrap(), "Important");
+
+        // Step 3: Insert a mock document into DB
+        let doc_id = "test-doc-id-123".to_string();
+        sqlx::query(
+            "INSERT INTO documents (id, title, source_type, source_path, status, workspace_id) \
+             VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&doc_id)
+        .bind("Test Doc")
+        .bind("TXT")
+        .bind("test.txt")
+        .bind("indexed")
+        .bind("75b9b1dd-4c99-4b7d-a362-24fae18d861d") // build_test_state builds workspace with this UUID or similar?
+        .execute(&state.db_pool)
+        .await
+        .unwrap();
+
+        // Since build_test_state creates a workspace but we need its exact UUID or name, let's query workpaces
+        let ws_row = sqlx::query("SELECT id FROM workspaces WHERE name = 'homelab'")
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+        let ws_id = sqlx::Row::get::<String, _>(&ws_row, 0);
+
+        // Re-insert doc with correct workspace UUID
+        sqlx::query("DELETE FROM documents").execute(&state.db_pool).await.unwrap();
+        sqlx::query(
+            "INSERT INTO documents (id, title, source_type, source_path, status, workspace_id) \
+             VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&doc_id)
+        .bind("Test Doc")
+        .bind("TXT")
+        .bind("test.txt")
+        .bind("indexed")
+        .bind(&ws_id)
+        .execute(&state.db_pool)
+        .await
+        .unwrap();
+
+        // Step 4: Tag the document
+        let uri = format!("/documents/{}/tags/{}", doc_id, tag_id);
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(&uri)
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let tag_res_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(tag_res_json.get("tagged").unwrap().as_bool().unwrap(), true);
+
+        // Verify association in DB
+        let assoc_count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM document_tags WHERE document_id = ? AND tag_id = ?"
+        )
+        .bind(&doc_id)
+        .bind(&tag_id)
+        .fetch_one(&state.db_pool)
+        .await
+        .unwrap();
+        assert_eq!(assoc_count, 1);
+
+        // Step 5: Untag the document
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(&uri)
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let untag_res_json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(untag_res_json.get("untagged").unwrap().as_bool().unwrap(), true);
+
+        // Verify association is gone
+        let assoc_count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM document_tags WHERE document_id = ? AND tag_id = ?"
+        )
+        .bind(&doc_id)
+        .bind(&tag_id)
+        .fetch_one(&state.db_pool)
+        .await
+        .unwrap();
+        assert_eq!(assoc_count, 0);
+
+        // Step 6: Delete the tag
+        let res = app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("DELETE")
+                    .uri(&format!("/tags/{}", tag_id))
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+
+        // Verify tag is gone
+        let tag_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM tags WHERE id = ?")
+            .bind(&tag_id)
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+        assert_eq!(tag_count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_upload_response_matches_frontend_contract() {
          // 驗證 UploadResponse 序列化符合前端期望 { documentId, chunks, status }
          let resp = UploadResponse {
              document_id: "test-uuid".to_string(),

@@ -84,7 +84,7 @@ Ask {
     /// 自動配置與安裝大一統 Rust 版 MCP 服務到 OpenCode 設定檔
     InstallOpencode {
         /// 自訂 OpenCode 遠端主機 IP
-        #[arg(long, default_value = "192.168.77.200")]
+        #[arg(long, default_value = "127.0.0.1")]
         host: String,
 
         /// 自訂 OpenCode 遠端連接埠
@@ -682,10 +682,10 @@ match sub {
             }
 
             if let Some(mcp_servers) = config.get_mut("mcp").and_then(|v| v.as_object_mut()) {
-                println!("   - 註冊大一統 Local 讀寫 (Stdio) MCP: opendoc");
+                println!("   - 註冊大一統 Local 讀寫 (Stdio) MCP: opendoc-mcp");
                 let binary_path = format!("{home}/.cargo/bin/opendoc");
                 mcp_servers.insert(
-                    "opendoc".to_string(),
+                    "opendoc-mcp".to_string(),
                     serde_json::json!({
                         "enabled": true,
                         "type": "local",

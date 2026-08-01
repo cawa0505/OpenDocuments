@@ -280,6 +280,25 @@ impl ConfigManager {
             )"
         ).execute(&pool).await.map_err(|e| e.to_string())?;
 
+        // 💡 標籤系統資料表（對齊 Node migration 001_initial.sql）
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS tags (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                color TEXT,
+                UNIQUE(workspace_id, name)
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS document_tags (
+                document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+                tag_id TEXT REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (document_id, tag_id)
+            )"
+        ).execute(&pool).await.map_err(|e| e.to_string())?;
+
         // 自動建立預設工作空間（若不存在），確保 WebUI 啟動時有資料可顯示
         // 以 name 判斷存在性（UUID 遷移後 id 不再等於名稱；既有 id=name 的舊庫也能正確沿用）
         let default_workspace = &cfg.model.default_workspace;

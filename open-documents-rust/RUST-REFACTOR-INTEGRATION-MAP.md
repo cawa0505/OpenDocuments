@@ -81,3 +81,31 @@
 4. **二進位檔編譯安裝**：執行 `cargo install --path . --force`，安裝至 `~/.cargo/bin/opendoc`。
 5. **啟動與重啟服務**：重啟現役 `opendoc-server` 載入最新變更。
 6. **E2E 驗證**：透過 `curl` 與 WebUI 端對端交互驗證，取得實際證據。
+
+---
+
+## 5. 遺留之 Node.js 與 Rust 後端功能差異與未移植盤點 `[待討論]`
+
+經由前端 API 宣告 (`api.ts`) 與 Node.js 舊路由實作比對，現階段 Rust 單一進程後端與 Node.js 尚存之功能差異如下：
+
+### 5.1 認證與會話管理 (Auth & Session)
+* **Node.js 實作**：包含 `auth-routes.ts`，支援完整的 JWT 認證、會話持久化、與 `withStoredApiKey` 輔助器。
+* **Rust 現狀**：除 MCP 自帶之輕量會話（`SessionMap`）外，尚無持久化使用者註冊/登入或 JWT 認證過濾器，目前路由皆假定為內部或受信任環境直接調用。
+
+### 5.2 動態插件安裝與卸載 (Dynamic Plugins)
+* **Node.js 實作**：支援於 `/api/v1/plugins` 路由下動態安裝 (Install) 與移除 (Remove) 插件。
+* **Rust 現狀**：僅提供 `get_admin_plugins_handler`（`/admin/plugins`）靜態宣告內建模組（`document-parser`, `text-chunker`, `vector-store`）的健康度，未實作運行時動態安裝/載入外部 Node.js 模組插件（此亦符合 Rust 提倡之 Single Binary WASM 演進方向）。
+
+### 5.3 文件標籤系統 (Tags) [已實作]
+* **Node.js 實作**：具備 `tags.ts` 路由，支援對 Documents 或 Chunks 進行多維度標籤分類。
+* **Rust 實作**：已於 `opendoc-storage` 建立相容 tags 及 document_tags 資料表，並在 `lib.rs` 完整實作 5 個標籤管理與貼標相關之 Axum API 路由，經單元測試與 E2E 驗證 100% 通過。
+
+### 5.4 複雜過濾與排序 (Complex Query Filtering) [已實作]
+* **Node.js 實作**：文件及集合清單支援更為複雜的多參數複合查詢條件（如 `where status = 'X' AND workspace_id = 'Y'` 的動態 SQL）。
+* **Rust 實作**：在 `list_documents_handler` 中成功引入 Query 提取器，支援對 status、sourceType (或 source_type) 作篩選，並能對 title、chunks (chunk_count)、updated (updated_at)、created (created_at)、indexed (indexed_at) 等多欄位進行升降冪 (asc/desc) 動態 SQL 安全排序，經測試 100% 通過。
+
+### 5.5 儀表板佈局 (Dashboard Layout)
+* **Node.js 實作**：定義了特定的 `/dashboard` 整合端點。
+* **Rust 現狀**：由更寬泛的 `/workbench` 端點（透過 `workbench_handler`）實作整合式聚合。
+
+以上盤點已記錄入檔，留待後續與你討論移植的必要性與實作路徑。
