@@ -1,7 +1,7 @@
 use std::sync::Arc;
-use std::collections::HashMap;
+// removed unused std::collections::HashMap
 use axum::{
-    extract::{State, Query, Path},
+    extract::State,
     http::StatusCode,
     Json,
 };

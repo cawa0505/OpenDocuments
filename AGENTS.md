@@ -13,6 +13,7 @@
 | 核心目標 | `resolve_ws` helper 需正確回退至 `active_workspace` → `default_workspace` |
 | 配置位置 | `~/.config/opendocuments/config.toml` (`model.active_workspace`) |
 | 執行優先級 | 工作區切換必須 persisted，否則後續命令將使用預設值 |
+| 零警告編譯防線 | 所有對程式碼的修改、新增或修復，凡是編譯 `cargo check` 出現的任何 Warning（如 `unused_imports`, `unused_variables`），必須立刻清理與移除多餘引用，維持 100% 絕對乾淨編譯。 |
 
 ---
 

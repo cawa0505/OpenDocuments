@@ -4,8 +4,8 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde::Deserialize;
+use serde_json::json; // removed unused Serialize and Value
 use uuid::Uuid;
 use crate::McpState;
 use crate::utils::{resolve_workspace_id, clean_json_markdown};

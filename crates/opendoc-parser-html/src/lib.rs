@@ -27,9 +27,7 @@ impl DocumentParser for HtmlParser {
 
         let document = Html::parse_document(&content);
         
-        // 排除掉不屬於正文的主流噪聲標記
-        let script_style_sel = Selector::parse("script, style, iframe, footer, nav, header").unwrap();
-        let mut clean_doc = document.clone();
+        let clean_doc = document.clone();
         
         // 我們這裡用一個簡潔的高速正文文本抽取策略
         let body_sel = Selector::parse("body, main, article").unwrap();

@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use serde::{Serialize, Deserialize};
-use directories::ProjectDirs;
+// removed unused directories::ProjectDirs
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 
 /// 遠端伺服器設定

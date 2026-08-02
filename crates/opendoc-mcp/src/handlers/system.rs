@@ -6,9 +6,8 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+// removed unused serde_json::json and resolve_workspace_id
 use crate::McpState;
-use crate::utils::resolve_workspace_id;
 
 #[derive(Serialize, Deserialize)]
 pub struct HealthResponse {

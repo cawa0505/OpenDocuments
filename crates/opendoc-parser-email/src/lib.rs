@@ -2,7 +2,7 @@ use std::path::Path;
 use std::fs;
 use async_trait::async_trait;
 use opendoc_types::{DocumentChunk, ChunkType, DocumentParser};
-use mail_parser::{MessageParser, Addr};
+use mail_parser::MessageParser;
 
 pub struct EmailParser;
 

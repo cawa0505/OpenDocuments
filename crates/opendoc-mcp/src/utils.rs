@@ -1,4 +1,4 @@
-use std::sync::Arc;
+// removed unused std::sync::Arc
 use axum::http::StatusCode;
 use serde::Serialize;
 use crate::McpState;

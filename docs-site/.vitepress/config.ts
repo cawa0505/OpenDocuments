@@ -60,7 +60,7 @@ export default defineConfig({
         { text: 'What is OpenDocuments?', link: '/guide/what-is-opendocuments' },
         { text: 'Comparisons', link: '/guide/comparisons' },
         { text: 'Self-Hosted RAG with Ollama', link: '/guide/self-hosted-rag-ollama' },
-        { text: 'TUI Terminal UI', link: '/guide/tui-terminal-ui' },
+        { text: 'TUI Terminal UI', link: '/guide/tui-user-manual' },
         { text: 'MCP Knowledge Base', link: '/guide/mcp-knowledge-base' },
         { text: 'Architecture', link: '/guide/architecture' },
         { text: 'Configuration', link: '/guide/configuration' },

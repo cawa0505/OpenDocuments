@@ -18,7 +18,7 @@ hero:
       link: /guide/comparisons
 features:
   - icon:
-      src: /icons/search.svg:
+      src: /icons/search.svg
     title: AI Document Search
     details: Ask questions in natural language across local files and web pages. Get cited answers with source links — not hallucinations.
   - icon:

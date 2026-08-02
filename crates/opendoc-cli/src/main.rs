@@ -10,7 +10,7 @@ use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
 use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
-use opendoc_mcp::{start_mcp_and_api_server, run_mcp_stdio_server, SearchBackend};
+use opendoc_mcp::{start_mcp_and_api_server, SearchBackend};
 use walkdir::WalkDir;
 use reqwest::multipart;
 use crossterm::{
@@ -705,7 +705,7 @@ match sub {
                  }
              }
          }
-        Commands::InstallOpencode { host, port } => {
+        Commands::InstallOpencode { host: _, port: _ } => {
             println!("🚀 啟動大一統 Rust 版 MCP 自動化註冊 (OpenCode)..");
             
             let home = match std::env::var("HOME") {
@@ -917,7 +917,8 @@ match sub {
 /// 運行 Ratatui TUI 主循環，具備 100% 非同步事件調度與背景阻斷保護
 async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn std::error::Error>> {
     let app_cfg = config_manager.get_config().await;
-    let default_workspace = app_cfg.model.default_workspace.clone();
+    let initial_workspace = app_cfg.model.active_workspace.clone()
+        .unwrap_or_else(|| app_cfg.model.default_workspace.clone());
     let score_threshold = app_cfg.model.score_threshold;
 
     // 1. 初始化終端機環境
@@ -936,7 +937,12 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
             // 每 50 毫秒檢查一次有沒有鍵盤輸入
             if let Ok(true) = event::poll(Duration::from_millis(50)) {
                 if let Ok(CrossEvent::Key(key)) = event::read() {
-                    let _ = tx_clone.blocking_send(TuiEvent::Input(key.code));
+                    // 支援 Ctrl+W
+                    if key.modifiers.contains(event::KeyModifiers::CONTROL) && key.code == event::KeyCode::Char('w') {
+                        let _ = tx_clone.blocking_send(TuiEvent::Input(event::KeyCode::F(12))); // F12 用作內部 Ctrl+W 觸發
+                    } else {
+                        let _ = tx_clone.blocking_send(TuiEvent::Input(key.code));
+                    }
                 }
             }
             // 定時發送 Tick 事件，用來更新動畫或檢查背景進度
@@ -944,7 +950,7 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
         }
     });
 
-    let mut state = TuiAppState::new(default_workspace);
+    let mut state = TuiAppState::new(initial_workspace);
 
     // TUI 主事件循環
     loop {
@@ -952,39 +958,142 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
 
         if let Some(event) = rx.recv().await {
             match event {
-                TuiEvent::Input(KeyCode::Esc) => break,
+                TuiEvent::Input(KeyCode::Esc) => {
+                    if state.switching_workspace {
+                        state.switching_workspace = false;
+                        state.workspace_input.clear();
+                    } else {
+                        break;
+                    }
+                }
+                TuiEvent::Input(KeyCode::F(12)) => {
+                    state.switching_workspace = true;
+                    state.workspace_input.clear();
+                    
+                    // 觸發背景非同步加載 workspaces
+                    let mgr = Arc::clone(config_manager);
+                    let tx_ws = tx.clone();
+                    tokio::spawn(async move {
+                        if let Ok(pool) = mgr.init_db_pool().await {
+                            if let Ok(rows) = sqlx::query_as::<_, (String,)>("SELECT name FROM workspaces").fetch_all(&pool).await {
+                                let list: Vec<String> = rows.into_iter().map(|r| r.0).collect();
+                                let _ = tx_ws.send(TuiEvent::FetchWorkspaces(list)).await;
+                            }
+                        }
+                    });
+                }
+                TuiEvent::Input(KeyCode::Up) => {
+                    if state.switching_workspace && !state.workspaces_list.is_empty() {
+                        if state.workspace_cursor > 0 {
+                            state.workspace_cursor -= 1;
+                        } else {
+                            state.workspace_cursor = state.workspaces_list.len() - 1;
+                        }
+                        if let Some(selected) = state.workspaces_list.get(state.workspace_cursor) {
+                            state.workspace_input = selected.clone();
+                        }
+                    }
+                }
+                TuiEvent::Input(KeyCode::Down) => {
+                    if state.switching_workspace && !state.workspaces_list.is_empty() {
+                        if state.workspace_cursor + 1 < state.workspaces_list.len() {
+                            state.workspace_cursor += 1;
+                        } else {
+                            state.workspace_cursor = 0;
+                        }
+                        if let Some(selected) = state.workspaces_list.get(state.workspace_cursor) {
+                            state.workspace_input = selected.clone();
+                        }
+                    }
+                }
+                TuiEvent::Input(KeyCode::Tab) => {
+                    if state.switching_workspace && !state.workspaces_list.is_empty() {
+                        // 自動補全當前選中的 workspace
+                        if let Some(selected) = state.workspaces_list.get(state.workspace_cursor) {
+                            state.workspace_input = selected.clone();
+                        }
+                    }
+                }
                 TuiEvent::Input(KeyCode::Char(c)) => {
-                    state.search_query.push(c);
+                    if state.switching_workspace {
+                        state.workspace_input.push(c);
+                        // 當用戶輸入時，嘗試模糊/字首過濾並自動聚焦匹配的第一個
+                        if let Some(pos) = state.workspaces_list.iter().position(|name| name.to_lowercase().contains(&state.workspace_input.to_lowercase())) {
+                            state.workspace_cursor = pos;
+                        }
+                    } else {
+                        state.search_query.push(c);
+                    }
                 }
                 TuiEvent::Input(KeyCode::Backspace) => {
-                    state.search_query.pop();
+                    if state.switching_workspace {
+                        state.workspace_input.pop();
+                        if !state.workspace_input.is_empty() {
+                            if let Some(pos) = state.workspaces_list.iter().position(|name| name.to_lowercase().contains(&state.workspace_input.to_lowercase())) {
+                                state.workspace_cursor = pos;
+                            }
+                        }
+                    } else {
+                        state.search_query.pop();
+                    }
                 }
                 TuiEvent::Input(KeyCode::Enter) => {
-                    // 當按下 Enter，觸發非同步混合檢索與雙階段過濾 (對齊 BDD 規格)
-                    let query = state.search_query.clone();
-                    let mgr = Arc::clone(config_manager);
-                    let tx_res = tx.clone();
+                    if state.switching_workspace {
+                        // 優先使用 Tab 補全、Up/Down 聚焦，或者直接輸入
+                        let selected_ws = if !state.workspace_input.trim().is_empty() {
+                            state.workspace_input.trim().to_string()
+                        } else if !state.workspaces_list.is_empty() {
+                            state.workspaces_list[state.workspace_cursor].clone()
+                        } else {
+                            String::new()
+                        };
 
-                    tokio::spawn(async move {
-                        let chunks = mgr.search_and_rerank(&query, score_threshold);
-                        let mapped: Vec<TuiSearchResult> = chunks.into_iter().map(|c| {
-                            let f_name = c.metadata.get("source_path")
-                                .and_then(serde_json::Value::as_str)
-                                .unwrap_or("unknown")
-                                .to_string();
+                        if !selected_ws.is_empty() {
+                            state.active_workspace = selected_ws.clone();
                             
-                            TuiSearchResult {
-                                file_name: f_name,
-                                score: c.relevance_score.unwrap_or(0.0),
-                                snippet: c.content,
-                            }
-                        }).collect();
+                            // 在背景非同步切換、持久化配置並自動重新載入
+                            let mgr = Arc::clone(config_manager);
+                            tokio::spawn(async move {
+                                let mut cfg = mgr.get_config().await.clone();
+                                cfg.model.active_workspace = Some(selected_ws);
+                                let _ = mgr.update_config(cfg).await;
+                            });
+                        }
+                        state.switching_workspace = false;
+                        state.workspace_input.clear();
+                    } else {
+                        // 當按下 Enter，觸發非同步混合檢索與雙階段過濾 (對齊 BDD 規格)
+                        let query = state.search_query.clone();
+                        let mgr = Arc::clone(config_manager);
+                        let tx_res = tx.clone();
 
-                        let _ = tx_res.send(TuiEvent::FetchResults(mapped)).await;
-                    });
+                        tokio::spawn(async move {
+                            let chunks = mgr.search_and_rerank(&query, score_threshold);
+                            let mapped: Vec<TuiSearchResult> = chunks.into_iter().map(|c| {
+                                let f_name = c.metadata.get("source_path")
+                                    .and_then(serde_json::Value::as_str)
+                                    .unwrap_or("unknown")
+                                    .to_string();
+                                
+                                TuiSearchResult {
+                                    file_name: f_name,
+                                    score: c.relevance_score.unwrap_or(0.0),
+                                    snippet: c.content,
+                                }
+                            }).collect();
+
+                            let _ = tx_res.send(TuiEvent::FetchResults(mapped)).await;
+                        });
+                    }
                 }
                 TuiEvent::FetchResults(new_results) => {
                     state.results = new_results;
+                }
+                TuiEvent::FetchWorkspaces(list) => {
+                    state.workspaces_list = list;
+                    state.workspace_cursor = state.workspaces_list.iter()
+                        .position(|name| name == &state.active_workspace)
+                        .unwrap_or(0);
                 }
                 TuiEvent::Tick => {}
                 _ => {}

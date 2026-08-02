@@ -4,7 +4,7 @@
 pub mod utils;
 pub mod handlers;
 
-use utils::{resolve_workspace_id, map_document_row, clean_json_markdown, DocumentItem};
+// removed unused imports
 use handlers::tags::{list_tags_handler, create_tag_handler, delete_tag_handler, tag_document_handler, untag_document_handler};
 use handlers::workspaces::{list_workspaces_handler, create_workspace_handler, delete_workspace_handler};
 use handlers::dictionary::{get_dictionary_handler, add_dictionary_handler, delete_dictionary_handler, import_seed_handler};
@@ -42,7 +42,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::collections::HashMap;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Query, State},
     response::sse::{Event, KeepAlive, Sse},
     routing::{get, post, delete},
     http::{StatusCode, Uri, header, Response},
@@ -52,11 +52,9 @@ use axum::{
 };
 use rust_embed::RustEmbed;
 use futures_util::stream::Stream;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Value}; // restored unused json/Value
 use tokio::sync::{mpsc, RwLock};
 use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
 use uuid::Uuid;
 
 // ── Search backend trait ─────────────────────────────────────
@@ -353,7 +351,6 @@ pub async fn run_mcp_stdio_server(
     config_manager: Arc<opendoc_storage::ConfigManager>,
     db_pool: sqlx::SqlitePool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    use futures::StreamExt;
     use tokio::io::{stdin, stdout, AsyncBufReadExt, BufReader};
 
     let mcp_state = Arc::new(McpState {

@@ -3,7 +3,7 @@ use arrow_schema::{DataType, Field, Schema};
 use lancedb::index::Index;
 use lancedb::index::scalar::{FtsIndexBuilder, FullTextSearchQuery};
 use lancedb::query::{ExecutableQuery, QueryBase};
-use serde_json::Value;
+// removed unused Value import
 
 /// 獲取與先前 Node.js (Apache Arrow 綁定) 100% 鋼鐵對齊的相容 Schema 
 ///
