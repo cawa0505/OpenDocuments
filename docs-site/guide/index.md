@@ -6,7 +6,7 @@ Get OpenDocuments running in under 5 minutes.
 
 - **Rust toolchain (1.80+)** — installed via [rustup.rs](https://rustup.rs)
 - **Node.js (20+)** (only required to compile frontend web assets during installation)
-- **Ollama** (optional, for local LLM) — [download](https://ollama.com)
+- **Ollama** (optional, for local LLM running via OpenAI-compatible API) — [download](https://ollama.com)
 
 ## Install from Source
 

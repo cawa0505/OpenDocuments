@@ -1,65 +1,85 @@
 ---
 title: Self-Hosted RAG with Ollama
-description: Run OpenDocuments as a local-first RAG platform with Ollama, local embeddings, SQLite metadata, LanceDB vector search, Web UI, CLI, API, SDK, and MCP server.
+description: Run OpenDocuments as a local-first RAG platform with Ollama via the OpenAI-compatible BYOK settings.
 head:
   - - meta
     - name: keywords
-      content: self-hosted rag with ollama, local rag, private document qa, ollama document search, local ai knowledge base, open source rag ollama
+      content: self-hosted rag with ollama, local rag, private document qa, ollama document search, local ai knowledge base, open source rag ollama, byok ollama
 ---
 
-# Self-Hosted RAG with Ollama
+# Self-Hosted RAG with Ollama (BYOK)
 
-OpenDocuments can run as a local-first RAG stack with Ollama. This lets you index private documents, search them with local embeddings, and answer questions without requiring a cloud LLM.
+OpenDocuments supports running with **Ollama** completely offline and locally. Because our backend architecture leverages a unified **OpenAI-compatible BYOK (Bring Your Own Key)** client, you do not need dedicated Ollama integration code. You can connect to Ollama directly by pointing OpenDocuments to Ollama's OpenAI-compatible API endpoint.
 
-## Local RAG architecture
+---
 
-When configured for local models, OpenDocuments can run these pieces on your own machine or infrastructure:
+## 1. Start Ollama Locally
 
-| Layer | Local option |
-|-------|--------------|
-| Chat model | Ollama |
-| Embeddings | BGE-M3 or nomic-embed-text through Ollama |
-| Metadata | SQLite |
-| Vector search | LanceDB |
-| Web UI | Built-in memory-embedded WebUI server |
-| CLI | `opendoc` |
-| API | Axum HTTP server (single binary) |
-| AI assistant integration | MCP server |
+Ensure Ollama is installed on your system. If not, download it from [ollama.com](https://ollama.com).
 
-## Quick start
-
-To compile and install the unified binary and run with Ollama:
+Once installed, start the Ollama service and download your preferred model. For example, to run Llama 3:
 
 ```bash
-# Compile and install the `opendoc` binary with embedded WebUI
-make install
+# Pull and run your target model
+ollama run llama3
+```
 
-# Start the server (serves both API and WebUI statically from binary memory)
-opendoc start --port 3000
+By default, Ollama serves its API on `http://localhost:11434`. 
+Ollama provides an OpenAI-compatible API layer at the route `/v1`. Therefore, your local API endpoint will be:
+```plaintext
+http://localhost:11434/v1
 ```
 
 ---
 
-## When should you use local models?
+## 2. Configure OpenDocuments to use Ollama
 
-Use Ollama with OpenDocuments when:
+Since OpenDocuments stores all LLM provider settings securely in its SQLite backend via BYOK, you can configure it via the CLI or the WebUI settings.
 
-- Documents contain sensitive internal knowledge
-- You need development or demo environments with no cloud model dependency
-- You want predictable local experimentation costs
-- You need control over where embeddings and model prompts are processed
-- You are building a private AI knowledge base for engineering, product, operations, or support teams
+### Option A: Using WebUI Settings
+1. Open the OpenDocuments WebUI.
+2. Navigate to **Settings** -> **LLM Provider**.
+3. Set **API Base URL** (Endpoint) to: `http://localhost:11434/v1`
+4. Set **API Key** to: `ollama` (or any non-empty placeholder string, as Ollama doesn't require keys but our validation checks for presence).
+5. Set **Model ID** to the exact model name you pulled (e.g., `llama3` or `mistral`).
+6. Click **Save & Test Connection**.
 
-Cloud models can still be useful for higher answer quality, larger context windows, and managed inference. OpenDocuments supports both local and cloud model providers, so teams can choose per environment.
+### Option B: Using CLI Configuration
+You can switch or set your default provider parameters by writing to the `llm_providers` table or through the CLI configure workspace interface.
 
-## Recommended local model paths
+---
 
-| Hardware | LLM direction | Embedding direction |
-|----------|---------------|---------------------|
-| 32GB+ RAM, GPU | Larger Ollama models | BGE-M3 |
-| 16GB RAM | Mid-size Ollama models | BGE-M3 |
-| 8GB RAM | Compact Ollama models | nomic-embed-text |
+## Recommended Local Models
 
-## Short answer
+| System Hardware | Recommended LLM | Recommended Embedding |
+|-----------------|-----------------|-----------------------|
+| **32GB+ RAM, GPU** | `llama3:8b` or `mistral` | Local ONNX (Built-in) |
+| **16GB RAM** | `gemma2:9b` or `llama3:8b` | Local ONNX (Built-in) |
+| **8GB RAM** | `qwen2:1.5b` or `phi3` | Local ONNX (Built-in) |
 
-OpenDocuments plus Ollama is a practical way to run private document Q&A locally: documents are parsed and indexed by OpenDocuments, embeddings and answers can be generated locally, and users interact through the Web UI, CLI, or MCP server.
+> **Note**: For text embeddings, OpenDocuments leverages its built-in fast ONNX runtime directly inside the single binary process, which processes documents offline with zero external network overhead. Ollama is only used to generate the final chat responses.
+
+---
+
+## Troubleshooting
+
+### Connection Refused (CORS / Host binding)
+If your OpenDocuments server is running in a container, a separate virtual machine, or another host, Ollama by default binds to `127.0.0.1` and will reject external connections. 
+
+To allow external connections to Ollama:
+* **macOS**:
+  ```bash
+  launchctl setenv OLLAMA_HOST "0.0.0.0"
+  # Restart Ollama application
+  ```
+* **Linux (systemd)**:
+  1. Edit systemd service: `systemctl edit ollama.service`
+  2. Add under `[Service]`:
+     ```ini
+     Environment="OLLAMA_HOST=0.0.0.0"
+     ```
+  3. Reload and restart:
+     ```bash
+     sudo systemctl daemon-reload
+     sudo systemctl restart ollama
+     ```
