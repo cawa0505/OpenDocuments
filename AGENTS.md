@@ -14,6 +14,7 @@
 | 配置位置 | `~/.config/opendocuments/config.toml` (`model.active_workspace`) |
 | 執行優先級 | 工作區切換必須 persisted，否則後續命令將使用預設值 |
 | 零警告編譯防線 | 所有對程式碼的修改、新增或修復，凡是編譯 `cargo check` 出現的任何 Warning（如 `unused_imports`, `unused_variables`），必須立刻清理與移除多餘引用，維持 100% 絕對乾淨編譯。 |
+| 零 Mock 動態原則 | 嚴禁在 RAG 核心或 TUI 當中塞入任何硬編碼的靜態 Mock 文件（如私人 IP、Bumblebee 機器、或硬寫死 mock 檔案）。TUI 與 RAG 必須完全、且動態對接 SQLite 實體資料庫，實時查詢、過濾與反映當前工作空間中的實體檔案，做到真實呈現。 |
 
 ---
 

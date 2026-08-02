@@ -919,7 +919,7 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
     let app_cfg = config_manager.get_config().await;
     let initial_workspace = app_cfg.model.active_workspace.clone()
         .unwrap_or_else(|| app_cfg.model.default_workspace.clone());
-    let score_threshold = app_cfg.model.score_threshold;
+    let _score_threshold = app_cfg.model.score_threshold;
 
     // 1. 初始化終端機環境
     enable_raw_mode()?;
@@ -1062,27 +1062,56 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
                         state.switching_workspace = false;
                         state.workspace_input.clear();
                     } else {
-                        // 當按下 Enter，觸發非同步混合檢索與雙階段過濾 (對齊 BDD 規格)
+                        // 當按下 Enter，觸發非同步資料庫動態文件檢索與載入
                         let query = state.search_query.clone();
                         let mgr = Arc::clone(config_manager);
                         let tx_res = tx.clone();
+                        let current_ws = state.active_workspace.clone();
 
                         tokio::spawn(async move {
-                            let chunks = mgr.search_and_rerank(&query, score_threshold);
-                            let mapped: Vec<TuiSearchResult> = chunks.into_iter().map(|c| {
-                                let f_name = c.metadata.get("source_path")
-                                    .and_then(serde_json::Value::as_str)
-                                    .unwrap_or("unknown")
-                                    .to_string();
-                                
-                                TuiSearchResult {
-                                    file_name: f_name,
-                                    score: c.relevance_score.unwrap_or(0.0),
-                                    snippet: c.content,
-                                }
-                            }).collect();
+                            let mut results = Vec::new();
+                            if let Ok(pool) = mgr.init_db_pool().await {
+                                // 1. 先解析工作區 UUID
+                                let ws_row: Option<(String,)> = sqlx::query_as("SELECT id FROM workspaces WHERE id = ? OR name = ?")
+                                    .bind(&current_ws)
+                                    .bind(&current_ws)
+                                    .fetch_optional(&pool)
+                                    .await
+                                    .unwrap_or(None);
 
-                            let _ = tx_res.send(TuiEvent::FetchResults(mapped)).await;
+                                if let Some((ws_id,)) = ws_row {
+                                    // 2. 依照工作空間查詢實體 documents 列表，並視需要進行模糊搜尋
+                                    if query.trim().is_empty() {
+                                        let q = sqlx::query_as::<_, (String, String, i32)>(
+                                            "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
+                                        ).bind(&ws_id);
+                                        if let Ok(rows) = q.fetch_all(&pool).await {
+                                            for row in rows {
+                                                results.push(TuiSearchResult {
+                                                    file_name: row.0,
+                                                    score: if row.1 == "indexed" { 1.0 } else { 0.5 },
+                                                    snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
+                                                });
+                                            }
+                                        }
+                                    } else {
+                                        let pattern = format!("%{}%", query);
+                                        let q = sqlx::query_as::<_, (String, String, i32)>(
+                                            "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL AND (title LIKE ? OR source_path LIKE ?) ORDER BY created_at DESC"
+                                        ).bind(&ws_id).bind(&pattern).bind(&pattern);
+                                        if let Ok(rows) = q.fetch_all(&pool).await {
+                                            for row in rows {
+                                                results.push(TuiSearchResult {
+                                                    file_name: row.0,
+                                                    score: if row.1 == "indexed" { 1.0 } else { 0.5 },
+                                                    snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            let _ = tx_res.send(TuiEvent::FetchResults(results)).await;
                         });
                     }
                 }
