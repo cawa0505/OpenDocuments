@@ -55,7 +55,7 @@ Benchmark 1: opendoc document index admin_heavy.xlsx
 Use OpenDocuments when you want:
 
 - A **self-hosted alternative to enterprise AI search** and proprietary knowledge-base search tools.
-- **AI document search with citations** for policies, specs, spreadsheets, API docs, and meeting notes.
+- **AI document search with citations** for PDFs, DOCX, XLSX, local files, and web sources.
 - A **local-first RAG stack** that can run entirely with Ollama so sensitive documents stay on your own infrastructure.
 - A **knowledge base for AI coding assistants** through MCP, including Claude Code, Cursor, Windsurf, and other MCP clients.
 - A **high-performance Rust-native core** that compiles into a single binary, serving both the backend and embedded WebUI from memory.
@@ -88,7 +88,7 @@ In short: **OpenDocuments is a private, zero-trust AI search engine for your org
 | **Cited AI answers** | Ask natural-language questions and see exactly which documents support the answer. |
 | **Hybrid retrieval** | Combine dense vector search, SQLite FTS5 keyword search, reranking, and parent-document recall. |
 | **Single-Binary Package** | Axum backend and React WebUI are packaged into a single binary via `rust-embed`. Zero external asset requirements or port collision. |
-| **Broad file formats** | Native support for Markdown, PDF, DOCX, XLSX, CSV, HTML, Jupyter notebooks, email, JSON, YAML, and TOML. |
+| **Broad file formats** | Native support for Markdown, PDF, DOCX, XLSX, CSV, HTML, and code. |
 | **Local or cloud models** | Use Ollama locally or cloud providers such as OpenAI, Anthropic, Google, and xAI. |
 | **MCP server** | Let Claude Code, Cursor, Windsurf, and other MCP clients search your internal knowledge base. |
 | **Workspace isolation** | Completely isolated databases and vector indexes mapped by workspace to guarantee secure data boundaries. |
