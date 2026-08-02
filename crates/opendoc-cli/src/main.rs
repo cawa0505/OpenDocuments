@@ -814,11 +814,16 @@ match sub {
                 );
 
                 // 移除 Node 時代的 legacy CQRS 配置，達成單一進程大一統
-                mcp_servers.remove("opendocuments-read");
-                mcp_servers.remove("opendocuments-write");
-                mcp_servers.remove("opendocuments");
-                mcp_servers.remove("opendoc-read");
-                mcp_servers.remove("opendoc-write");
+                // ponytail: only remove exact match legacy tools if they use the opendoc executable
+                let legacy_keys = ["opendocuments-read", "opendocuments-write", "opendocuments", "opendoc-read", "opendoc-write"];
+                for key in legacy_keys {
+                    if let Some(val) = mcp_servers.get(key) {
+                        let is_legacy_opendoc = val.to_string().contains("opendoc");
+                        if is_legacy_opendoc {
+                            mcp_servers.remove(key);
+                        }
+                    }
+                }
             }
 
             let updated_json = match serde_json::to_string_pretty(&config) {
