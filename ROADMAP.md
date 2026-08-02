@@ -1,6 +1,6 @@
 # 🗺️ OpenDocuments 研發任務與實施藍圖 (ROADMAP.md)
 
-本文件定義並追蹤 OpenDocuments (開源大腦 + WebUI) 與夥伴桌面端 (LoomCowork) 整合的核心研發任務、待辦事項、以及具體實作細節。
+本文件定義並追蹤 OpenDocuments (開源大腦 + WebUI) 與夥伴桌面端整合的核心研發任務、待辦事項、以及具體實作細節。
 
 ---
 
@@ -12,7 +12,6 @@
 | **P0** | **WebUI / API PARITY 完整度測試與收尾** | 對齊與驗證前端所有呼叫路由（特別是 Chat、Upload、Workspaces 等），確保 100%parit-y | ⏳ 待開發 | 3 hrs |
 | **P1** | **Beyond-Text 知識圖譜實體落地 (Phase 1)** | 實作 WikiLink、YAML FrontMatter 解析，SQLite Graph 儲存，建構初始 Graph 檢索 | ⏳ 待開發 | 8 hrs |
 | **P2** | **Tauri 桌面端整合與 Stdio MCP 沙盒** | Stdio 管道 JSON-RPC 通訊，以及人類審查 [Approve] 安全攔截卡片 (UI Gatekeeper) | ⏳ 待開發 | 12 hrs |
-| **P3** | **45 天時間鎖 (Time Bomb) 與導出限制器** | 內建防白嫖機制，限制實體導出 (CSV/ODS) 僅能輸出前 10 列 | ⏳ 待開發 | 4 hrs |
 
 ---
 
@@ -71,20 +70,15 @@
 
 ---
 
-### 🔒 Phase 3: Stdio MCP 整合、離線授權與 UI Gatekeeper (桌面端專屬)
+### 🔒 Phase 3: Stdio MCP 整合與 UI Gatekeeper (桌面端專屬)
 
 #### 3.1 本地 Stdio MCP 沙盒
-- [ ] 確保 `opendoc start --mcp-only` 命令在 stdio 管道中 100% 穩定，不因任何 logger 或 stdout 污染 JSON-RPC 串流。
+- [ ] 確保 `opendoc start --mcp-only` 命令在 stdio 管道中 100% 穩定，不因 any logger 或 stdout 污染 JSON-RPC 串流。
 
 #### 3.2 UI Gatekeeper 安全審查門戶
-- [ ] 實作雙向認證攔截器：當 LLM 傳回任何 `tools/call`（例如請求寫入本地檔案、或執行 Python 腳本）時，後端強制掛起該 Tool Call。
+- [ ] 實作雙向認證攔截器：當 LLM 傳回 any `tools/call`（例如請求寫入本地檔案、或執行 Python 腳本）時，後端強制掛起該 Tool Call。
 - [ ] 前端 Operator 欄彈出黃色警告卡片，展示預期執行的命令與影響。
 - [ ] 必須等 Operator 人類點擊 `[Approve]` 釋放信號後，後端才放行執行。
-
-#### 3.3 ECC 離線硬授權校驗
-- [ ] 採集本機 CPU / 主機板 UUID，產出 Hardware Fingerprint 本機指紋。
-- [ ] 導入非對稱加密校驗，本地公鑰解密授權檔。
-- [ ] SQLite 記錄每次啟動的時間戳與歷史最高點，防止倒退系統時鐘白嫖。
 
 ---
 

@@ -76,15 +76,12 @@ OpenDocuments/ (儲存庫根目錄)
 
 ## 🗓️ 4. 多階段開發與任務對齊藍圖 (Roadmap & Milestones)
 
-### 🚀 Phase 0：本地 MVP 驗證、API Parity 補齊與測試熔斷
+### 🚀 Phase 0：本地 MVP 驗證與 API Parity 補齊
 * **進度 100% (已完成並通過端到端測試)**：
   * **Tags 系統**：實作 5 個標籤 CRUD 與貼標 Axum API，配合 SQLite 外鍵，完成隔離測試。
-  * **複合篩選 (Complex Query)**：文件列表支援 status、sourceType 複合過濾，並支援 title、updated_at 多欄位動態 SQL 升降冪排序。
+  * **複合篩選 (Complex Query)**：文件列表支援 status、sourceType 複合過濾，並支援 title、updated_at多欄位動態 SQL 升降冪排序。
   * **BYOK LLM 層**：獨立 `opendoc-llm` crate，SQLite 加密儲存，支援 OpenAI 格式自備 API 金鑰，並實作 connection health check 診斷。
   * **結構化資產 (Extracted Assets)**：實作 `extracted_assets` 表，並完成資產 CRUD (CamelCase 格式與 SQLite 隔離綁定)。
-* **防白嫖安全熔斷 (Time Bomb & Export Limiter)**：
-  * 於後端 Rust 核心內建 45 天 **「Time Bomb 鋼鐵硬到期日」** 熔斷機制，到期自動提示並終止進程。
-  * 限制導出額度：試用版允許無限建立 Workspace 與 Collection，但在實體導出 (CSV/ODS/Pages) 時，強行鎖死僅能輸出前 10 列，右欄 Monaco 畫布鎖定複製功能，建立 PLG 收割防線。
 
 ### 🎨 Phase 1：ChatGPT-Aligned WebUI & 漸進式 SSE 串流
 * **目標**：讓開源 WebUI 的聊天與渲染體感完全對齊 ChatGPT/Gemini。
@@ -100,15 +97,11 @@ OpenDocuments/ (儲存庫根目錄)
   * **中欄**：實作拖曳上傳 (Drag & Drop) UX，並嵌入 React Canvas 試算表與 Monaco Editor 實現就地編輯實體資產。
   * **右欄**：整合 Skill 快速啟動面板與 UI Gatekeeper 安全審查門戶卡片。
 
-### 🔒 Phase 3：Stdio MCP 整合、離線加密授權與 UI Gatekeeper
+### 🔒 Phase 3：Stdio MCP 整合與 UI Gatekeeper
 * **目標**：完成開閉源解耦，實現本地 Stdio MCP 安全沙盒。
 * **開發任務**：
   * 將 OpenDocuments 設定為標準 MCP Server，透過 Stdio/IPC 管道向桌面端傳輸 JSON-RPC。
   * **UI Gatekeeper**：實作攔截機制，當 LLM 發送任何 `tools/call`（如寫入檔案或調用本地 Python）時，前端 Operator 欄強制跳出黃色警報卡片，必須經由人類【Approve】後才放行。
-  * **License 防盜版機制**：
-    * 採集 CPU/主機板 UUID 經 SHA-256 產出 **「Hardware Fingerprint 本機指紋」**。
-    * 非對稱加密（ECC 私鑰簽名 $\to$ 本地公鑰解密），支援公部門內網 100% 離線授權校驗。
-    * 數據庫記錄時間戳，防禦用戶手動倒退系統時鐘白嫖。
 
 ### 🛒 Phase 4：開源市集與一鍵發布生態
 * **目標**：建立病毒式裂變，推廣至全台學校與公部門。
