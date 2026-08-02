@@ -23,13 +23,31 @@ Use this setup when you want an assistant to answer questions like:
 - Where is the deployment checklist?
 - What did the product spec decide about billing states?
 
-## Start the MCP server
+## Automatic setup for OpenCode / Claude Code / Cursor
+
+OpenDocuments has a built-in installer that configures and integrates your self-hosted RAG as a standardized MCP server inside OpenCode/Cursor/Claude Code settings with a single command:
+
+```bash
+# Automatically registers the unified 'opendoc-mcp' tool
+opendoc install-opencode
+```
+
+This automatic installer:
+1. Detects your shell, config paths, and OpenCode environment.
+2. Injects the standardized `opendoc-mcp` configuration pointing to your active `opendoc` binary installation.
+3. Automatically prunes obsolete separate read/write tools (like `opendocuments-read`, `opendoc-write`, etc.) from your configuration files to avoid any tool duplicates.
+
+---
+
+## Manual configuration
+
+If you prefer to manually configure your MCP-compatible client, you can spin up the standalone stdio MCP server:
 
 ```bash
 opendoc start --mcp-only
 ```
 
-Then configure your MCP-compatible client to call the OpenDocuments command:
+Then append OpenDocuments to your custom MCP configuration file:
 
 ```json
 {
