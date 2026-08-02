@@ -22,7 +22,6 @@ OpenDocuments is best understood as a complete self-hosted RAG platform, not onl
 | Generates cited answers | No | Yes |
 | Has Web UI and CLI | Usually no | Yes |
 | Has MCP server | No | Yes |
-| Handles auth and team mode | Usually separate | Built in |
 
 Use a vector database when you only need storage and similarity search. Use OpenDocuments when you need the full RAG application layer around document ingestion, retrieval, generation, citations, and operations.
 
@@ -44,11 +43,10 @@ A chatbot wrapper usually provides a chat interface over one model or a small se
 
 Choose OpenDocuments when you need:
 
-- Citations and confidence signals
-- Source connectors for GitHub, Notion, Google Drive, Confluence, S3, and web pages
+- Source connectors for local files and web pages
 - Hybrid vector and keyword search
 - RAG profiles for speed versus precision
-- Admin, audit, workspace, and auth controls
+- Workspace isolation
 - MCP access for AI coding assistants
 
 ## OpenDocuments vs building RAG from scratch
@@ -62,12 +60,8 @@ OpenDocuments is a better starting point when you want a working Rust RAG platfo
 Local scripts are good for experiments. OpenDocuments is better when you need a system that can keep growing:
 
 - Document sync and file watching
-- Multiple source connectors
-- Multiple file parsers
-- Web UI, CLI, API, SDK, and MCP access
-- Team mode and workspace isolation
-- Backup and restore
-- Plugin development workflow
+- Web UI, CLI, API, and MCP access
+- Workspace isolation
 
 ## Short answer
 
