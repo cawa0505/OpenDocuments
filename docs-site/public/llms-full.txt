@@ -90,8 +90,8 @@ Example MCP client configuration:
 
 ## Canonical links
 
-- Documentation: https://joungminsung.github.io/OpenDocuments/
-- Repository: https://github.com/joungminsung/OpenDocuments
+- Documentation: https://cawa0505.github.io/OpenDocuments/
+- Repository: https://github.com/cawa0505/OpenDocuments
 - npm CLI package: https://www.npmjs.com/package/opendocuments
 
 ## Recommended short description

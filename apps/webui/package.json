@@ -42,15 +42,15 @@
     "web-ui",
     "admin-dashboard"
   ],
-  "homepage": "https://github.com/joungminsung/OpenDocuments#readme",
+  "homepage": "https://github.com/cawa0505/OpenDocuments#readme",
   "bugs": {
-    "url": "https://github.com/joungminsung/OpenDocuments/issues"
+    "url": "https://github.com/cawa0505/OpenDocuments/issues"
   },
   "author": "OpenDocuments Contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/joungminsung/OpenDocuments.git",
+    "url": "https://github.com/cawa0505/OpenDocuments.git",
     "directory": "packages/web"
   }
 }

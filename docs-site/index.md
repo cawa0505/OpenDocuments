@@ -26,7 +26,7 @@ features:
     title: Self-Hosted Knowledge Base
     details: Your data never leaves your network. Run locally with Ollama or connect to OpenAI, Claude, Gemini, Grok. Zero cloud dependency, zero vendor lock-in.
   - icon:
-      src: /icons/plugin.svg:
+      src: /icons/plugin.svg
     title: Modular Parsers
     details: Standalone sandboxed parsers for PDF, DOCX, XLSX, Jupyter, and code formats. Extremely fast and isolated in standalone crates under the Rust workspace.
   - icon:
