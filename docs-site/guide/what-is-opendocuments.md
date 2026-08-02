@@ -58,12 +58,10 @@ OpenDocuments is useful for:
 
 OpenDocuments includes:
 
-- Web UI for chat, documents, connectors, plugins, settings, and admin views
-- CLI for indexing, asking, searching, diagnostics, auth, backup, and automation
-- HTTP API and TypeScript SDK
-- MCP server for AI coding assistants
-- Plugin system for parsers, connectors, model providers, and middleware
-- Team mode with API keys, roles, rate limits, PII redaction, audit logs, security alerts, OAuth SSO, and workspace isolation
+- **Web UI** — beautiful chat interface, workspace manager, and admin stats dashboard
+- **CLI (`opendoc`)** — terminal utility for indexing, querying, and configuring your self-hosted instance
+- **TUI (Terminal UI)** — fully interactive CLI terminal chatbot interface for local-first execution
+- **Unified API & MCP Server** — Axum-powered backend supporting REST queries and local-first Claude/Cursor MCP integration
 
 ## Short answer
 
