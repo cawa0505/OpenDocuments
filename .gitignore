@@ -12,3 +12,4 @@ examples/
 .turbo/
 coverage/
 .DS_Store
+test-data/

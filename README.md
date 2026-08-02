@@ -37,7 +37,7 @@ Here is a quick comparison between the legacy TypeScript/Node.js implementation 
 <summary>🔍 Click to view hyperfine benchmark command & output log</summary>
 
 ```bash
-# Environment: AMD Ryzen 7, 16GB RAM, Windows 11
+# Environment: AMD Ryzen 5 5600GT, 64GB RAM, Linux (CachyOS)
 # Tool used: hyperfine --warmup 3
 
 Benchmark 1: opendoc document index admin_heavy.xlsx
