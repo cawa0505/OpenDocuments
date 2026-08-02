@@ -21,6 +21,10 @@
   - [ ] 針對 Rust 新架構與向量混合檢索特性重新設計 `fast`、`balanced`、`precise` 三種方案的實質底層配置（例如：`fast` 僅使用 SQLite FTS5 全文檢索 + 輕量 Top-5 Chunk 且關閉 Reranker；`balanced` 啟用 LanceDB 向量 + Reranker 並回傳 Top-10；`precise` 啟用 FTS5 + LanceDB 雙路混合檢索 + 重度 Reranker 並回傳 Top-15 以求最高資訊覆蓋率）。
   - [ ] 修改後端 `chat.rs` 與 RAG 檢索引擎以落實此差異化行為。
   - [ ] 前端在介面上滑鼠懸停至 Fast/Balanced/Precise 選擇器時，呈現對應台灣在地化口吻的精準技術說明（不再僅是一個名詞）。
+- [ ] **0.5 opendoc TUI 工作區與 Collection 架構優化**
+  - [ ] **TUI 切換工作區**：讓 `opendoc tui` 優先讀取與遵從 `active_workspace`（若無則回退至 `default_workspace`）。實作 `Ctrl+W` 鍵盤快速鍵，在 TUI 底層彈出小型輸入框，讓用戶能「原地輸入工作區名稱並無縫切換」，且自動透過 `ConfigManager` 持久化至 `model.active_workspace`，無須重啟 TUI。
+  - [ ] **Collection Schema 與多對多關聯落地**：設計與落實 `collections` 與 `collection_documents` 物理資料庫表，並於 storage 層實作 `Collection` 新增、刪除與文件貼標/移除標籤之關聯 CRUD helper 函數。
+  - [ ] **防白嫖額度與試用過期保護機制**：於 `crates/opendoc-storage/src/lib.rs` 實作 Core IP 防禦，當進行試用版實體導出 (Export) 時，鎖死僅能輸出前 10 列；並偵測是否超過 45 天防禦時間限制（Time Bomb），超期自動安全熔斷進程。
 
 ---
 
