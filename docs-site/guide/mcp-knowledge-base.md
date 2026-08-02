@@ -35,7 +35,7 @@ opendoc install-opencode
 This automatic installer:
 1. Detects your shell, config paths, and OpenCode environment.
 2. Injects the standardized `opendoc-mcp` configuration pointing to your active `opendoc` binary installation.
-3. Automatically prunes obsolete separate read/write tools (like `opendocuments-read`, `opendoc-write`, etc.) from your configuration files to avoid any tool duplicates.
+3. Safely prunes legacy OpenDocuments tools (only if they resolve to an obsolete `opendoc` execution path) to avoid tool duplication.
 
 ---
 
