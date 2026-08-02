@@ -20,6 +20,9 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
+use sha2::{Digest, Sha256};
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use std::collections::HashMap;
 
 struct SearchWrapper(Arc<ConfigManager>);
 
@@ -265,10 +268,18 @@ DocumentSubcommands::Index { path, workspace } => {
             println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
             println!("{}", "-".repeat(50));
 
-            let ignored_dirs = [
-                "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
-                "__pycache__", "venv", ".env", "out"
-            ];
+            // Load .opendocignore if exists
+            let ignore_file = canon_path.join(".opendocignore");
+            let mut ignore_matcher: Option<Gitignore> = None;
+            if ignore_file.exists() {
+                let mut builder = GitignoreBuilder::new(&canon_path);
+                if builder.add(&ignore_file).is_none() {
+                    ignore_matcher = builder.build().ok();
+                    if ignore_matcher.is_some() {
+                        println!("📄 已載入 .opendocignore 規則");
+                    }
+                }
+            }
 
             let supported_extensions = [
                 ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
@@ -276,17 +287,71 @@ DocumentSubcommands::Index { path, workspace } => {
             ];
 
             let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
+            let list_url = format!("{}/api/v1/documents", app_cfg.server.url);
+            let delete_url_base = format!("{}/api/v1/documents", app_cfg.server.url);
             let client = reqwest::Client::new();
+
+            // Fetch existing documents to build source_path -> (id, content_hash) map
+            let mut existing_docs: HashMap<String, (String, Option<String>)> = HashMap::new();
+            match client.get(&list_url)
+                .header("X-Workspace", &resolved_workspace)
+                .send()
+                .await
+            {
+                Ok(resp) if resp.status().is_success() => {
+                    match resp.json::<serde_json::Value>().await {
+                        Ok(json) => {
+                            if let Some(docs) = json.get("documents").and_then(|v| v.as_array()) {
+                                for doc in docs {
+                                    if let (Some(id), Some(path)) = (
+                                        doc.get("id").and_then(|v| v.as_str()),
+                                        doc.get("source_path").and_then(|v| v.as_str()),
+                                    ) {
+                                        let hash = doc.get("content_hash").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        existing_docs.insert(path.to_string(), (id.to_string(), hash));
+                                    }
+                                }
+                            }
+                            println!("📋 已載入 {} 個現有文件記錄", existing_docs.len());
+                        }
+                        Err(e) => eprintln!("⚠️  解析現有文件列表失敗: {e}"),
+                    }
+                }
+                Ok(resp) => eprintln!("⚠️  取得現有文件列表失敗: HTTP {}", resp.status()),
+                Err(e) => eprintln!("⚠️  無法連接伺服器取得現有文件: {e}"),
+            }
+
             let mut success_count = 0;
             let mut fail_count = 0;
+            let mut processed_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
+            let is_directory = canon_path.is_dir();
 
             let walk = WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
-                        if let Some(name) = entry.file_name().to_str() {
-                            !ignored_dirs.contains(&name) && !name.starts_with('.')
-                        } else {
-                            false
-                        }
-                    });
+                // Check .opendocignore first
+                if let Some(ref matcher) = ignore_matcher {
+                    let path = entry.path();
+                    let is_dir = entry.file_type().is_dir();
+                    let rel_path = path.strip_prefix(&canon_path).unwrap_or(path);
+                    if matcher.matched_path_or_any_parents(rel_path, is_dir).is_ignore() {
+                        return false;
+                    }
+                }
+                // Default ignore for hidden files and common dirs
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.starts_with('.') {
+                        return false;
+                    }
+                    // Default ignores (always ignore these to avoid indexing system/dependency files)
+                    let default_ignored = [
+                        "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
+                        "__pycache__", "venv", ".env", "out", "target", "target-state"
+                    ];
+                    if default_ignored.contains(&name) {
+                        return false;
+                    }
+                }
+                true
+            });
 
                     for entry in walk {
                         let Ok(entry) = entry else { continue };
@@ -337,6 +402,23 @@ DocumentSubcommands::Index { path, workspace } => {
                                 }
                             };
 
+                            // Calculate SHA-256 hash
+                            let mut hasher = Sha256::new();
+                            hasher.update(&file_bytes);
+                            let content_hash = format!("{:x}", hasher.finalize());
+
+                            let abs_path_str = abs_source_path.to_string_lossy().into_owned();
+                            processed_paths.insert(abs_path_str.clone());
+
+                             // Compare with existing hash
+                             if let Some((_id, Some(existing_hash))) = existing_docs.get(&abs_path_str) {
+                                 if existing_hash == &content_hash {
+                                     print!("\r[skip] 已索引且無變更: {rel_path}\n");
+                                     success_count += 1;
+                                     break;
+                                 }
+                             }
+
                             let part = match multipart::Part::bytes(file_bytes)
                                 .file_name(file_name.to_string())
                                 .mime_str("application/octet-stream") 
@@ -350,9 +432,10 @@ DocumentSubcommands::Index { path, workspace } => {
 
                             let form = multipart::Form::new().part("file", part);
 
-let req_res = client.post(&upload_url)
+                            let req_res = client.post(&upload_url)
                                  .header("X-Workspace", &resolved_workspace)
-                                 .header("x-source-path", abs_source_path.to_string_lossy().into_owned())
+                                 .header("x-source-path", &abs_path_str)
+                                 .header("x-content-hash", &content_hash)
                                  .multipart(form)
                                  .timeout(Duration::from_secs(180)) // 3 mins timeout
                                  .send()
@@ -383,6 +466,39 @@ let req_res = client.post(&upload_url)
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    if is_directory {
+                        let canon_path_str = canon_path.to_string_lossy().into_owned();
+                        let mut pruned_count = 0;
+                        for (source_path, (id, _)) in &existing_docs {
+                            if source_path.starts_with(&canon_path_str) && !processed_paths.contains(source_path) {
+                                print!("[..] 本地已刪除，同步刪除雲端記錄: {source_path} ..");
+                                if let Err(e) = io::Write::flush(&mut io::stdout()) {
+                                    eprintln!("\r[!!] 無法刷新終端: {e}");
+                                }
+                                let del_url = format!("{}/{}", delete_url_base, id);
+                                match client.delete(&del_url)
+                                    .header("X-Workspace", &resolved_workspace)
+                                    .send()
+                                    .await
+                                {
+                                    Ok(resp) if resp.status().is_success() => {
+                                        print!("\r[prune] 同步刪除雲端記錄: {source_path}\n");
+                                        pruned_count += 1;
+                                    }
+                                    Ok(resp) => {
+                                        print!("\r[!!] 刪除雲端記錄失敗: {source_path} - HTTP {}\n", resp.status());
+                                    }
+                                    Err(e) => {
+                                        print!("\r[!!] 無法連接伺服器刪除記錄: {source_path} - {e}\n");
+                                    }
+                                }
+                            }
+                        }
+                        if pruned_count > 0 {
+                            println!("🗑️  同步清理完成，共刪除 {} 個失效雲端檔案", pruned_count);
                         }
                     }
 

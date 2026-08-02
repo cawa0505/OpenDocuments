@@ -19,3 +19,5 @@ crossterm = "0.27"
 ratatui = "0.26"
 chrono = "=0.4.38"
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+ignore = "0.4"
+sha2 = "0.10"

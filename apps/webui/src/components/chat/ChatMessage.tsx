@@ -63,12 +63,45 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
             className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.25 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer border border-blue-200"
             onClick={() => setSelectedSource(source)}
             title={tooltipText}
+            // Enhanced accessibility attributes
+            aria-label={`${t('chat.citationPreview')} ${numStr} - ${source.sourcePath}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setSelectedSource(source)
+              }
+            }}
           >
             [{numStr}]
           </button>
         )
       } else {
-        parts.push(fullMatch)
+        // Render invalid or out-of-bounds citations as styled spans for visibility
+        const isOutOfBounds = index >= dedupedSources.length
+        const isInvalid = isNaN(index) || numStr === ''
+        
+        let className = "inline-block mx-0.5 px-1.5 py-0.25 text-[11px] font-bold "
+        let title = ''
+        
+        if (isOutOfBounds) {
+          className += "text-orange-600 bg-orange-50 border border-orange-300"
+          title = `${t('chat.citationOutOfBounds')} ${numStr}`
+        } else if (isInvalid) {
+          className += "text-red-600 bg-red-50 border border-red-300"
+          title = `${t('chat.invalidCitation')} ${numStr}`
+        }
+        
+        parts.push(
+          <span
+            key={`invalid-citation-${index}-${match.index}`}
+            className={className + " rounded-md"}
+            title={title}
+          >
+            {fullMatch}
+          </span>
+        )
       }
 
       lastIndex = match.index + fullMatch.length

@@ -25,6 +25,7 @@ export async function streamChat(
       'Content-Type': 'application/json',
       'X-Workspace': activeWorkspace,
       'X-Locale': activeLocale,
+      'Accept-Language': activeLocale,
     }),
     body: JSON.stringify({ query, profile, conversationId: conversationId || undefined }),
     signal,

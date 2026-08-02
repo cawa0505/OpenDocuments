@@ -51,6 +51,29 @@ OpenDocuments/ (儲存庫根目錄)
 
 ---
 
+## 📐 5. 資料流與檢索架構 (Data Flow & Retrieval)
+
+### 5.1 資料寫入流程 (Ingestion Flow)
+```plaintext
+本地文件 (Local File) ──> 解析器 Parser (文字/表格/PDF)
+  ──> 語意切片 Chunker (Semantic Split) 
+  ──> 向量化 Embedder (ONNX Vectors) 
+  ──> 雙路儲存 Storage (SQLite 屬性 + LanceDB 向量)
+```
+
+### 5.2 混合檢索流程 (Hybrid Query Flow)
+```plaintext
+使用者問題 (User Query) ──> 向量化 Embedder (問題向量)
+  ──> 雙路並行檢索 Retriever (LanceDB 向量相似度 + SQLite FTS5 全文檢索)
+  ──> 重排 Reranker (排序與融合) ──> 上下文組裝 Context Window
+  ──> 大型語言模型 Generator (LLM) ──> 漸進式串流 Stream Response
+```
+
+### 5.3 混合檢索 (Dense + Sparse)
+結合 LanceDB 的稠密向量相似度與 SQLite FTS5 的關鍵字精準匹配，透過互惠排名融合 (RRF, Reciprocal Rank Fusion) 進行加權重排，以確保檢索結果兼具語意關聯性與名稱代號等專有名詞的精準度。
+
+---
+
 ## 🗓️ 4. 多階段開發與任務對齊藍圖 (Roadmap & Milestones)
 
 ### 🚀 Phase 0：本地 MVP 驗證、API Parity 補齊與測試熔斷

@@ -5,18 +5,19 @@ const BASE = '/api/v1'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const { headers, ...rest } = options || {}
-  const activeWorkspace = localStorage.getItem('active-workspace') || ''
-  const activeLocale = localStorage.getItem('opendocuments-locale') || 'zh-TW'
-  const res = await fetch(`${BASE}${path}`, {
-    ...rest,
-    credentials: 'same-origin',
-    headers: withStoredApiKey({ 
-      'Content-Type': 'application/json', 
-      'X-Workspace': activeWorkspace,
-      'X-Locale': activeLocale,
-      ...headers 
-    }),
-  })
+    const activeWorkspace = localStorage.getItem('active-workspace') || ''
+    const activeLocale = localStorage.getItem('opendocuments-locale') || 'zh-TW'
+    const res = await fetch(`${BASE}${path}`, {
+      ...rest,
+      credentials: 'same-origin',
+      headers: withStoredApiKey({ 
+        'Content-Type': 'application/json', 
+        'X-Workspace': activeWorkspace,
+        'X-Locale': activeLocale,
+        'Accept-Language': activeLocale,
+        ...headers 
+      }),
+    })
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: 'Request failed' }))
     throw new Error(body.error || `HTTP ${res.status}`)

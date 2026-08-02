@@ -5,6 +5,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use crate::McpState;
 
@@ -90,6 +91,11 @@ pub async fn upload_handler(
         ));
     }
 
+    // Calculate SHA-256 hash of file content
+    let mut hasher = Sha256::new();
+    hasher.update(&file_bytes);
+    let content_hash = format!("{:x}", hasher.finalize());
+
     // 2.5. 檔案大小上限 50 MiB
     const MAX_FILE_SIZE: usize = 50 * 1024 * 1024;
     if file_bytes.len() > MAX_FILE_SIZE {
@@ -163,12 +169,13 @@ pub async fn upload_handler(
     let document_id = match existing_id {
         Some(id) => {
             sqlx::query(
-                "UPDATE documents SET title = ?, file_type = ?, file_size_bytes = ?, chunk_count = ?, status = 'indexed', updated_at = CURRENT_TIMESTAMP, indexed_at = CURRENT_TIMESTAMP WHERE id = ?"
+                "UPDATE documents SET title = ?, file_type = ?, file_size_bytes = ?, chunk_count = ?, status = 'indexed', updated_at = CURRENT_TIMESTAMP, indexed_at = CURRENT_TIMESTAMP, content_hash = ? WHERE id = ?"
             )
             .bind(&file_path_str)
             .bind(&ext_display)
             .bind(file_size)
             .bind(chunks_count as i64)
+            .bind(&content_hash)
             .bind(&id)
             .execute(&state.db_pool)
             .await
@@ -177,8 +184,8 @@ pub async fn upload_handler(
         }
         None => {
             sqlx::query(
-                "INSERT INTO documents (id, title, source_type, source_path, file_type, file_size_bytes, status, chunk_count, workspace_id, created_at, indexed_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, 'indexed', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+                "INSERT INTO documents (id, title, source_type, source_path, file_type, file_size_bytes, status, chunk_count, workspace_id, created_at, indexed_at, content_hash) \
+                 VALUES (?, ?, ?, ?, ?, ?, 'indexed', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)"
             )
             .bind(&temp_file_id)
             .bind(&file_path_str)
@@ -188,6 +195,7 @@ pub async fn upload_handler(
             .bind(file_size)
             .bind(chunks_count as i64)
             .bind(&workspace_id)
+            .bind(&content_hash)
             .execute(&state.db_pool)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("寫入資料庫失敗: {e}")))?;
