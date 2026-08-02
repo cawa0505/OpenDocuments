@@ -62,31 +62,31 @@ To apply changes, simply restart your running `opendoc start` service.
 
 ---
 
-## 🎯 RAG 檢索偏好優化 (Query Profiles)
+## 🎯 RAG Query Profiles
 
-在 WebUI 的「系統設定」或 RAG 檢索中，OpenDocuments 提供三種預置的「檢索偏好設定（Query Profiles）」，用以平衡本機硬體資源消耗與檢索精準度。
+In WebUI system settings or RAG APIs, OpenDocuments provides three built-in **Query Profiles** to balance local hardware resource usage with retrieval precision.
 
-### 1. 快速檢索 (Fast Profile)
-* **檢索策略**：純關鍵字檢索 (SQLite FTS5) 與最輕量的語義粗篩。
-* **適用場景**：本機硬體資源極度受限（例如無 GPU 的公務舊電腦）、或對單純事實性命名實體（如：找特定「公文字號」、「姓名」）進行檢索時。
-* **技術特點**：
-  * 跳過本機 ONNX 重排模型 (Reranker)。
-  * 限制檢索上下文深度 (Top-K Chunks <= 3)。
-  * 反應時間最快，通常在 50ms 內完成。
+### 1. Fast Profile
+* **Retrieval Strategy**: Keywords-only search (SQLite FTS5) with the lightest semantic pre-filtering.
+* **Best For**: Highly constrained local hardware (such as legacy office PCs without a GPU) or when searching for pure factual named entities (e.g., finding specific document serial numbers or names).
+* **Technical Details**:
+  * Skips the local ONNX Reranker model.
+  * Limits retrieval context depth (Top-K Chunks <= 3).
+  * Fastest response time, typically completing within 50ms.
 
-### 2. 平衡檢索 (Balanced Profile)
-* **檢索策略**：雙路混合檢索 (Dense + Sparse Hybrid Search)。
-* **適用場景**：大部分日常行政稽核與教材備課查詢，是系統的預設推薦設定。
-* **技術特點**：
-  * 同時調用 SQLite FTS5 進行全文索引與 LanceDB 進行向量相似度檢索。
-  * 使用倒數排名融合 (RRF, Reciprocal Rank Fusion) 演算法，完美合併兩路分數。
-  * Top-K Chunks 設為 5，並進行輕量級本機重排。
-  * 平衡了語義理解與精準關鍵字匹配，本機 CPU 運算開銷適中。
+### 2. Balanced Profile (Default)
+* **Retrieval Strategy**: Two-way hybrid search (Dense + Sparse Hybrid Search).
+* **Best For**: Most daily administrative audits and material search tasks. This is the default recommended profile.
+* **Technical Details**:
+  * Concurrently queries SQLite FTS5 for full-text index and LanceDB for vector similarity.
+  * Uses Reciprocal Rank Fusion (RRF) to merge scores from both pathways.
+  * Sets Top-K Chunks to 5 and applies a lightweight local re-ranking.
+  * Perfectly balances semantic understanding and exact keyword matching with moderate CPU overhead.
 
-### 3. 精準檢索 (Precise Profile)
-* **檢索策略**：混合檢索 (Hybrid Search) ➔ 全面本機交叉重排 (ONNX Cross-Reranker) ➔ 知識關聯度拓撲。
-* **適用場景**：複雜的教學計畫書合規性審查、多份法規交叉比對、或需要极高推理連貫性的生成場景。
-* **技術特點**：
-  * Top-K 擴大至 10 到 15。
-  * 強制調用本機 ONNX Reranker 模型 (`bge-reranker-base`) 對所有候選文本進行深度交互注意力計算，重新評估語義關聯。
-  * 上下文攜帶更為完整豐富，但會消耗較多本機記憶體與計算資源。
+### 3. Precise Profile
+* **Retrieval Strategy**: Hybrid Search ➔ Comprehensive local cross-re-ranking (ONNX Cross-Reranker) ➔ Knowledge association topology.
+* **Best For**: Complex compliance audits of educational plans, cross-referencing multiple regulations, or generation scenarios requiring deep semantic coherence.
+* **Technical Details**:
+  * Expands Top-K to 10 or 15.
+  * Forces the invocation of the local ONNX Reranker model (`bge-reranker-base`) to calculate deep cross-attention scores and re-evaluate semantic relevance.
+  * Provides the most comprehensive context window, though it consumes more local memory and compute.
