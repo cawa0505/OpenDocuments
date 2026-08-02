@@ -1,31 +1,25 @@
 ---
 title: What is OpenDocuments?
-description: OpenDocuments is an open source self-hosted RAG platform for AI document search with source citations across GitHub, Notion, Google Drive, Confluence, S3, local files, and web sources.
+description: OpenDocuments is an open source self-hosted RAG platform for AI document search with source citations across local files and web sources.
 head:
   - - meta
     - name: keywords
       content: what is opendocuments, self-hosted rag platform, ai document search, open source rag, document question answering, cited ai answers
   - - script
     - type: application/ld+json
-    - '{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is OpenDocuments?","acceptedAnswer":{"@type":"Answer","text":"OpenDocuments is an open source self-hosted RAG platform that indexes documents from sources such as GitHub, Notion, Google Drive, Confluence, S3, local files, and web pages, then answers natural-language questions with source citations."}},{"@type":"Question","name":"What is OpenDocuments used for?","acceptedAnswer":{"@type":"Answer","text":"OpenDocuments is used to build a private AI search engine over organizational documents, engineering docs, product specs, policies, spreadsheets, API documentation, and knowledge bases."}},{"@type":"Question","name":"Can OpenDocuments run locally?","acceptedAnswer":{"@type":"Answer","text":"Yes. OpenDocuments can run locally with Ollama for LLM and embedding models, SQLite for metadata, LanceDB for vector search, and the built-in Web UI, CLI, HTTP API, SDK, and MCP server."}}]}'
+    - '{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is OpenDocuments?\",\"acceptedAnswer\":{\"@type\":\"Answer\",\"text\":\"OpenDocuments is an open source self-hosted RAG platform that indexes documents from sources such as local files, and web pages, then answers natural-language questions with source citations.\"}},{\"@type\":\"Question\",\"name\":\"What is OpenDocuments used for?\",\"acceptedAnswer\":{\"@type\":\"Answer\",\"text\":\"OpenDocuments is used to build a private AI search engine over organizational documents, engineering docs, product specs, policies, spreadsheets, API documentation, and knowledge bases.\"}},{\"@type\":\"Question\",\"name\":\"Can OpenDocuments run locally?\",\"acceptedAnswer\":{\"@type\":\"Answer\",\"text\":\"Yes. OpenDocuments can run locally with Ollama for LLM and embedding models, SQLite for metadata, LanceDB for vector search, and the built-in Web UI, CLI, HTTP API, and MCP server.\"}}]}'
 ---
 
 # What is OpenDocuments?
 
-**OpenDocuments is an open source, self-hosted RAG platform for AI document search.** It connects to scattered documents, indexes them, and answers natural-language questions with source citations.
+**OpenDocuments is an open source, self-hosted RAG platform for AI document search.** It connects to local documents, indexes them, and answers natural-language questions with source citations.
 
 OpenDocuments is designed for teams that want a private knowledge base search system without sending every document to a hosted enterprise search vendor. It can run locally with Ollama or connect to cloud model providers such as OpenAI, Anthropic, Google, and xAI.
 
 ## What problem does OpenDocuments solve?
 
-Teams often store knowledge across many tools:
+Teams often store knowledge in files:
 
-- GitHub repositories and wikis
-- Notion pages and databases
-- Google Drive files
-- Confluence spaces
-- S3 or Google Cloud Storage buckets
-- Swagger and OpenAPI specs
 - Local Markdown, PDF, DOCX, XLSX, CSV, PPTX, code, and email files
 - Internal or public web pages
 
@@ -52,7 +46,6 @@ OpenDocuments is useful for:
 - Product and operations teams that need answers from specs, spreadsheets, policies, and meeting notes
 - AI-assisted development teams that want Claude Code, Cursor, Windsurf, or another MCP client to search internal knowledge
 - Organizations that prefer self-hosted infrastructure and local model options
-- Developers building custom RAG workflows in TypeScript
 
 ## What does OpenDocuments include?
 
