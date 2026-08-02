@@ -24,6 +24,11 @@
 - [ ] **0.5 opendoc TUI 工作區與 Collection 架構優化**
   - [ ] **TUI 切換工作區**：讓 `opendoc tui` 優先讀取與遵從 `active_workspace`（若無則回退至 `default_workspace`）。實作 `Ctrl+W` 鍵盤快速鍵，在 TUI 底層彈出小型輸入框，讓用戶能「原地輸入工作區名稱並無縫切換」，且自動透過 `ConfigManager` 持久化至 `model.active_workspace`，無須重啟 TUI。
   - [ ] **Collection Schema 與多對多關聯落地**：設計與落實 `collections` 與 `collection_documents` 物理資料庫表，並於 storage 層實作 `Collection` 新增、刪除與文件貼標/移除標籤之關聯 CRUD helper 函數。
+- [ ] **0.6 剩餘高隔離文件解析器 (Parsers) 分階段開發與重啟對齊**
+  - [ ] **Jupyter 筆記本解析器 (`opendoc-parser-jupyter`)**：解鎖並將其加入 `Cargo.toml` 工作區。實作對 `.ipynb` 檔案的 JSON 內容解析，提取 markdown cells 與 code cells 程式碼片段並將其轉換成 RAG 可檢索的 Markdown 格式。
+  - [ ] **HTML 網頁解析器 (`opendoc-parser-html`)**：解鎖並將其加入 `Cargo.toml` 工作區。實作對網頁、靜態 HTML 檔案的 DOM 樹提取與文字/標題階層化萃取。
+  - [ ] **PowerPoint 簡報解析器 (`opendoc-parser-pptx`)**：解鎖並將其加入 `Cargo.toml` 工作區。實作對 `.pptx` 投影片投影片文字內容、形狀與文字框的流式提取與 Chunker 格式化。
+  - [ ] **Email 郵件解析器 (`opendoc-parser-email`)**：解鎖並將其加入 `Cargo.toml` 工作區。實作對 `.eml` 郵件格式的 Header (寄件者, 收件者, 主旨, 時間) 與 Body (HTML/文字) 屬性與關聯提取。
 
 ---
 
