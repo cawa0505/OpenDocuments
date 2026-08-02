@@ -91,7 +91,7 @@ In short: **OpenDocuments is a private, zero-trust AI search engine for your org
 | **Broad file formats** | Native support for Markdown, PDF, DOCX, XLSX, CSV, HTML, and code. |
 | **Local or cloud models** | Use Ollama locally or cloud providers such as OpenAI, Anthropic, Google, and xAI. |
 | **MCP server** | Let Claude Code, Cursor, Windsurf, and other MCP clients search your internal knowledge base. |
-| **Workspace isolation** | Completely isolated databases and vector indexes mapped by workspace to guarantee secure data boundaries. |
+| **Workspace isolation** | Role-based workspace and collection logical isolation for secure multi-context data boundaries. |
 
 ---
 

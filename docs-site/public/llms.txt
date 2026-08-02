@@ -2,7 +2,7 @@
 
 > Open source self-hosted RAG platform for AI document search across your local and imported sources.
 
-OpenDocuments connects scattered organizational documents, indexes them with hybrid retrieval, and answers natural-language questions with source citations. It includes a Web UI, CLI, HTTP API, MCP server, and team security controls.
+OpenDocuments connects scattered organizational documents, indexes them with hybrid retrieval, and answers natural-language questions with source citations. It includes a Web UI, CLI, HTTP API, and MCP server.
 
 ## Core documentation
 

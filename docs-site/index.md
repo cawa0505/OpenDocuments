@@ -1,11 +1,11 @@
 ---
 layout: home
 title: Self-Hosted RAG Platform for AI Document Search
-description: OpenDocuments is an open source self-hosted RAG platform for AI document search across GitHub, Notion, Google Drive, Confluence, S3, local files, and web sources.
+description: OpenDocuments is an open source self-hosted RAG platform for AI document search across local files and web sources.
 hero:
   name: OpenDocuments
   text: Self-Hosted RAG Platform
-  tagline: AI document search across GitHub, Notion, Google Drive, Confluence, S3, local files, and web sources with source citations
+  tagline: AI document search across local files and web sources with source citations
   actions:
     - theme: brand
       text: Get Started
@@ -18,9 +18,9 @@ hero:
       link: /guide/comparisons
 features:
   - icon:
-      src: /icons/search.svg
+      src: /icons/search.svg:
     title: AI Document Search
-    details: Ask questions in natural language across GitHub, Notion, Google Drive, Confluence, S3, and local files. Get cited answers with source links — not hallucinations.
+    details: Ask questions in natural language across local files and web pages. Get cited answers with source links — not hallucinations.
   - icon:
       src: /icons/server.svg
     title: Self-Hosted Knowledge Base
@@ -28,19 +28,19 @@ features:
   - icon:
       src: /icons/plugin.svg
     title: Modular Parsers
-    details: Standalone sandboxed parsers for PDF, DOCX, XLSX, Jupyter, and code formats. Extremely fast and isolated in standalone crates under the Rust workspace.
+    details: Standalone sandboxed parsers for PDF, DOCX, XLSX, and code formats. Extremely fast and isolated in standalone crates under the Rust workspace.
   - icon:
       src: /icons/robot.svg
     title: MCP Server for AI Coding
-    details: Works as a knowledge base for Claude Code, Cursor, Windsurf, and any MCP-compatible tool. 19 tools for search, indexing, and admin.
+    details: Works as a knowledge base for Claude Code, Cursor, Windsurf, and any MCP-compatible tool. Consolidates tools for search, indexing, and admin.
   - icon:
       src: /icons/globe.svg
     title: Cross-Lingual Search
-    details: Find Korean docs with English queries and vice versa. Hybrid search combines semantic vectors (LanceDB) with keyword matching (SQLite FTS5) via Reciprocal Rank Fusion.
+    details: Find cross-lingual docs. Hybrid search combines semantic vectors (LanceDB) with keyword matching (SQLite FTS5) via Reciprocal Rank Fusion.
   - icon:
       src: /icons/shield.svg
-    title: Enterprise Security
-    details: Team mode with OAuth SSO (Google, GitHub), API key auth with RBAC, automatic PII redaction, audit logging, workspace isolation, and per-key rate limiting.
+    title: Role & Workspace Isolation
+    details: Supports API key authentication with RBAC and logical workspace isolation for multi-role security boundaries with zero network leakage.
 ---
 
 ## What is OpenDocuments?
@@ -55,11 +55,11 @@ Unlike cloud-only solutions, OpenDocuments can run **entirely on your own infras
 |---------|--------------|-------------------|
 | **Data privacy** | Runs locally, data never leaves your network | Data sent to third-party servers |
 | **Cost** | Free, open source (MIT) | $20-100+/user/month |
-| **File formats** | 12+ formats (PDF, DOCX, code, Jupyter...) | Limited format support |
-| **Data sources** | 10+ connectors (GitHub, Notion, Drive...) | Vendor-specific integrations |
-| **Customization** | Plugin system, full source access | Closed source, limited APIs |
+| **File formats** | Core formats (PDF, DOCX, XLSX, CSV, Markdown, Email...) | Limited format support |
+| **Data sources** | Local folder ingestion, CLI indexer, Web UI uploads | Vendor-specific integrations |
+| **Customization** | Pure Rust workspace, full source access | Closed source, limited APIs |
 | **AI models** | Any model (Ollama, OpenAI, Claude, Gemini) | Locked to one provider |
-| **Korean support** | Built-in cross-lingual search | Usually English-only |
+| **Cross-lingual support** | Built-in search capabilities | Usually English-only |
 
 ### Popular searches OpenDocuments answers
 

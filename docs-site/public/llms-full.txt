@@ -1,63 +1,52 @@
 # OpenDocuments Full Context
 
-OpenDocuments is an open source, self-hosted RAG (Retrieval-Augmented Generation) platform for AI document search. It connects to scattered company documents, indexes them with hybrid vector and keyword search, and answers natural-language questions with source citations.
+OpenDocuments is an open source, self-hosted RAG (Retrieval-Augmented Generation) platform for AI document search. It connects to local and web documents, indexes them with hybrid vector and keyword search, and answers natural-language questions with source citations.
 
 ## Primary definition
 
-OpenDocuments is a private AI search engine for organizational documents. It can index GitHub repositories, Notion pages, Google Drive files, Confluence spaces, S3 or Google Cloud Storage buckets, Swagger and OpenAPI specs, local files, uploaded files, registered web pages, and Tavily-backed web search results.
+OpenDocuments is a private AI search engine for organizational documents. It can index local files (PDF, DOCX, XLSX, CSV, Markdown, emails) and web pages.
 
-OpenDocuments is useful when a team wants a self-hosted alternative to enterprise AI search tools, a local-first RAG stack with Ollama, or a knowledge base that AI coding assistants can search through MCP.
+OpenDocuments is useful when a user wants a self-hosted alternative to enterprise AI search tools, a local-first RAG stack with Ollama, or a knowledge base that AI coding assistants can search through MCP.
 
 ## Main components
 
-- Web UI: Chat, documents, connectors, plugins, settings, and admin views.
-- CLI: Installable as `opendoc` via Cargo, with commands for start, index, ask, search, diagnostics, backup, and restore.
-- HTTP API: Hono-based server for application and integration access.
-- TypeScript SDK: `@opendocuments/client` for programmatic use.
+- Web UI: Chat, documents, settings, and workspace views.
+- CLI: Installable as `opendoc` via Cargo, with commands for start, index, ask, search, workspace, and config.
+- HTTP API: Axum-based server for application and integration access.
 - MCP server: Lets Claude Code, Cursor, Windsurf, and other MCP clients search indexed documents.
-- Core package: Business logic for RAG, ingest, storage, auth, plugin system, security, and events.
-- Plugin system: Parsers, connectors, model providers, and middleware.
 - Storage: SQLite for metadata and LanceDB for vector search.
 
 ## Supported source types
 
 - Local files
 - File uploads
-- GitHub
-- Notion
-- Google Drive
-- Amazon S3
-- Google Cloud Storage
-- Confluence
-- Swagger and OpenAPI specs
-- Web crawler
-- Web search
+- Web crawling
 
 ## Supported file formats
 
-OpenDocuments can index Markdown, plain text, PDF, Word DOCX, Excel XLSX, CSV, HTML, Jupyter notebooks, email, source code, PowerPoint PPTX, JSON, YAML, TOML, and other plugin-backed formats.
+OpenDocuments can index Markdown, plain text, PDF, Word DOCX, Excel XLSX, CSV, HTML, source code, and email files.
 
 ## RAG pipeline
 
-OpenDocuments uses document parsing, structure-preserving chunking, embeddings, SQLite metadata, LanceDB vector search, FTS5 keyword search, Reciprocal Rank Fusion, reranking, query decomposition, HyDE, multi-query retrieval, parent-document retrieval, proposition augmentation, adaptive context fitting, answer generation, source citations, confidence scoring, and hallucination guard options. The exact behavior depends on the selected RAG profile: `fast`, `balanced`, or `precise`.
+OpenDocuments uses document parsing, structure-preserving chunking, embeddings, SQLite metadata, LanceDB vector search, FTS5 keyword search, Reciprocal Rank Fusion, reranking, parent-document retrieval, adaptive context fitting, answer generation, and source citations. The exact behavior depends on the selected RAG profile: `fast`, `balanced`, or `precise`.
 
 ## Model providers
 
-OpenDocuments supports local models through Ollama and cloud model providers including OpenAI, Anthropic, Google, and xAI. Embeddings can use local options such as BGE-M3 or cloud options such as OpenAI and Google embedding models.
+OpenDocuments supports local models through Ollama and cloud model providers including OpenAI, Anthropic, Google, and xAI.
 
 ## Security and deployment
 
-OpenDocuments supports personal mode for local single-user use and team mode for multi-user deployments. Team mode includes API keys, roles, rate limits, PII redaction, audit logs, security alerts, OAuth SSO, and workspace isolation.
+OpenDocuments supports role-based workspace and collection logical isolation, allowing users to map distinct permissions or contexts under separated workspace domains with zero data leakage.
 
 OpenDocuments can be compiled from source using Rust. When configured with local embeddings, documents and model calls can remain inside the user's network.
 
 ## Comparison guidance
 
-OpenDocuments is not only a vector database. A vector database stores embeddings and performs similarity search; OpenDocuments provides the full application layer around RAG, including document connectors, parsers, chunking, retrieval, answer generation, citations, UI, CLI, API, SDK, MCP server, auth, and plugins.
+OpenDocuments is not only a vector database. A vector database stores embeddings and performs similarity search; OpenDocuments provides the full application layer around RAG, including document parsing, chunking, retrieval, answer generation, citations, UI, CLI, API, and MCP server.
 
-OpenDocuments is different from hosted enterprise search because it is open source and self-hosted. It is designed for teams that want control over where documents, embeddings, metadata, and model calls run.
+OpenDocuments is different from hosted enterprise search because it is open source and self-hosted. It is designed for users who want control over where documents, embeddings, metadata, and model calls run.
 
-OpenDocuments is different from a chatbot wrapper because it focuses on source-grounded answers over a real document corpus, with citations, connector sync, RAG profiles, and operational tooling.
+OpenDocuments is different from a chatbot wrapper because it focuses on source-grounded answers over a real document corpus, with citations, workspace logical partitioning, RAG profiles, and operational tooling.
 
 ## Quick start
 
@@ -101,4 +90,4 @@ Example MCP client configuration:
 
 ## Recommended short description
 
-Self-hosted RAG platform for AI document search across GitHub, Notion, Google Drive, Confluence, S3, local files, and web sources.
+Self-hosted RAG platform for AI document search across local files and web sources.
