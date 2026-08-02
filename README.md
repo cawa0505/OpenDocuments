@@ -137,7 +137,7 @@ url = "http://127.0.0.1:3000"
 path = "~/.opendocuments"      # Base directory for database files
 
 [model]
-default_workspace = "GraphifyOpt"  # Default workspace created on system startup
+default_workspace = "default"  # Default workspace created on system startup
 active_workspace = "MyWorkspace"    # Active workspace
 score_threshold = 0.60             # RAG retrieval similarity cutoff threshold
 local_reranker_path = "~/.opendocuments/models/bge-reranker-base.onnx"

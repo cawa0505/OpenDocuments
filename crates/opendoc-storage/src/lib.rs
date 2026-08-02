@@ -50,7 +50,7 @@ impl Default for AppConfig {
                 path: "~/.opendocuments".to_string(),
             },
 model: ModelConfig {
-                     default_workspace: "GraphifyOpt".to_string(),
+                     default_workspace: "default".to_string(),
                      active_workspace: None,
                      score_threshold: 0.60,
                      local_reranker_path: Some("~/.opendocuments/models/bge-reranker-base.onnx".to_string()),
@@ -389,101 +389,10 @@ impl ConfigManager {
     }
 
     /// 運行與 BDD 規格完全一致之雙階段 Rerank 混合檢索與 Score Threshold Filter 保險絲過濾 (含自愈容錯 Top-1 保底)
-    pub fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
-        if query.trim().is_empty() {
-            return Vec::new();
-        }
-
-        // 模擬從 LanceDB 向量庫或 FTS5 當中取出的候選集 (100% 擬真，未來可極速對接 Lancedb-rust)
-        let candidates = vec![
-            opendoc_types::DocumentChunk {
-                chunk_type: opendoc_types::ChunkType::Semantic,
-                content: "修正：OpenDocuments MCP 在連線超時與網路抖動下的崩潰問題，並在 bootstrap 合入 Reranker 阻斷。".to_string(),
-                workspace_id: "GraphifyOpt".to_string(),
-                collection_id: "default".to_string(),
-                file_path: "CHANGELOG.md".to_string(),
-                relevance_score: Some(0.0), // 稍後計算
-                metadata: serde_json::json!({ "source_path": "CHANGELOG.md" }),
-            },
-            opendoc_types::DocumentChunk {
-                chunk_type: opendoc_types::ChunkType::Semantic,
-                content: "Homelab 整合架構：arhat 主要工作機 (192.168.77.200) 部署了 5x 核心 MCP 遠端容器並接入 Caddy 網關。".to_string(),
-                workspace_id: "GraphifyOpt".to_string(),
-                collection_id: "default".to_string(),
-                file_path: "STRUCTURE.md".to_string(),
-                relevance_score: Some(0.0),
-                metadata: serde_json::json!({ "source_path": "STRUCTURE.md" }),
-            },
-            opendoc_types::DocumentChunk {
-                chunk_type: opendoc_types::ChunkType::Semantic,
-                content: "Pangolin VPN 控制中樞與 Caddy Wildcard SSL：部署在 bumblebee (192.168.212.141) 專屬影音節點。".to_string(),
-                workspace_id: "GraphifyOpt".to_string(),
-                collection_id: "default".to_string(),
-                file_path: "STRUCTURE.md".to_string(),
-                relevance_score: Some(0.0),
-                metadata: serde_json::json!({ "source_path": "STRUCTURE.md" }),
-            },
-            opendoc_types::DocumentChunk {
-                chunk_type: opendoc_types::ChunkType::Semantic,
-                content: "Harness Engineering 規範：所有 Code Agent 修改代碼後必須強制作業系統級 verify 驗證，保障 production 穩定。".to_string(),
-                workspace_id: "GraphifyOpt".to_string(),
-                collection_id: "default".to_string(),
-                file_path: "AGENTS.md".to_string(),
-                relevance_score: Some(0.0),
-                metadata: serde_json::json!({ "source_path": "AGENTS.md" }),
-            },
-        ];
-
-        let words: Vec<&str> = query.split_whitespace().map(str::trim).filter(|s| !s.is_empty()).collect();
-
-        // 1. 第一階段：快速啟動基於詞頻、長度與路徑權重的 Heuristic Reranker 運算
-        let mut scored_chunks: Vec<opendoc_types::DocumentChunk> = candidates.into_iter().map(|mut chunk| {
-            let mut score = 0.0_f32;
-            let content_lower = chunk.content.to_lowercase();
-            
-            for word in &words {
-                let word_lower = word.to_lowercase();
-                if content_lower.contains(&word_lower) {
-                    score += 0.55_f32;
-                    // 如果是首碼或單詞完整匹配，額外加分
-                    if content_lower.starts_with(&word_lower) {
-                        score += 0.15_f32;
-                    }
-                }
-            }
-
-            // 對特定的重要檔案來源進行路徑加權
-            if let Some(src_path) = chunk.metadata.get("source_path").and_then(serde_json::Value::as_str) {
-                if src_path == "STRUCTURE.md" || src_path == "AGENTS.md" {
-                    score += 0.10_f32;
-                }
-            }
-
-            // 正規化分數至 0.0 - 1.0 之間
-            let normalized_score = score.min(0.99_f32);
-            chunk.relevance_score = Some(normalized_score);
-            chunk
-        }).collect();
-
-        // 根據重排分數，從高到低排序
-        scored_chunks.sort_by(|a, b| {
-            let sa = a.relevance_score.unwrap_or(0.0);
-            let sb = b.relevance_score.unwrap_or(0.0);
-            sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        // 2. 第二階段：套用 Score Threshold Filter 保險絲過濾
-        let filtered_chunks: Vec<opendoc_types::DocumentChunk> = scored_chunks.iter()
-            .filter(|c| c.relevance_score.unwrap_or(0.0) >= threshold)
-            .cloned()
-            .collect();
-
-        // 3. 自愈容錯防崩潰 (Self-healing Fallback)：如果過濾後列表為空，強制保底留住 Top-1
-        if filtered_chunks.is_empty() && !scored_chunks.is_empty() {
-            vec![scored_chunks[0].clone()]
-        } else {
-            filtered_chunks
-        }
+    pub fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+        // Ponytail: Keep search_and_rerank simple and empty of hardcoded homelab machine/IP chunks.
+        // It should return an empty list or only truly matched dynamically query-retrieved chunks.
+        Vec::new()
     }
 }
 
@@ -515,16 +424,7 @@ mod tests {
     #[tokio::test]
     async fn test_search_and_rerank_filtering_and_fallback() {
         let manager = ConfigManager::load_or_init().unwrap();
-        
-        // 測試1: 搜尋 "MCP" (預期有匹配且高於 0.60 門檻)
         let results = manager.search_and_rerank("MCP", 0.60);
-        assert!(!results.is_empty());
-        assert_eq!(results[0].file_path, "STRUCTURE.md");
-        assert!(results[0].relevance_score.unwrap() >= 0.60);
-
-        // 測試2: 搜尋不相關關鍵字且高門檻 (門檻 0.90，預期觸發「自愈保底機制」返回 Top-1)
-        let results_low = manager.search_and_rerank("無關關鍵字", 0.90);
-        assert_eq!(results_low.len(), 1); // 必須保底返回一個最優候選 (Top-1)
-        assert!(results_low[0].relevance_score.unwrap() < 0.90);
+        assert!(results.is_empty());
     }
 }
