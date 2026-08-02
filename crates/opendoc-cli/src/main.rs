@@ -950,7 +950,39 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
         }
     });
 
-    let mut state = TuiAppState::new(initial_workspace);
+    let mut state = TuiAppState::new(initial_workspace.clone());
+
+    // Trigger initial document fetch on startup
+    let mgr_init = Arc::clone(config_manager);
+    let tx_init = tx.clone();
+    let ws_init = initial_workspace;
+    tokio::spawn(async move {
+        let mut results = Vec::new();
+        if let Ok(pool) = mgr_init.init_db_pool().await {
+            let ws_row: Option<(String,)> = sqlx::query_as("SELECT id FROM workspaces WHERE id = ? OR name = ?")
+                .bind(&ws_init)
+                .bind(&ws_init)
+                .fetch_optional(&pool)
+                .await
+                .unwrap_or(None);
+
+            if let Some((ws_id,)) = ws_row {
+                let q = sqlx::query_as::<_, (String, String, i32)>(
+                    "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
+                ).bind(&ws_id);
+                if let Ok(rows) = q.fetch_all(&pool).await {
+                    for row in rows {
+                        results.push(TuiSearchResult {
+                            file_name: row.0,
+                            score: if row.1 == "indexed" { 1.0 } else { 0.5 },
+                            snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
+                        });
+                    }
+                }
+            }
+        }
+        let _ = tx_init.send(TuiEvent::FetchResults(results)).await;
+    });
 
     // TUI 主事件循環
     loop {
@@ -1053,10 +1085,39 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
                             
                             // 在背景非同步切換、持久化配置並自動重新載入
                             let mgr = Arc::clone(config_manager);
+                            let tx_ws_switch = tx.clone();
+                            let ws_for_fetch = selected_ws.clone();
                             tokio::spawn(async move {
                                 let mut cfg = mgr.get_config().await.clone();
                                 cfg.model.active_workspace = Some(selected_ws);
                                 let _ = mgr.update_config(cfg).await;
+                                
+                                // After switch, fetch documents for new workspace
+                                let mut results = Vec::new();
+                                if let Ok(pool) = mgr.init_db_pool().await {
+                                    let ws_row: Option<(String,)> = sqlx::query_as("SELECT id FROM workspaces WHERE id = ? OR name = ?")
+                                        .bind(&ws_for_fetch)
+                                        .bind(&ws_for_fetch)
+                                        .fetch_optional(&pool)
+                                        .await
+                                        .unwrap_or(None);
+
+                                    if let Some((ws_id,)) = ws_row {
+                                        let q = sqlx::query_as::<_, (String, String, i32)>(
+                                            "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
+                                        ).bind(&ws_id);
+                                        if let Ok(rows) = q.fetch_all(&pool).await {
+                                            for row in rows {
+                                                results.push(TuiSearchResult {
+                                                    file_name: row.0,
+                                                    score: if row.1 == "indexed" { 1.0 } else { 0.5 },
+                                                    snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                                let _ = tx_ws_switch.send(TuiEvent::FetchResults(results)).await;
                             });
                         }
                         state.switching_workspace = false;
