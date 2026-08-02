@@ -13,3 +13,5 @@ examples/
 coverage/
 .DS_Store
 test-data/
+graphify-out/
+.graphify/

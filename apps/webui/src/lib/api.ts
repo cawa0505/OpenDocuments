@@ -1,4 +1,4 @@
-import type { QueryResult, Document, StatsResponse, AdminStatsResponse, SearchQualityResponse, QueryLogsResponse, PluginHealthResponse, ConnectorStatusResponse, Conversation, ConversationMessage, WorkbenchResponse, Collection, Workspace } from './types'
+import type { QueryResult, Document, StatsResponse, AdminStatsResponse, SearchQualityResponse, QueryLogsResponse, PluginHealthResponse, ConnectorStatusResponse, Conversation, ConversationMessage, WorkbenchResponse, Collection, Workspace, LlmProvider, LlmTestResponse } from './types'
 import { withStoredApiKey } from './auth'
 
 const BASE = '/api/v1'
@@ -312,5 +312,35 @@ export async function importDictionarySeed(language: 'zh-TW' | 'ko-KR'): Promise
   return request('/dictionary/import-seed', {
     method: 'POST',
     body: JSON.stringify({ language })
+  })
+}
+
+// LLM Providers
+export async function listLlmProviders(): Promise<{ providers: LlmProvider[] }> {
+  return request('/admin/llm/providers')
+}
+
+export async function upsertLlmProvider(input: LlmProvider): Promise<LlmProvider> {
+  return request('/admin/llm/providers', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  })
+}
+
+export async function deleteLlmProvider(id: string): Promise<{ deleted: boolean }> {
+  return request(`/admin/llm/providers/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function testLlmProvider(input: {
+  providerId?: string
+  baseUrl?: string
+  model?: string
+  apiKey?: string
+}): Promise<LlmTestResponse> {
+  return request('/admin/llm/providers/test', {
+    method: 'POST',
+    body: JSON.stringify(input)
   })
 }

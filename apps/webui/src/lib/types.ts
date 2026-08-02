@@ -199,3 +199,23 @@ export interface WorkbenchResponse {
     mode: string
   }
 }
+
+export interface LlmProvider {
+  id?: string
+  name: string
+  provider: string
+  baseUrl: string
+  model: string
+  apiKey?: string
+  isActive?: boolean
+  hasApiKey?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface LlmTestResponse {
+  ok: boolean
+  reply?: string
+  latencyMs?: number
+  error?: string
+}
