@@ -9,6 +9,17 @@
   - [x] 於 WebUI `SettingsPage.tsx` 補上完整的 LLM Provider 設定介面（支援自訂名稱、Provider 種類、Base URL、Model Name、API Key 遮罩輸入）。
   - [x] 串接後端 `GET /api/v1/admin/llm/providers` / `POST /api/v1/admin/llm/providers` / `DELETE` 與 `POST /api/v1/admin/llm/providers/test`，提供「一鍵連線測試」與「啟用開關」。
   - [x] 確保使用者設定並啟用 BYOK LLM 後，Chat 與 Chat Stream 徹底告別 Echo / 拼接 `STRUCTURE.md` 的 Fallback 模式，並與 SQLite 完美同步。
+- [ ] **0.2 RAG 深度整合 (引用與對話織入)**
+  - [ ] 後端：強化 `chat.rs` 中的 System Prompt，依前端傳遞之 `Accept-Language` (或 `X-Locale`) 標頭動態調整 System Prompt 所要求的回答語系（不再寫死繁體中文）。強烈規範 LLM 回答時必須在文獻對應句末精準標記出處（例如 `[1]`、`[2]`），且文獻不足時誠實說明。
+  - [ ] 前端：於 `sse.ts` 與 `api.ts` 請求標頭中攜帶目前選擇的語系（自 `localStorage` 取得），並將 Markdown 渲染中的 `[1]`、`[2]` 標記轉化為可點擊的互動 Citation 標籤，點擊可滑動/聚焦到對應的 Source Card 並提供 Tooltip 預覽。
+- [ ] **0.3 opendoc CLI 索引同步與排除優化**
+  - [ ] 支援 `.opendocignore` 檔案排除過濾，規則相容 `.gitignore` 通配符與預設忽略清單（node_modules、.git 等）。
+  - [ ] 同步優化（Update / Sync 模式）：實作檔案內容雜湊值（MD5/SHA256）比對。若伺服器已有相同路徑且內容雜湊一致的檔案，則跳過上傳與重新向量化。
+  - [ ] 確保更新檔案（同路徑但內容改變）時，後端正確更新 `source_path` 對應的 `content_hash` 與 `updated_at`，並重置 chunk 與索引，而非重複新增。
+- [ ] **0.4 RAG 檢索偏好優化 (Query Profile) 方案重新規劃**
+  - [ ] 針對 Rust 新架構與向量混合檢索特性重新設計 `fast`、`balanced`、`precise` 三種方案的實質底層配置（例如：`fast` 僅使用 SQLite FTS5 全文檢索 + 輕量 Top-5 Chunk 且關閉 Reranker；`balanced` 啟用 LanceDB 向量 + Reranker 並回傳 Top-10；`precise` 啟用 FTS5 + LanceDB 雙路混合檢索 + 重度 Reranker 並回傳 Top-15 以求最高資訊覆蓋率）。
+  - [ ] 修改後端 `chat.rs` 與 RAG 檢索引擎以落實此差異化行為。
+  - [ ] 前端在介面上滑鼠懸停至 Fast/Balanced/Precise 選擇器時，呈現對應台灣在地化口吻的精準技術說明（不再僅是一個名詞）。
 
 ---
 

@@ -17,12 +17,14 @@ export async function streamChat(
   signal?: AbortSignal
 ): Promise<void> {
   const activeWorkspace = localStorage.getItem('active-workspace') || ''
+  const activeLocale = localStorage.getItem('opendocuments-locale') || 'zh-TW'
   const res = await fetch('/api/v1/chat/stream', {
     method: 'POST',
     credentials: 'same-origin',
     headers: withStoredApiKey({ 
       'Content-Type': 'application/json',
       'X-Workspace': activeWorkspace,
+      'X-Locale': activeLocale,
     }),
     body: JSON.stringify({ query, profile, conversationId: conversationId || undefined }),
     signal,

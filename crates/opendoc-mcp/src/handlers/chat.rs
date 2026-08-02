@@ -227,6 +227,16 @@ pub async fn chat_stream_handler(
         "score": total_score, "level": level, "reason": reason
     })).unwrap_or_default();
 
+    let locale_str = headers.get("x-locale")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("zh-TW");
+
+    let language_instruction = match locale_str {
+        "en" => "English",
+        "ko" => "Korean (한국어)",
+        _ => "Traditional Chinese (繁體中文)",
+    };
+
     let llm_client_opt = get_active_llm_client(&state.db_pool, &workspace).await;
 
     if let Some(llm_client) = llm_client_opt {
@@ -234,18 +244,26 @@ pub async fn chat_stream_handler(
         let confidence_json_clone = confidence_json.clone();
 
         let context_str = if limited.is_empty() {
-            "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string()
+            match locale_str {
+                "en" => "No relevant local documents found. Please answer directly or explain that there is no context.".to_string(),
+                "ko" => "관련된 현지 문서를 찾을 수 없습니다. 직접 답변하거나 관련 문서가 없음을 설명하십시오.".to_string(),
+                _ => "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string(),
+            }
         } else {
             limited.iter().enumerate().map(|(i, r)| {
-                format!("[文獻 {}] 來源: {}\n内容: {}", i + 1, r.file_path, r.content)
+                format!("[Document {}] Source: {}\nContent: {}", i + 1, r.file_path, r.content)
             }).collect::<Vec<_>>().join("\n\n")
         };
 
         let system_prompt = format!(
-            "你是一個專業的本地知識庫助理。請根據以下提供的 [本地文獻] 來回答使用者的問題。\n\
-            如果文獻中沒有提到相關資訊，請誠實說明「本地文獻未提及」，不要虛構事實。回答時請維持繁體中文語系。\n\n\
-            [本地文獻]\n{}",
-            context_str
+            "You are a professional local knowledge base assistant. Answer the user's question based on the provided [Local Documents] below.\n\
+             You MUST follow these rules:\n\
+             1. You MUST answer in the requested language: {}.\n\
+             2. When your answer is derived from or references a specific [Local Document] chunk, you MUST precisely append its corresponding citation tag at the end of the sentence, such as `[1]` or `[2]` (using single-byte square brackets and numbers). Never invent non-existent citation numbers.\n\
+             3. If the documents do not contain relevant information, honestly state that the documents do not mention it, do not make up facts.\n\n\
+             [Local Documents]\n{}",
+             language_instruction,
+             context_str
         );
 
         let cid_clone = conversation_id.clone();
@@ -463,23 +481,41 @@ pub async fn chat_handler(
     let results = state.search.search_and_rerank(&expanded_query, threshold);
     let limited: Vec<_> = results.into_iter().take(10).collect();
 
+    let locale_str = headers.get("x-locale")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("zh-TW");
+
+    let language_instruction = match locale_str {
+        "en" => "English",
+        "ko" => "Korean (한국어)",
+        _ => "Traditional Chinese (繁體中文)",
+    };
+
     let mut answer = String::new();
     let mut generated_by_llm = false;
 
     if let Some(llm_client) = get_active_llm_client(&state.db_pool, &workspace).await {
         let context_str = if limited.is_empty() {
-            "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string()
+            match locale_str {
+                "en" => "No relevant local documents found. Please answer directly or explain that there is no context.".to_string(),
+                "ko" => "관련된 현지 문서를 찾을 수 없습니다. 직접 답변하거나 관련 문서가 없음을 설명하십시오.".to_string(),
+                _ => "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string(),
+            }
         } else {
             limited.iter().enumerate().map(|(i, r)| {
-                format!("[文獻 {}] 來源: {}\n内容: {}", i + 1, r.file_path, r.content)
+                format!("[Document {}] Source: {}\nContent: {}", i + 1, r.file_path, r.content)
             }).collect::<Vec<_>>().join("\n\n")
         };
 
         let system_prompt = format!(
-            "你是一個專業的本地知識庫助理。請根據以下提供的 [本地文獻] 來回答使用者的問題。\n\
-            如果文獻中沒有提到相關資訊，請誠實說明「本地文獻未提及」，不要虛構事實。回答時請維持繁體中文語系。\n\n\
-            [本地文獻]\n{}",
-            context_str
+            "You are a professional local knowledge base assistant. Answer the user's question based on the provided [Local Documents] below.\n\
+             You MUST follow these rules:\n\
+             1. You MUST answer in the requested language: {}.\n\
+             2. When your answer is derived from or references a specific [Local Document] chunk, you MUST precisely append its corresponding citation tag at the end of the sentence, such as `[1]` or `[2]` (using single-byte square brackets and numbers). Never invent non-existent citation numbers.\n\
+             3. If the documents do not contain relevant information, honestly state that the documents do not mention it, do not make up facts.\n\n\
+             [Local Documents]\n{}",
+             language_instruction,
+             context_str
         );
 
         let mut messages = if let Some(cid) = &conversation_id {

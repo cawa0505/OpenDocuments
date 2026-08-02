@@ -88,32 +88,32 @@ export function SettingsPage() {
   const [llmProviders, setLlmProviders] = useState<LlmProvider[]>([])
   const [llmLoading, setLlmLoading] = useState(false)
   const [llmError, setLlmError] = useState<string | null>(null)
-    const [testLoadingId, setTestLoadingId] = useState<string | null>(null)
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
-    const [isAddingProvider, setIsAddingProvider] = useState(false)
-    const [editingProvider, setEditingProvider] = useState<LlmProvider | null>(null)
-    const [formData, setFormData] = useState({
-      name: '',
-      provider: 'openai',
-      baseUrl: '',
-      model: '',
-      apiKey: '',
-      isActive: false
-    })
+  const [testLoadingId, setTestLoadingId] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [isAddingProvider, setIsAddingProvider] = useState(false)
+  const [editingProvider, setEditingProvider] = useState<LlmProvider | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    provider: 'openai',
+    baseUrl: '',
+    model: '',
+    apiKey: '',
+    isActive: false
+  })
 
-    const loadLlmProviders = async () => {
-      setLlmLoading(true)
-      setLlmError(null)
-      try {
-        const response = await listLlmProviders()
-        setLlmProviders(response.providers)
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : (t('common.unknownError') || '')
-        setLlmError(errorMsg || null)
-      } finally {
-        setLlmLoading(false)
-      }
+  const loadLlmProviders = async () => {
+    setLlmLoading(true)
+    setLlmError(null)
+    try {
+      const response = await listLlmProviders()
+      setLlmProviders(response.providers)
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : (t('common.unknownError') || '')
+      setLlmError(errorMsg || null)
+    } finally {
+      setLlmLoading(false)
     }
+  }
 
   const handleTestProvider = async (provider: LlmProvider) => {
     setTestLoadingId(provider.id || null)
@@ -507,7 +507,7 @@ export function SettingsPage() {
                               required
                               value={formData.baseUrl}
                               onChange={(e) => setFormData({...formData, baseUrl: e.target.value})}
-                              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                               placeholder="例如：https://litellm.int.fotolove.top/v1"
                             />
                           </div>
@@ -518,7 +518,7 @@ export function SettingsPage() {
                               required
                               value={formData.model}
                               onChange={(e) => setFormData({...formData, model: e.target.value})}
-                              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                               placeholder="例如：9router/moonshotai/kimi-k3 或 gpt-4o"
                             />
                           </div>
@@ -528,7 +528,7 @@ export function SettingsPage() {
                               type="password"
                               value={formData.apiKey}
                               onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
-                              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                               placeholder="留空表示使用現有設定"
                             />
                           </div>

@@ -36,6 +36,63 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
   const metricLabel = bestSourceScore !== undefined ? t('chat.evidenceMatch') : t('chat.confidence')
   const sourceHeading = selectedSource?.headingHierarchy?.join(' / ')
 
+  // Process content to add interactive citation tags
+  const processContent = (content: string) => {
+    // Replace citation patterns like [1], [2], [3] with interactive tags
+    const citationRegex = /\[(\d+)\]/g
+    const parts: (string | React.ReactElement)[] = []
+    let lastIndex = 0
+    let match
+
+    while ((match = citationRegex.exec(content)) !== null) {
+      const [fullMatch, numStr] = match
+      const index = parseInt(numStr) - 1 // Convert to 0-indexed
+
+      // Add text before the citation
+      if (match.index > lastIndex) {
+        parts.push(content.slice(lastIndex, match.index))
+      }
+
+      // Add interactive citation tag
+      if (index >= 0 && index < dedupedSources.length) {
+        const source = dedupedSources[index]
+        const tooltipText = `${source.sourcePath.split('/').pop() || source.sourcePath}\n\n${source.content.slice(0, 100)}${source.content.length > 100 ? '...' : ''}`
+        parts.push(
+          <button
+            key={`citation-${index}-${match.index}`}
+            className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.25 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer border border-blue-200"
+            onClick={() => setSelectedSource(source)}
+            title={tooltipText}
+          >
+            [{numStr}]
+          </button>
+        )
+      } else {
+        parts.push(fullMatch)
+      }
+
+      lastIndex = match.index + fullMatch.length
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.slice(lastIndex))
+    }
+
+    // Convert to ReactNode array for rendering
+    return parts
+  }
+
+  const renderContent = () => {
+    const processed = processContent(message.content)
+    return processed.map((part, index) => {
+      if (typeof part === 'string') {
+        return <span key={`text-${index}`}>{part}</span>
+      }
+      return part
+    })
+  }
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`${isUser ? 'max-w-[78%]' : 'w-full'}`}>
@@ -49,7 +106,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
               <div className="min-w-0">
                 <p className="mb-2.5 text-[13px] font-medium text-blue-600">{t('chat.answer')}</p>
                 <div className="prose prose-sm max-w-none prose-slate text-[15px] leading-6 [&_p:first-child]:mt-0 [&_p:first-child]:font-semibold [&_p:first-child]:text-slate-950 [&_p]:my-2">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                  {renderContent()}
                 </div>
               </div>
               {metricScore !== undefined && (
@@ -74,7 +131,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-semibold text-slate-900">{t('chat.sources')}</span>
                     <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-600">
-                      {message.sources?.length || 0}
+                      {dedupedSources.length}
                     </span>
                   </div>
                 </div>
