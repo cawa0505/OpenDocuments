@@ -32,11 +32,7 @@ local_reranker_path = "~/.opendocuments/models/bge-reranker-base.onnx" # Path to
 
 ## 📁 Workspace Configuration
 
-Workspaces are completely self-contained. When you define a workspace or switch to one, OpenDocuments dynamically maps:
-1. **Metadata Database**: An independent SQLite file at `{path}/{workspace_name}/opendocuments.db` storing conversations, tags, document properties, and logs.
-2. **Vector Space**: A standalone LanceDB database under the `{path}/{workspace_name}/collections/` directory storing text chunk embeddings.
-
-Because of this physical decoupling, switching workspaces in the CLI or WebUI instantly switches backend pointers with **microsecond latency** and zero risk of cross-workspace data leakage.
+Workspaces are logically isolated within a unified database structure. When you switch to a workspace, OpenDocuments dynamically filters metadata, documents, and conversations under that workspace's unique ID. This logical decoupling ensures that switching workspaces in the CLI or WebUI instantly partitions your data with **microsecond latency** and zero risk of cross-workspace data leakage.
 
 ---
 
