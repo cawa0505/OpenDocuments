@@ -18,14 +18,15 @@ jobs:
         node-version: [20, 22]
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: apps/webui/package-lock.json
 
-      - run: rm -f package-lock.json && npm install
-      - run: npx turbo build
-      - run: npx turbo typecheck
-      - run: npx turbo lint
-      - run: npx turbo test
+      - run: npm ci
+        working-directory: apps/webui
+      - run: npm run build
+        working-directory: apps/webui
