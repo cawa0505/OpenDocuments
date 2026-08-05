@@ -13,24 +13,3 @@ resolver = "2"
 [profile.release]
 opt-level = 0
 overflow-checks = false
-
-[profile.release.package.opendoc]
-opt-level = 2
-
-[profile.release.package.opendoc-mcp]
-opt-level = 2
-
-[profile.release.package.opendoc-tui]
-opt-level = 2
-
-[profile.release.package.opendoc-storage]
-opt-level = 2
-
-[profile.release.package.opendoc-parser]
-opt-level = 2
-
-[profile.release.package.opendoc-llm]
-opt-level = 2
-
-[profile.release.package.opendoc-types]
-opt-level = 2
