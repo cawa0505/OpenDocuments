@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | 繁體中文
+  <a href="README.md">English</a> | 繁體中文 | <a href="https://cawa0505.github.io/OpenDocuments/">📚 官方文件網站</a>
 </p>
 
 <p align="center">
