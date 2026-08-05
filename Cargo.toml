@@ -21,14 +21,30 @@ codegen-units = 16  # 提升並行編譯度，縮短編譯時間並降低編譯�
 panic = "abort"     # 縮減最終二進位檔體積
 
 [profile.release.package.lance]
-opt-level = 0       # 💡 針對 lance 降低優化等級以完全繞過 rustc async layout 遞迴計算 bug ！！！
-
+opt-level = 0
+[profile.release.package.lance-arrow]
+opt-level = 0
+[profile.release.package.lance-core]
+opt-level = 0
+[profile.release.package.lance-datafusion]
+opt-level = 0
+[profile.release.package.lancedb]
+opt-level = 0
+[profile.release.package.lance-encoding]
+opt-level = 0
+[profile.release.package.lance-file]
+opt-level = 0
 [profile.release.package.lance-index]
 opt-level = 0
-
+[profile.release.package.lance-io]
+opt-level = 0
+[profile.release.package.lance-linalg]
+opt-level = 0
 [profile.release.package.lance-table]
+opt-level = 0
+[profile.release.package.lance-testing]
 opt-level = 0
 
 [profile.dev]
-opt-level = 2       # 開發階段使用 opt-level = 2 深度優化，以防止 rustc 1.94+ 在編譯 lance 等重度嵌套 async 類型時發生 recursion_limit overflow 崩潰！
-panic = "abort"     # 發生 Panic 時直接中斷，不再保留展開堆疊，能進一步縮減二進位檔大小
+opt-level = 2       # 開發階段使用 opt-level = 2 深度優化，以防止 rustc 在編譯 lance 等重度嵌套 async 類型時發生 recursion_limit overflow 崩潰！
+panic = "abort"     # 發生 Panic 時直接中斷
