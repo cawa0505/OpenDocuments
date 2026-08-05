@@ -1,6 +1,6 @@
 # Open Source RAG Engine (Data Plane)
 
-[English](open-source-rag-engine.md) | [繁體中文](../zh-TW/open-source-rag-engine.md)
+Language: **English** | [繁體中文](../zh-TW/open-source-rag-engine.md)
 
 ---
 
