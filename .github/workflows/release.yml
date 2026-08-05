@@ -51,6 +51,11 @@ jobs:
           npm ci
           npm run build
 
+      - name: Setup Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
