@@ -21,10 +21,6 @@ jobs:
             job-name: linux-x86_64
             target-os: linux
             target-arch: x86_64
-          - os: ubuntu-24.04-arm
-            job-name: linux-aarch64
-            target-os: linux
-            target-arch: aarch64
           - os: macos-13
             job-name: macos-x86_64
             target-os: macos
@@ -58,6 +54,9 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
 
       - name: Build Rust binary
         run: cargo build --release -p opendoc
