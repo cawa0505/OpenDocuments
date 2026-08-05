@@ -55,12 +55,32 @@ if [ -n "$DOCKER_RUN" ] && [ "$DOCKER_RUN" != "" ]; then
 fi
 
 # 4. Check for invalid or legacy cli binary name "opendocuments" in commands
-OPENDOCUMENTS_CMD=$(grep -rnE "(\s|^)opendocuments\s+(start|index|ask|search|workspace|document|install-opencode)" "$DOCS_DIR" "$README_FILE" 2>/dev/null || true)
+OPENDOCUMENTS_CMD=$(grep -rnE "(\\s|^)opendocuments\\s+(start|index|ask|search|workspace|document|install-opencode)" "$DOCS_DIR" "$README_FILE" 2>/dev/null || true)
 if [ -n "$OPENDOCUMENTS_CMD" ] && [ "$OPENDOCUMENTS_CMD" != "" ]; then
   echo "❌ ERROR: Found legacy CLI command executor name 'opendocuments' (should be 'opendoc'):"
   echo "$OPENDOCUMENTS_CMD"
   VIOLATIONS=$((VIOLATIONS + 1))
 fi
+
+# 5. Check for language selector menu format consistency in docs/en and docs/zh-TW
+echo "   - Checking language selector menu consistency..."
+for file in docs/en/*.md; do
+  if [ -f "$file" ]; then
+    if ! grep -q "^\*\*English\*\* | \[繁體中文\](\.\./zh-TW/" "$file"; then
+      echo "❌ ERROR: File '$file' missing standard English language selector header ('**English** | [繁體中文](../zh-TW/filename.md)')"
+      VIOLATIONS=$((VIOLATIONS + 1))
+    fi
+  fi
+done
+
+for file in docs/zh-TW/*.md; do
+  if [ -f "$file" ]; then
+    if ! grep -q "^\[English\](\.\./en/.*) | \*\*繁體中文\*\*" "$file"; then
+      echo "❌ ERROR: File '$file' missing standard Traditional Chinese language selector header ('[English](../en/filename.md) | **繁體中文**')"
+      VIOLATIONS=$((VIOLATIONS + 1))
+    fi
+  fi
+done
 
 if [ $VIOLATIONS -gt 0 ]; then
   echo "💥 Audit FAILED with $VIOLATIONS error(s). Please align the docs with the actual Rust code capabilities."

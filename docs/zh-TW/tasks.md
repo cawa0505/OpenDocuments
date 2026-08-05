@@ -1,6 +1,6 @@
 # 📋 OpenDocuments 待開發任務清單
 
-語言：[English](../en/tasks.md) | **繁體中文**
+[English](../en/tasks.md) | **繁體中文**
 
 本文件依據架構地圖與當前研發狀態，追蹤所有工程任務的執行進度。
 

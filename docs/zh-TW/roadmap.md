@@ -1,6 +1,6 @@
 # 🗺️ OpenDocuments 多階段研發藍圖
 
-語言：[English](../en/roadmap.md) | **繁體中文**
+[English](../en/roadmap.md) | **繁體中文**
 
 本藍圖記錄了 OpenDocuments 開源生態系的工程目標與戰略里程碑。
 

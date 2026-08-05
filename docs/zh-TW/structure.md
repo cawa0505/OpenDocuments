@@ -1,6 +1,6 @@
 # 🗂️ OpenDocuments 系統架構與專案結構圖
 
-語言：[English](../en/structure.md) | **繁體中文**
+[English](../en/structure.md) | **繁體中文**
 
 本文件定義並記錄了開源 RAG 核心（OpenDocuments）與桌面端（Desktop Client）整合之系統架構、儲存庫目錄結構與資料流規格。
 

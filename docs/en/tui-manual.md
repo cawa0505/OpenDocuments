@@ -1,6 +1,6 @@
 # 📟 OpenDocuments Terminal UI (TUI) User & Debugging Manual
 
-Language: **English** | [繁體中文](../zh-TW/tui-manual.md)
+**English** | [繁體中文](../zh-TW/tui-manual.md)
 
 ---
 

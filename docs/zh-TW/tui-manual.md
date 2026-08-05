@@ -1,6 +1,6 @@
 # 📟 OpenDocuments Terminal UI (TUI) 深入使用與調試手冊
 
-語言：[English](../en/tui-manual.md) | **繁體中文**
+[English](../en/tui-manual.md) | **繁體中文**
 
 ---
 

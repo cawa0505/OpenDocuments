@@ -1,6 +1,6 @@
 # 開源 RAG 引擎 (Data Plane)
 
-語言：[English](../en/open-source-rag-engine.md) | **繁體中文**
+[English](../en/open-source-rag-engine.md) | **繁體中文**
 
 ---
 

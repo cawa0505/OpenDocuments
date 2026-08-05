@@ -1,6 +1,6 @@
 # 🗂️ OpenDocuments System Architecture & Directory Map
 
-Language: **English** | [繁體中文](../zh-TW/structure.md)
+**English** | [繁體中文](../zh-TW/structure.md)
 
 This document defines the system architecture, repository directory layout, and data flow specifications for the OpenDocuments open-source RAG engine and desktop client ecosystem.
 

@@ -1,6 +1,6 @@
 # 📋 OpenDocuments Task Backlog & Execution Status
 
-Language: **English** | [繁體中文](../zh-TW/tasks.md)
+**English** | [繁體中文](../zh-TW/tasks.md)
 
 This document tracks execution status across all engineering work packages.
 

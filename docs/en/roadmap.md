@@ -1,6 +1,6 @@
 # 🗺️ OpenDocuments R&D Roadmap
 
-Language: **English** | [繁體中文](../zh-TW/roadmap.md)
+**English** | [繁體中文](../zh-TW/roadmap.md)
 
 This roadmap outlines the multi-phase engineering objectives and strategic milestones for the OpenDocuments ecosystem.
 
