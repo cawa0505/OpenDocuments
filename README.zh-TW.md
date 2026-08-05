@@ -220,6 +220,25 @@ OpenDocuments 為 100% 開源、廠商中立且由社群驅動的專案。如果
 
 ---
 
+## 🛡️ 軟體品質與 Pre-Commit 隱私安全規範
+
+為維護最高標準的系統穩定度與 100% 本地優先的開源安全防線，所有對本專案的變更均須遵守以下強制規範：
+
+### 1. 零警告編譯防線 (Zero-Warning Compilation)
+- **絕對乾淨編譯**：所有 Rust 編譯（`cargo check`、`cargo build`）必須維持 **0 錯誤、0 警告**（例如 `unused_imports`、`unused_variables` 等警告必須立即清理）。
+
+### 2. 強制單元測試與驗證 (Mandatory Unit Testing)
+- **測試驅動修正**：在修改任何功能或修復問題前，務必撰寫或更新對應的 Unit Test，確認測試失敗後再進行修復，並於修改後通過完整單元測試與端到端驗證。
+
+### 3. 零 Mock 動態檢索原則 (Dynamic Zero-Mock)
+- 核心 RAG 檢索流程（如 `search_and_rerank`）必須完全動態對接實體 SQLite 與 LanceDB 資料庫，嚴禁塞入任何硬編碼的靜態 Mock 測試文件或偽造數據。
+
+### 4. Pre-Commit 隱私與閉源計劃審查 (Privacy & Environment Guardrails)
+- **嚴禁硬編碼私有開發環境資訊**：禁止在程式碼中寫入內部區網拓撲、私有 IP 位址或開發主機名稱。測試與範例位址統一使用 `127.0.0.1`、`localhost` 或 RFC 5737 標準測試位址。
+- **閉源計劃與開發環境資訊防線**：在執行任何 `git commit` 前，務必仔細檢查變更內容，嚴禁攜帶任何開發環境私有路徑、金鑰或未發布之閉源相關軟體連結（除非未來已正式建立該軟體之官方網站）。
+
+---
+
 ## 授權條款 (License)
 
 本專案採用 MIT 授權條款 - 詳見 [LICENSE](LICENSE) 檔案。

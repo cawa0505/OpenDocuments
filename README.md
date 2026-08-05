@@ -220,6 +220,25 @@ OpenDocuments is 100% open-source, vendor-neutral, and community-driven. If Open
 
 ---
 
+## 🛡️ Engineering Quality & Pre-Commit Privacy Standards
+
+To maintain production reliability and strict open-source privacy, all code contributions MUST adhere to these mandatory quality gates:
+
+### 1. Zero-Warning Compilation Defense
+- **Strict Clean Builds**: All Rust builds (`cargo check`, `cargo build`) MUST compile with **0 errors and 0 warnings** (e.g. `unused_imports`, `unused_variables`). Any compilation warnings must be immediately cleaned prior to pull requests.
+
+### 2. Mandatory Unit Testing & Verification
+- **Test-Driven Fixes**: Before making any code change or bug fix, write or update a corresponding unit test to confirm the gap, verify the fix passes all unit tests, and perform end-to-end verification.
+
+### 3. Dynamic Zero-Mock Policy
+- Core RAG retrieval (`search_and_rerank`) MUST operate dynamically against physical SQLite and LanceDB databases. Hardcoded static mock documents or dummy responses are strictly prohibited.
+
+### 4. Pre-Commit Privacy & Closed-Source Information Audit
+- **Zero Local Topology Leakage**: Hardcoding internal network topologies, private IP addresses, or internal development hostnames is strictly forbidden. Always use `127.0.0.1`, `localhost`, or RFC 5737 test addresses.
+- **Closed-Source / Dev Environment Privacy Guardrail**: Before any `git commit`, inspect the diff to ensure no local development paths, private environment secrets, or unannounced closed-source product links are committed until official public sites are launched.
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
