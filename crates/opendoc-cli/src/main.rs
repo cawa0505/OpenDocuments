@@ -974,8 +974,10 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
                     for row in rows {
                         results.push(TuiSearchResult {
                             file_name: row.0,
-                            score: if row.1 == "indexed" { 1.0 } else { 0.5 },
-                            snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
+                            status: row.1,
+                            chunk_count: row.2,
+                            score: None,
+                            snippet: String::new(),
                         });
                     }
                 }
@@ -1102,20 +1104,22 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
                                         .await
                                         .unwrap_or(None);
 
-                                    if let Some((ws_id,)) = ws_row {
-                                        let q = sqlx::query_as::<_, (String, String, i32)>(
-                                            "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
-                                        ).bind(&ws_id);
-                                        if let Ok(rows) = q.fetch_all(&pool).await {
-                                            for row in rows {
-                                                results.push(TuiSearchResult {
-                                                    file_name: row.0,
-                                                    score: if row.1 == "indexed" { 1.0 } else { 0.5 },
-                                                    snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
-                                                });
-                                            }
-                                        }
-                                    }
+                                     if let Some((ws_id,)) = ws_row {
+                                         let q = sqlx::query_as::<_, (String, String, i32)>(
+                                             "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
+                                         ).bind(&ws_id);
+                                         if let Ok(rows) = q.fetch_all(&pool).await {
+                                             for row in rows {
+                                                 results.push(TuiSearchResult {
+                                                     file_name: row.0,
+                                                     status: row.1,
+                                                     chunk_count: row.2,
+                                                     score: None,
+                                                     snippet: String::new(),
+                                                 });
+                                             }
+                                         }
+                                     }
                                 }
                                 let _ = tx_ws_switch.send(TuiEvent::FetchResults(results)).await;
                             });
@@ -1140,37 +1144,41 @@ async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn
                                     .await
                                     .unwrap_or(None);
 
-                                if let Some((ws_id,)) = ws_row {
-                                    // 2. 依照工作空間查詢實體 documents 列表，並視需要進行模糊搜尋
-                                    if query.trim().is_empty() {
-                                        let q = sqlx::query_as::<_, (String, String, i32)>(
-                                            "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
-                                        ).bind(&ws_id);
-                                        if let Ok(rows) = q.fetch_all(&pool).await {
-                                            for row in rows {
-                                                results.push(TuiSearchResult {
-                                                    file_name: row.0,
-                                                    score: if row.1 == "indexed" { 1.0 } else { 0.5 },
-                                                    snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
-                                                });
-                                            }
-                                        }
-                                    } else {
-                                        let pattern = format!("%{}%", query);
-                                        let q = sqlx::query_as::<_, (String, String, i32)>(
-                                            "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL AND (title LIKE ? OR source_path LIKE ?) ORDER BY created_at DESC"
-                                        ).bind(&ws_id).bind(&pattern).bind(&pattern);
-                                        if let Ok(rows) = q.fetch_all(&pool).await {
-                                            for row in rows {
-                                                results.push(TuiSearchResult {
-                                                    file_name: row.0,
-                                                    score: if row.1 == "indexed" { 1.0 } else { 0.5 },
-                                                    snippet: format!("狀態: {} | 區塊數: {}", row.1, row.2),
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
+                                 if let Some((ws_id,)) = ws_row {
+                                     // 2. 依照工作空間查詢實體 documents 列表，並視需要進行模糊搜尋
+                                     if query.trim().is_empty() {
+                                         let q = sqlx::query_as::<_, (String, String, i32)>(
+                                             "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
+                                         ).bind(&ws_id);
+                                         if let Ok(rows) = q.fetch_all(&pool).await {
+                                             for row in rows {
+                                                 results.push(TuiSearchResult {
+                                                     file_name: row.0,
+                                                     status: row.1,
+                                                     chunk_count: row.2,
+                                                     score: None,
+                                                     snippet: String::new(),
+                                                 });
+                                             }
+                                         }
+                                     } else {
+                                         let pattern = format!("%{}%", query);
+                                         let q = sqlx::query_as::<_, (String, String, i32)>(
+                                             "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL AND (title LIKE ? OR source_path LIKE ?) ORDER BY created_at DESC"
+                                         ).bind(&ws_id).bind(&pattern).bind(&pattern);
+                                         if let Ok(rows) = q.fetch_all(&pool).await {
+                                             for row in rows {
+                                                 results.push(TuiSearchResult {
+                                                     file_name: row.0,
+                                                     status: row.1,
+                                                     chunk_count: row.2,
+                                                     score: None,
+                                                     snippet: String::new(),
+                                                 });
+                                             }
+                                         }
+                                     }
+                                 }
                             }
                             let _ = tx_res.send(TuiEvent::FetchResults(results)).await;
                         });

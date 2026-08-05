@@ -22,7 +22,9 @@ pub enum TuiEvent {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TuiSearchResult {
     pub file_name: String,
-    pub score: f32,
+    pub status: String,
+    pub chunk_count: i32,
+    pub score: Option<f32>,
     pub snippet: String,
 }
 
@@ -129,45 +131,71 @@ pub fn render_ui(f: &mut Frame<'_>, state: &TuiAppState) {
         1
     };
 
-    // 4. 動態斷點響應式設計：根據視窗寬度決定是否隱藏 Score 欄位 (TUI 版 Media Queries)
-    if size.width < 85 {
-        // 中等偏窄視窗：丟棄 Score 欄位，騰出空間給檔案名稱與 Snippet 
+    // 4. 動態斷點響應式設計：根據視窗寬度決定欄位顯示
+    if size.width < 100 {
+        // 中等偏窄視窗：隱藏 Score 欄位
         let rows: Vec<Row> = state.results.iter().map(|r| {
+            let status_color = match r.status.as_str() {
+                "indexed" => Color::Green,
+                "pending" => Color::Yellow,
+                "failed" => Color::Red,
+                _ => Color::Gray,
+            };
             Row::new(vec![
                 Cell::from(r.file_name.as_str()).style(Style::default().fg(Color::White)),
+                Cell::from(r.status.as_str()).style(Style::default().fg(status_color)),
+                Cell::from(r.chunk_count.to_string()).style(Style::default().fg(Color::Cyan)),
                 Cell::from(r.snippet.as_str()).style(Style::default().fg(Color::Gray)),
             ])
         }).collect();
 
         let table = Table::new(rows, [
-            Constraint::Percentage(30), // 檔案名稱放寬至 30%
-            Constraint::Percentage(70), // Snippet 佔 70%
+            Constraint::Percentage(25),
+            Constraint::Percentage(15),
+            Constraint::Percentage(15),
+            Constraint::Percentage(45),
         ])
-        .header(Row::new(vec!["檔案名稱", "內容摘要 (FTS5 / Vector)"])
+        .header(Row::new(vec!["檔案名稱", "狀態", "區塊", "內容摘要 (FTS5 / Vector)"])
             .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD))
         )
-        .block(Block::default().borders(Borders::ALL).title(" 📄 檢索結果 (分數已自動隱藏) "));
+        .block(Block::default().borders(Borders::ALL).title(" 📄 檢索結果 "));
 
         f.render_widget(table, chunks[result_chunk_idx]);
     } else {
-        // 寬視窗：展示完整 3 欄
+        // 寬視窗：展示完整 5 欄
         let rows: Vec<Row> = state.results.iter().map(|r| {
-            // 針對 Score Filter 的分數高亮：大於 0.75 顯示綠色，其餘黃色
-            let score_color = if r.score >= 0.75 { Color::Green } else { Color::Yellow };
+            let status_color = match r.status.as_str() {
+                "indexed" => Color::Green,
+                "pending" => Color::Yellow,
+                "failed" => Color::Red,
+                _ => Color::Gray,
+            };
+            
+            let score_cell = match r.score {
+                Some(val) => {
+                    let score_color = if val >= 0.75 { Color::Green } else { Color::Yellow };
+                    Cell::from(format!("{:.2}", val)).style(Style::default().fg(score_color))
+                }
+                None => Cell::from("-").style(Style::default().fg(Color::Gray)),
+            };
             
             Row::new(vec![
                 Cell::from(r.file_name.as_str()).style(Style::default().fg(Color::White)),
-                Cell::from(format!("{:.2}", r.score)).style(Style::default().fg(score_color).add_modifier(Modifier::BOLD)),
+                Cell::from(r.status.as_str()).style(Style::default().fg(status_color)),
+                Cell::from(r.chunk_count.to_string()).style(Style::default().fg(Color::Cyan)),
+                score_cell,
                 Cell::from(r.snippet.as_str()).style(Style::default().fg(Color::Gray)),
             ])
         }).collect();
 
         let table = Table::new(rows, [
-            Constraint::Percentage(20), // 檔案名稱欄寬
-            Constraint::Percentage(10), // Score 欄寬
-            Constraint::Percentage(70), // 內文片段欄寬
+            Constraint::Percentage(20),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(50),
         ])
-        .header(Row::new(vec!["檔案名稱", "Score", "內容摘要 (FTS5 / Vector)"])
+        .header(Row::new(vec!["檔案名稱", "狀態", "區塊", "Score", "內容摘要 (FTS5 / Vector)"])
             .style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD))
         )
         .block(Block::default().borders(Borders::ALL).title(" 📄 檢索結果 (Score Filter 作用中) "));

@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.job-name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            job-name: linux-x86_64
+            target-os: linux
+            target-arch: x86_64
+          - os: ubuntu-24.04-arm
+            job-name: linux-aarch64
+            target-os: linux
+            target-arch: aarch64
+          - os: macos-13
+            job-name: macos-x86_64
+            target-os: macos
+            target-arch: x86_64
+          - os: macos-latest
+            job-name: macos-aarch64
+            target-os: macos
+            target-arch: aarch64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/webui/package-lock.json
+
+      - name: Build WebUI
+        run: |
+          cd apps/webui
+          npm ci
+          npm run build
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rust binary
+        run: cargo build --release -p opendoc
+
+      - name: Package Release Asset
+        shell: bash
+        run: |
+          mkdir -p dist
+          SRC_BINARY="target/release/opendoc"
+          DEST_BINARY="dist/opendoc-${{ matrix.target-os }}-${{ matrix.target-arch }}"
+          
+          cp "$SRC_BINARY" "$DEST_BINARY"
+          chmod +x "$DEST_BINARY"
+          
+          # Calculate checksum
+          cd dist
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "opendoc-${{ matrix.target-os }}-${{ matrix.target-arch }}" > "opendoc-${{ matrix.target-os }}-${{ matrix.target-arch }}.sha256"
+          else
+            shasum -a 256 "opendoc-${{ matrix.target-os }}-${{ matrix.target-arch }}" > "opendoc-${{ matrix.target-os }}-${{ matrix.target-arch }}.sha256"
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendoc-${{ matrix.target-os }}-${{ matrix.target-arch }}
+          path: dist/
+
+  publish:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Consolidate checksums
+        run: |
+          cd dist
+          cat *.sha256 > checksums.txt
+          rm *.sha256
+          echo "Consolidated checksums:"
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/opendoc-*
+            dist/checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true

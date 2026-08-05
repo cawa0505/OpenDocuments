@@ -72,12 +72,8 @@ Unlike cloud-only solutions, OpenDocuments can run **entirely on your own infras
 ### Quick Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/cawa0505/OpenDocuments.git
-cd OpenDocuments
-
-# Build and install the unified single-binary (built-in WebUI)
-make install
+# One-line binary installation (Linux / macOS)
+curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 
 # Start the unified server on port 8080
 opendoc start --port 8080

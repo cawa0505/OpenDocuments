@@ -6,10 +6,14 @@ This guide details how to install the single binary and configure it to run auto
 
 ---
 
-## 📦 1. Build and Install
+## 📦 1. Installation
 
-To build the single binary with the embedded WebUI and install it to your user's cargo bin path (`~/.cargo/bin/opendoc`), simply use the root `Makefile`:
+### Quick Direct Install (Linux & macOS)
+```bash
+curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
+```
 
+### Build from Source
 ```bash
 # Build frontend web assets and compile the Rust binary in release mode
 make install

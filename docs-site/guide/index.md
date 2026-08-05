@@ -2,15 +2,21 @@
 
 Get OpenDocuments running in under 5 minutes.
 
-## Prerequisites
+## Installation
 
+### Option 1: One-Line Script (Recommended)
+
+To install the latest pre-compiled single-binary (Linux & macOS):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
+```
+
+### Option 2: Build from Source
+
+Prerequisites:
 - **Rust toolchain (1.80+)** — installed via [rustup.rs](https://rustup.rs)
-- **Make** — standard build utility (usually pre-installed on Linux/macOS)
-- **Ollama** (optional, for local LLM running via OpenAI-compatible BYOK setup) — [download](https://ollama.com)
-
-## Install from Source
-
-To compile and install the high-performance unified `opendoc` binary (which embeds the frontend WebUI directly):
+- **Make** — standard build utility
 
 ```bash
 # Clone the repository

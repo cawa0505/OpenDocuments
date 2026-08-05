@@ -149,7 +149,17 @@ local_reranker_path = "~/.opendocuments/models/bge-reranker-base.onnx"
 
 This is the fastest way to run a local AI document search engine with the OpenDocuments CLI.
 
-### 1. Build and Install
+### 1. Install OpenDocuments
+
+**Option A: One-line Install (Recommended)**
+
+Download and install the pre-compiled single binary (Linux / macOS):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
+```
+
+**Option B: Build from Source**
 
 ```bash
 # Clone the repository and install the unified binary to ~/.cargo/bin/opendoc
