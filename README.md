@@ -60,11 +60,10 @@ Use OpenDocuments when you want:
 - A **knowledge base for AI coding assistants** through MCP, including Claude Code, Cursor, Windsurf, and other MCP clients.
 - A **high-performance Rust-native core** that compiles into a single binary, serving both the backend and embedded WebUI from memory.
 
-```bash
-# 1. Build the frontend and compile the single binary
-make install
+Install with a single command and launch:
 
-# 2. Run the unified server (serving API + WebUI instantly from memory)
+```bash
+curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 opendoc start --port 3000
 ```
 
