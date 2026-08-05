@@ -1,4 +1,4 @@
-# These are supported funding model platforms
+# Funding configuration for GitHub repository
 
-github: cawa0505
-custom: ["https://github.com/sponsors/cawa0505"]
+custom:
+  - "https://solscan.io/account/4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF"

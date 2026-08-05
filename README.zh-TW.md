@@ -189,7 +189,10 @@ opendoc ask "我們的驗證系統是如何運作的？"
 
 OpenDocuments 堅持 100% 開源、廠商中立與社群導向。如果 OpenDocuments 為您節省了硬體成本、保護了文件隱私，或是提升了日常行政效率，歡迎考慮支持本專案的持續維護：
 
-- **GitHub Sponsors**：[贊助 OpenDocuments 專案](https://github.com/sponsors/cawa0505)
+- **Solana (SOL)**：[`4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF`](https://solscan.io/account/4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF)
+  ```text
+  4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF
+  ```
 
 ### 贊助資金運用方向
 

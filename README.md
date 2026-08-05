@@ -189,7 +189,10 @@ opendoc ask "How does our auth system work?"
 
 OpenDocuments is 100% open-source, vendor-neutral, and community-driven. If OpenDocuments saves you hardware costs, protects your document privacy, or streamlines your daily administrative workflow, consider supporting its ongoing development:
 
-- **GitHub Sponsors**: [Sponsor OpenDocuments](https://github.com/sponsors/cawa0505)
+- **Solana (SOL)**: [`4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF`](https://solscan.io/account/4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF)
+  ```text
+  4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF
+  ```
 
 ### Where Sponsorship Funding Goes
 
