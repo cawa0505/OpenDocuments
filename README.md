@@ -71,7 +71,7 @@ Install with a single command and launch:
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 
 # Option 2: Install via Cargo directly from GitHub (Rust developers)
-cargo install --git https://github.com/cawa0505/OpenDocuments opendoc-cli
+cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
 
 # Start OpenDocuments
 opendoc start --port 3000

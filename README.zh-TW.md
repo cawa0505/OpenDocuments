@@ -71,7 +71,7 @@ Benchmark 1: opendoc document index admin_heavy.xlsx
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 
 # 方法二：透過 Cargo 直接從 GitHub 安裝（Rust 開發者）
-cargo install --git https://github.com/cawa0505/OpenDocuments opendoc-cli
+cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
 
 # 啟動 OpenDocuments
 opendoc start --port 3000

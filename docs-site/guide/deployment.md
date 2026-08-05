@@ -13,6 +13,11 @@ This guide details how to install the single binary and configure it to run auto
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 ```
 
+### Install via Cargo (Rust Developers)
+```bash
+cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
+```
+
 ### Build from Source
 ```bash
 # Build frontend web assets and compile the Rust binary in release mode

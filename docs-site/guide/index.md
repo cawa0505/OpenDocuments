@@ -12,7 +12,13 @@ To install the latest pre-compiled single-binary (Linux & macOS):
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 ```
 
-### Option 2: Build from Source
+### Option 2: Cargo Install via GitHub (Rust Developers)
+
+```bash
+cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
+```
+
+### Option 3: Build from Source
 
 Prerequisites:
 - **Rust toolchain (1.80+)** — installed via [rustup.rs](https://rustup.rs)
