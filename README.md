@@ -4,6 +4,10 @@
 </p>
 
 <p align="center">
+  <a href="README.md">English</a> | <a href="README.zh-TW.md">繁體中文</a>
+</p>
+
+<p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.80%2B-orange.svg" alt="Rust"></a>
 </p>
@@ -14,8 +18,8 @@
 
 OpenDocuments was originally inspired by and built as a TypeScript / Node.js monorepo server using Hono and Turborepo. While that architecture served as an excellent proof of concept, we undertook a **comprehensive ground-up rewrite in modern Rust** to address critical technical debt and fulfill zero-trust, high-efficiency requirements:
 
-1. **True Single-Binary Distribution**: In the legacy Node.js version, deployment required complex process management, dynamic node dependency resolution, and runtime port binding coordination. The new Rust version compiles the complete Axum API router and packages the React WebUI static assets directly into the binary memory using `rust-embed`. It runs as an absolutely standalone file with zero external dependencies.
-2. **Deterministic Memory Footprint**: Rather than spawning multiple heavy JS runtimes (each consuming 150MB+ overhead) for PDF parsing, text extraction, SQLite indexing, and vector operations, the Rust runtime encapsulates all subsystems within a single, highly-optimized OS thread pool with microsecond-level scheduling.
+1. **True Single-Binary Distribution**: The complete Axum API router and React WebUI static assets are compiled directly into the binary memory using `rust-embed`. Runs as a standalone file with zero external dependencies.
+2. **Deterministic Memory Footprint**: Rather than spawning multiple heavy JS runtimes (each consuming 150MB+ overhead), the Rust runtime encapsulates all subsystems within a single, highly-optimized OS thread pool with microsecond-level scheduling.
 3. **Rust-Native Embedded Storage**: Metadata indexing via SQLite (FTS5) and vector similarity via LanceDB are embedded natively into the binary process—eliminating any IPC crossing or slow C-binding bridges.
 4. **Performance Gains**: Text extraction, semantic chunking, and Reciprocal Rank Fusion (RRF) query planning perform **5x to 15x faster** under the Rust-native execution graph, unlocking real-time responsiveness even on constrained homelab hardware.
 
@@ -111,15 +115,6 @@ crates/
   opendoc-parser-* - Standalone sandboxed document format parsers (PDF, DOCX, XLSX, etc.)
 ```
 
-### Single Binary Distribution
-No node processes, no dynamic runtime configurations. The React WebUI is compiled and fully embedded into the binary using `rust-embed`, allowing deployment as a single lightweight binary file.
-
-### Hybrid Search (Dense + Sparse)
-Combines dense vector similarity (LanceDB) with keyword matching (SQLite FTS5) via Reciprocal Rank Fusion (RRF). 
-
-### Multi-Profile RAG
-Three built-in profiles (fast/balanced/precise) trade off speed vs quality. Each profile configures retrieval depth and reranking.
-
 ---
 
 ## Configuration
@@ -187,6 +182,20 @@ opendoc document index /path/to/docs
 # Quick CLI query
 opendoc ask "How does our auth system work?"
 ```
+
+---
+
+## ❤️ Support & Sponsorship
+
+OpenDocuments is 100% open-source, vendor-neutral, and community-driven. If OpenDocuments saves you hardware costs, protects your document privacy, or streamlines your daily administrative workflow, consider supporting its ongoing development:
+
+- **GitHub Sponsors**: [Sponsor OpenDocuments](https://github.com/sponsors/cawa0505)
+
+### Where Sponsorship Funding Goes
+
+- **Core Infrastructure**: Maintaining zero-dependency, ultra-fast single binary builds across Linux, macOS, and Windows.
+- **Local Model Optimization**: Enhancing embedded ONNX / WASM local reranking and vector quantization for constrained devices.
+- **Open-Core Guarantee**: Ensuring core RAG and MCP server capabilities remain 100% free and open-source forever.
 
 ---
 
