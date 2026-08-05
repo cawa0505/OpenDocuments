@@ -1,50 +1,78 @@
 [workspace]
-resolver = "2"
 members = [
-    "crates/opendoc-cli",
     "crates/opendoc-types",
     "crates/opendoc-parser",
-    "crates/opendoc-parser-xlsx",
-    "crates/opendoc-parser-docx",
-    "crates/opendoc-parser-pdf",
-    "crates/opendoc-parser-text",
-    "crates/opendoc-parser-code",
     "crates/opendoc-storage",
     "crates/opendoc-llm",
+    "crates/opendoc-mcp",
+    "crates/opendoc-cli",
     "crates/opendoc-tui",
-    "crates/opendoc-mcp"
 ]
+resolver = "2"
 
 [profile.release]
-opt-level = 1       # 💡 opt-level = 1 可徹底避開 rustc 在編譯 heavy async (Lance/DataFusion) 時的 layout 遞迴 overflow bug，並能大幅加快 CI 編譯速度與減少記憶體佔用！
-codegen-units = 16  # 提升並行編譯度，縮短編譯時間並降低編譯器記憶體峰值
-panic = "abort"     # 縮減最終二進位檔體積
+opt-level = 1
+overflow-checks = false
 
 [profile.release.package.lance]
 opt-level = 0
+
 [profile.release.package.lance-arrow]
 opt-level = 0
+
 [profile.release.package.lance-core]
 opt-level = 0
+
 [profile.release.package.lance-datafusion]
 opt-level = 0
+
 [profile.release.package.lancedb]
 opt-level = 0
+
 [profile.release.package.lance-encoding]
 opt-level = 0
+
 [profile.release.package.lance-file]
 opt-level = 0
+
 [profile.release.package.lance-index]
 opt-level = 0
+
 [profile.release.package.lance-io]
 opt-level = 0
+
 [profile.release.package.lance-linalg]
 opt-level = 0
+
 [profile.release.package.lance-table]
 opt-level = 0
+
 [profile.release.package.lance-testing]
 opt-level = 0
 
-[profile.dev]
-opt-level = 1
-panic = "abort"
+[profile.release.package.datafusion]
+opt-level = 0
+
+[profile.release.package.datafusion-common]
+opt-level = 0
+
+[profile.release.package.datafusion-execution]
+opt-level = 0
+
+[profile.release.package.datafusion-expr]
+opt-level = 0
+
+[profile.release.package.datafusion-functions]
+opt-level = 0
+
+[profile.release.package.datafusion-functions-array]
+opt-level = 0
+
+[profile.release.package.datafusion-physical-expr]
+opt-level = 0
+
+[profile.release.package.datafusion-physical-plan]
+opt-level = 0
+
+[profile.release.package.datafusion-sql]
+opt-level = 0
