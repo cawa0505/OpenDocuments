@@ -1,5 +1,7 @@
 # 📟 OpenDocuments Terminal UI (TUI) 深入使用與調試手冊
 
+語言：[English](../en/tui-manual.md) | **繁體中文**
+
 ---
 
 ## 🌐 1. 簡介與定位
@@ -30,7 +32,7 @@ TUI 全面遵從標準 CLI 與 Vim-like 的極簡操縱邏輯，各鍵位定義�
 | 鍵位 / 快捷鍵 | 作用面板 | 實體執行行為與 UX 原理 |
 | :--- | :--- | :--- |
 | **`Ctrl + W`** | 搜尋面板 | **開闢 Workspace 切換控制艙**：原地暫停當前搜尋，於下方動態拉出 workspaces 的列表。 |
-| **`↑ / ↓` (Up / Down)** | 切換面板 | **輪巡工作空間**：在可用 Workspace 列表進行動態游標選擇，並自動在輸入框顯示該工作區名稱。 |
+| **`↑ / ↓`** | 切換面板 | **輪巡工作空間**：在可用 Workspace 列表進行動態游標選擇，並自動在輸入框顯示該工作區名稱。 |
 | **`Tab`** | 切換面板 | **自動補全 (Autocomplete)**：一鍵補全當前游標所選中的工作區名稱。 |
 | **`Backspace / 字母`** | 切換面板 | **模糊過濾**：允許手動退格或輸入字元，底層會自動利用「不分大小寫的字串包含」實體過濾、並即時聚焦到最匹配的第一個 Workspace 上。 |
 | **`Enter`** | 切換面板 | **原地熱切換與持久化**：一鍵確認切換。底層會非同步重新載入新的 Workspace SQLite 與 LanceDB，更新 TUI 視圖，並自動透過 `ConfigManager` 持久化至 `config.toml` 中。 |
@@ -67,7 +69,3 @@ TUI 全面遵從標準 CLI 與 Vim-like 的極簡操縱邏輯，各鍵位定義�
    sqlite3 ~/.opendocuments/db.sqlite "SELECT id, name FROM workspaces;"
    ```
    確認您輸入的 Workspace 確實存在於本地元數據庫中。
-
----
-
-> **注意**：TUI 在切換 Workspace 時完全動態熱加載資料庫，無須重啟，能最真實、零時差地反饋本地 RAG 核心的檢索品質。

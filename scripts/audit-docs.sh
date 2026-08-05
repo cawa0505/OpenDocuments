@@ -7,8 +7,8 @@ set -eo pipefail
 
 DOCS_DIR="docs-site"
 README_FILE="README.md"
-STRUCTURE_FILE="STRUCTURE.md"
-ROADMAP_FILE="ROADMAP.md"
+STRUCTURE_FILE="docs/en/structure.md"
+ROADMAP_FILE="docs/en/roadmap.md"
 
 echo "🔍 Running OpenDocuments Documentation Alignment Audit..."
 

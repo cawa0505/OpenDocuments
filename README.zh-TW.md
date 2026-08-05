@@ -81,6 +81,19 @@ opendoc start --port 3000
 
 ---
 
+## 📚 系統文件與規格索引 (Documentation Index)
+
+專案系統規格、架構圖與任務追蹤文件均統一收錄於 [`docs/zh-TW/`](docs/zh-TW/) 目錄與 [`openspec/`](openspec/) 中：
+
+- 🗂️ **[系統架構與專案結構圖](docs/zh-TW/structure.md)**：單一二進位 Rust Workspace 版圖、BYOK 金鑰安全防線與混合檢索資料流。
+- 🗺️ **[多階段研發藍圖](docs/zh-TW/roadmap.md)**：從 MVP 單一二進位到 Tauri 2.0 行政工作艙與 MCP 生態發布器。
+- 📋 **[待開發任務清單與狀態](docs/zh-TW/tasks.md)**：Phase 1 當前開發任務、CLI/TUI 優化與後續待辦事項。
+- 📟 **[終端機 TUI 使用與調試手冊](docs/zh-TW/tui-manual.md)**：快捷鍵導覽、動態響應式斷點與本地除錯技巧。
+- 📐 **[OpenSpec 系統規格](openspec/specs/)**：系統行為契約規格（標籤過濾、BYOK、工作區解析、TUI 優化）。
+- 📖 **[官方文檔網站](https://cawa0505.github.io/OpenDocuments/)**：部署指南、API 參考與使用者手冊。
+
+---
+
 ## 🤝 AI Provider 與生態系合作夥伴
 
 OpenDocuments 作為 **Token 高效型 RAG 網關 (Token-Efficient RAG Gateway)**，旨在將私有文件知識庫無縫連接至各大前沿 AI 模型與 LLM 供應商。

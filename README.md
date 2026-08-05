@@ -81,6 +81,19 @@ Open `http://localhost:3000`, index your documents, and ask questions with sourc
 
 ---
 
+## 📚 Documentation & Architecture Index
+
+All technical specifications, architecture maps, and task tracking documents are located in [`docs/en/`](docs/en/) and [`openspec/`](openspec/):
+
+- 🗂️ **[System Architecture & Directory Map](docs/en/structure.md)**: Single-binary Rust workspace layout, BYOK secret boundaries, and dual-retrieval data flow.
+- 🗺️ **[R&D Roadmap & Milestones](docs/en/roadmap.md)**: Multi-phase engineering roadmap from single-binary MVP to Tauri 2.0 control cabin and MCP publisher.
+- 📋 **[Task Backlog & Status Tracker](docs/en/tasks.md)**: Active Phase 1 tasks, CLI/TUI enhancements, and upcoming work packages.
+- 📟 **[Terminal UI (TUI) User Manual](docs/en/tui-manual.md)**: Deep dive into keyboard navigation, responsive breakpoints, and local debugging.
+- 📐 **[OpenSpec Specifications](openspec/specs/)**: Formal system behavior contracts (Tags, BYOK, Workspace resolution, TUI enhancements).
+- 📖 **[Official Documentation Site](https://cawa0505.github.io/OpenDocuments/)**: Hosted guides, API references, and deployment tutorials.
+
+---
+
 ## 🤝 AI Providers & Ecosystem Partnerships
 
 OpenDocuments acts as a **Token-Efficient RAG Gateway** designed to connect private document knowledge with frontier AI models and LLM providers.
