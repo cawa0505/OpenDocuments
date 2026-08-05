@@ -67,7 +67,13 @@ Benchmark 1: opendoc document index admin_heavy.xlsx
 單一指令完成安裝與啟動：
 
 ```bash
+# 方法一：一鍵安裝腳本（預編譯二進位檔）
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
+
+# 方法二：透過 Cargo 直接從 GitHub 安裝（Rust 開發者）
+cargo install --git https://github.com/cawa0505/OpenDocuments opendoc-cli
+
+# 啟動 OpenDocuments
 opendoc start --port 3000
 ```
 

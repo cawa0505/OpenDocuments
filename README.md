@@ -67,7 +67,13 @@ Use OpenDocuments when you want:
 Install with a single command and launch:
 
 ```bash
+# Option 1: One-line install script (Pre-built binary)
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
+
+# Option 2: Install via Cargo directly from GitHub (Rust developers)
+cargo install --git https://github.com/cawa0505/OpenDocuments opendoc-cli
+
+# Start OpenDocuments
 opendoc start --port 3000
 ```
 
