@@ -88,6 +88,7 @@ All technical specifications, architecture maps, and task tracking documents are
 - 🗂️ **[System Architecture & Directory Map](docs/en/structure.md)**: Single-binary Rust workspace layout, BYOK secret boundaries, and dual-retrieval data flow.
 - 🗺️ **[R&D Roadmap & Milestones](docs/en/roadmap.md)**: Multi-phase engineering roadmap from single-binary MVP to Tauri 2.0 control cabin and MCP publisher.
 - 📋 **[Task Backlog & Status Tracker](docs/en/tasks.md)**: Active Phase 1 tasks, CLI/TUI enhancements, and upcoming work packages.
+- ⚡ **[Open Source RAG Engine Spec](docs/en/open-source-rag-engine.md)**: Complete Data Plane technical documentation for LanceDB integration and SQL-like pre-filtering.
 - 📟 **[Terminal UI (TUI) User Manual](docs/en/tui-manual.md)**: Deep dive into keyboard navigation, responsive breakpoints, and local debugging.
 - 📐 **[OpenSpec Specifications](openspec/specs/)**: Formal system behavior contracts (Tags, BYOK, Workspace resolution, TUI enhancements).
 - 📖 **[Official Documentation Site](https://cawa0505.github.io/OpenDocuments/)**: Hosted guides, API references, and deployment tutorials.
