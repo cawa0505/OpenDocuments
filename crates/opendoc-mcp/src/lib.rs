@@ -1,3 +1,4 @@
+#![recursion_limit = "512"]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::clone_on_ref_ptr)]
 
