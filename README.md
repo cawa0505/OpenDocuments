@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  Language: <strong>English</strong> | <a href="README.zh-TW.md">繁體中文</a> | <a href="https://cawa0505.github.io/OpenDocuments/">📚 Documentation</a>
+  English | <a href="README.zh-TW.md">繁體中文</a> | <a href="https://cawa0505.github.io/OpenDocuments/">📚 Documentation</a>
 </p>
 
 <p align="center">
