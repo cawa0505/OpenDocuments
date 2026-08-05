@@ -11,74 +11,26 @@ members = [
 resolver = "2"
 
 [profile.release]
-opt-level = 2
+opt-level = 0
 overflow-checks = false
 
-[profile.release.package.lance]
-opt-level = 0
+[profile.release.package.opendoc]
+opt-level = 2
 
-[profile.release.package.lance-arrow]
-opt-level = 0
+[profile.release.package.opendoc-mcp]
+opt-level = 2
 
-[profile.release.package.lance-core]
-opt-level = 0
+[profile.release.package.opendoc-tui]
+opt-level = 2
 
-[profile.release.package.lance-datafusion]
-opt-level = 0
+[profile.release.package.opendoc-storage]
+opt-level = 2
 
-[profile.release.package.lancedb]
-opt-level = 0
+[profile.release.package.opendoc-parser]
+opt-level = 2
 
-[profile.release.package.lance-encoding]
-opt-level = 0
+[profile.release.package.opendoc-llm]
+opt-level = 2
 
-[profile.release.package.lance-file]
-opt-level = 0
-
-[profile.release.package.lance-index]
-opt-level = 0
-
-[profile.release.package.lance-io]
-opt-level = 0
-
-[profile.release.package.lance-linalg]
-opt-level = 0
-
-[profile.release.package.lance-table]
-opt-level = 0
-
-[profile.release.package.lance-testing]
-opt-level = 0
-
-[profile.release.package.datafusion]
-opt-level = 0
-
-[profile.release.package.datafusion-common]
-opt-level = 0
-
-[profile.release.package.datafusion-execution]
-opt-level = 0
-
-[profile.release.package.datafusion-expr]
-opt-level = 0
-
-[profile.release.package.datafusion-functions]
-opt-level = 0
-
-[profile.release.package.datafusion-functions-aggregate]
-opt-level = 0
-
-[profile.release.package.datafusion-functions-array]
-opt-level = 0
-
-[profile.release.package.datafusion-optimizer]
-opt-level = 0
-
-[profile.release.package.datafusion-physical-expr]
-opt-level = 0
-
-[profile.release.package.datafusion-physical-plan]
-opt-level = 0
-
-[profile.release.package.datafusion-sql]
-opt-level = 0
+[profile.release.package.opendoc-types]
+opt-level = 2
