@@ -33,7 +33,7 @@ This will automatically resolve the active workspace using the CLI hierarchy:
 
 ---
 
-## 📐 Responsive断點 & Safety Design
+## 📐 Responsive Breakpoints & Safety Design
 
 The TUI features a robust defensive layouts system:
 1. **Critical Width Guard (`Width < 50` or `Height < 10`)**: Stops rendering and triggers a bold red warning to prevent TUI framework crashes inside narrow terminal splits (e.g., small Tmux panes).
