@@ -27,11 +27,14 @@ function getEffectiveTheme(theme: Theme): 'light' | 'dark' {
   return theme
 }
 
-const initialTheme = (typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-theme') as Theme : 'light') || 'light'
+const initialTheme = (typeof localStorage !== 'undefined' ? (localStorage.getItem('opendocuments-theme') as Theme) : 'light') || 'light'
 const initialEffective = getEffectiveTheme(initialTheme)
 
 if (typeof document !== 'undefined') {
-  document.documentElement.classList.toggle('dark', initialEffective === 'dark')
+  document.documentElement.classList.remove('dark')
+  if (initialEffective === 'dark') {
+    document.documentElement.classList.add('dark')
+  }
 }
 
 export const useAppStore = create<AppState>((set) => ({
