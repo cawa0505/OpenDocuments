@@ -71,8 +71,8 @@ Install with a single command and launch:
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 
 # Option 2: Install via Cargo directly from GitHub (Rust developers)
-# Note: Requires system-installed 'protoc' (protobuf compiler). We use RUSTC_BOOTSTRAP=1 to raise the compiler's recursion limit for the heavy Lance/Arrow dependencies.
-RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Z min-recursion-limit=512" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
+# Note: Requires system-installed 'protoc' (protobuf compiler). We use RUSTC_BOOTSTRAP=1 to raise the compiler's recursion limit for the heavy Lance/Arrow dependencies, and force the rustix libc backend to avoid nightly attribute errors.
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Z min-recursion-limit=512 --cfg=rustix_use_libc" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
 
 # Start OpenDocuments
 opendoc start --port 3000
