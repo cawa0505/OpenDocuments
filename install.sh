@@ -82,11 +82,75 @@ echo "⬇️ 正在從 GitHub 下載最新版本 OpenDocuments..."
 if ! download_file "$DOWNLOAD_URL" "$TMP_DIR/$ASSET_NAME"; then
     echo "" >&2
     echo "❌ 錯誤：無法從 GitHub 下載預編譯的二進位檔 (可能是該平台尚未發佈 Release 檔案)。" >&2
-    echo "💡 您可以使用以下指令改由 Cargo 自行編譯安裝：" >&2
+    echo "💡 正在協助引導自原始碼編譯安裝流程..." >&2
     echo "" >&2
-    echo "  mkdir -p ~/.cargo/tmp && TMPDIR=~/.cargo/tmp RUSTC_BOOTSTRAP=1 RUSTFLAGS=\"-Z min-recursion-limit=512 --cfg=rustix_use_libc\" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force" >&2
+
+    # 檢查並引導安裝 Rust 運作環境
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "⚠️  檢測到系統未安裝 Rust / Cargo 環境。" >&2
+        echo "🤔 是否現在為您自動安裝 Rust？ (y/n)" >&2
+        read -r CONFIRM
+        case "$CONFIRM" in
+            [yY]|[yY][eE][sS])
+                echo "⬇️  正在安裝 Rust 官方工具鏈 (rustup)..." >&2
+                if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+                    # 載入 Cargo 環境變數
+                    . "$HOME/.cargo/env"
+                    echo "✅ Rust 安裝成功！" >&2
+                else
+                    echo "❌ 錯誤：Rust 安裝失敗。請手動安裝 Rust 官方環境後重試：" >&2
+                    echo "  https://www.rust-lang.org/tools/install" >&2
+                    exit 1
+                fi
+                ;;
+            *)
+                echo "❌ 安裝中斷。需要 Rust 環境才能進行編譯安裝。" >&2
+                exit 1
+                ;;
+        esac
+    fi
+
+    # 檢查並提示 Protoc (protobuf-compiler)
+    if ! command -v protoc >/dev/null 2>&1; then
+        echo "⚠️  編譯相依套件需要 Protobuf 編譯器 (protoc)，但本機未安裝。" >&2
+        echo "💡 請依據您的系統安裝 protoc：" >&2
+        case "$OS" in
+            Linux)
+                if command -v apt-get >/dev/null 2>&1; then
+                    echo "  👉 請執行：sudo apt-get update && sudo apt-get install -y protobuf-compiler" >&2
+                elif command -v dnf >/dev/null 2>&1; then
+                    echo "  👉 請執行：sudo dnf install -y protobuf-compiler" >&2
+                elif command -v pacman >/dev/null 2>&1; then
+                    echo "  👉 請執行：sudo pacman -S --noconfirm protobuf" >&2
+                else
+                    echo "  👉 請使用系統套件管理器安裝 'protobuf-compiler' 套件" >&2
+                fi
+                ;;
+            Darwin)
+                if command -v brew >/dev/null 2>&1; then
+                    echo "  👉 請執行：brew install protobuf" >&2
+                else
+                    echo "  👉 請安裝 Homebrew 後執行 'brew install protobuf'，或至官方下載 protoc。" >&2
+                fi
+                ;;
+        esac
+        exit 1
+    fi
+
+    echo "⚙️  正在為您啟動 Cargo 編譯並安裝 OpenDocuments (這將花費幾分鐘)..." >&2
+    echo "⚡ 執行指令: mkdir -p ~/.cargo/tmp && TMPDIR=~/.cargo/tmp RUSTC_BOOTSTRAP=1 RUSTFLAGS=\"-Z min-recursion-limit=512 --cfg=rustix_use_libc\" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force" >&2
     echo "" >&2
-    exit 1
+
+    mkdir -p "$HOME/.cargo/tmp"
+    if TMPDIR="$HOME/.cargo/tmp" RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Z min-recursion-limit=512 --cfg=rustix_use_libc" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force; then
+        echo "" >&2
+        echo "🎉 OpenDocuments (opendoc) 已透過 Cargo 成功編譯安裝至 ~/.cargo/bin/opendoc ！" >&2
+        echo "💡 請確保您的 PATH 包含 ~/.cargo/bin" >&2
+        exit 0
+    else
+        echo "❌ 錯誤：Cargo 編譯安裝失敗。請檢查上方的錯誤記錄。" >&2
+        exit 1
+    fi
 fi
 
 # 嘗試取得並驗證 Checksum
