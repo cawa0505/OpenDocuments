@@ -61,7 +61,7 @@ jobs:
       - name: Build Rust binary
         env:
           RUSTC_BOOTSTRAP: 1
-          RUSTFLAGS: -Z min-recursion-limit=512
+          RUSTFLAGS: -Z min-recursion-limit=512 --cfg=rustix_use_libc
         run: cargo build --release -p opendoc
 
       - name: Package Release Asset
