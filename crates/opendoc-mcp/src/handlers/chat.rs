@@ -34,7 +34,7 @@ pub struct ChatRequest {
 }
 
 // ── Helper to fetch and format recent conversation messages for RAG context ──
-async fn get_history_context(db_pool: &sqlx::SqlitePool, conversation_id: &str) -> String {
+pub(crate) async fn get_history_context(db_pool: &sqlx::SqlitePool, conversation_id: &str) -> String {
     let rows_res = sqlx::query(
         "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 6"
     )

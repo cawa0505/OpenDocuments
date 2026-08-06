@@ -730,6 +730,8 @@ pub async fn start_mcp_and_api_server(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::handlers::upload::UploadResponse;
+    use crate::handlers::chat::get_history_context;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
