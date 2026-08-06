@@ -59,6 +59,9 @@ jobs:
         uses: swatinem/rust-cache@v2
 
       - name: Build Rust binary
+        env:
+          RUSTC_BOOTSTRAP: 1
+          RUSTFLAGS: -Z min-recursion-limit=512
         run: cargo build --release -p opendoc
 
       - name: Package Release Asset
