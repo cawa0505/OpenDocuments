@@ -1,6 +1,6 @@
 # 🗺️ OpenDocuments 開發藍圖
 
-[English](../en/roadmap.md) | **繁體中文**
+🔗 [English](../en/roadmap.md) | **繁體中文**
 
 本藍圖記錄了 OpenDocuments 開源專案的工程目標與戰略里程碑。
 
@@ -9,7 +9,7 @@
 ## 🎯 階段總覽
 
 | 階段 | 名稱 | 核心焦點 | 狀態 | 目標時程 |
-| :--- | :--- | :--- | :---: | :---: |
+| :--- | :--- | :--- | :--- | :---: |
 | **Phase 0** | **單一二進位 MVP 與 BYOK 網關** | 單一 Axum 進程、BYOK 金鑰管理、混合 RAG、標籤系統、CLI/TUI | ✅ 已完成 | 2026 Q3 |
 | **Phase 1** | **對齊 ChatGPT 流暢 WebUI** | React 19 WebUI、打字機 SSE 串流、互動 Citation 出處、代碼高亮 | ⏳ 進行中 | 2026 Q3 |
 

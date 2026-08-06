@@ -14,8 +14,11 @@ curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install
 ```
 
 ### Install via Cargo (Rust Developers)
+::: info
+Requires `protoc` (protobuf compiler) installed on your system. We pass `RUSTC_BOOTSTRAP=1` to allow raising the internal compiler recursion limit for compiling heavy asynchronous dependency trees like `lance` and `arrow`.
+:::
 ```bash
-cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Z min-recursion-limit=512" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
 ```
 
 ### Build from Source

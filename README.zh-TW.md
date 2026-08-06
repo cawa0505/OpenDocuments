@@ -71,7 +71,8 @@ Benchmark 1: opendoc document index admin_heavy.xlsx
 curl -fsSL https://raw.githubusercontent.com/cawa0505/OpenDocuments/main/install.sh | sh
 
 # 方法二：透過 Cargo 直接從 GitHub 安裝（Rust 開發者）
-cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
+# 注意：系統需安裝 'protoc' (protobuf 編譯器)。此處使用 RUSTC_BOOTSTRAP=1 來提高重度 Lance/Arrow 依賴的編譯器遞迴上限。
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-Z min-recursion-limit=512" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force
 
 # 啟動 OpenDocuments
 opendoc start --port 3000
