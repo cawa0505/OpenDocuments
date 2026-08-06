@@ -79,7 +79,15 @@ download_file() {
 }
 
 echo "⬇️ 正在從 GitHub 下載最新版本 OpenDocuments..."
-download_file "$DOWNLOAD_URL" "$TMP_DIR/$ASSET_NAME"
+if ! download_file "$DOWNLOAD_URL" "$TMP_DIR/$ASSET_NAME"; then
+    echo "" >&2
+    echo "❌ 錯誤：無法從 GitHub 下載預編譯的二進位檔 (可能是該平台尚未發佈 Release 檔案)。" >&2
+    echo "💡 您可以使用以下指令改由 Cargo 自行編譯安裝：" >&2
+    echo "" >&2
+    echo "  mkdir -p ~/.cargo/tmp && TMPDIR=~/.cargo/tmp RUSTC_BOOTSTRAP=1 RUSTFLAGS=\"-Z min-recursion-limit=512 --cfg=rustix_use_libc\" cargo install --git https://github.com/cawa0505/OpenDocuments opendoc --force" >&2
+    echo "" >&2
+    exit 1
+fi
 
 # 嘗試取得並驗證 Checksum
 echo "🔍 正在驗證 Checksum 安全性..."
