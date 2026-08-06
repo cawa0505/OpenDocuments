@@ -21,10 +21,6 @@ jobs:
             job-name: linux-x86_64
             target-os: linux
             target-arch: x86_64
-          - os: macos-13
-            job-name: macos-x86_64
-            target-os: macos
-            target-arch: x86_64
           - os: macos-latest
             job-name: macos-aarch64
             target-os: macos
