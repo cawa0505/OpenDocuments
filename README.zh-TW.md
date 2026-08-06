@@ -220,7 +220,7 @@ opendoc ask "我們的驗證系統是如何運作的？"
 
 OpenDocuments 為 100% 開源、廠商中立且由社群驅動的專案。如果 OpenDocuments 幫您節省了硬體成本、保護了文件隱私，或提升了行政工作效率，歡迎支持本專案的持續維護與開發：
 
-- **Solana (SOL)**：[`4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF`](https://solscan.io/account/4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF)
+- **Solana (SOL)**：[錢包直接付款](solana:4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF?label=OpenDocuments&message=donation) — 一鍵開啟錢包 App
   ```text
   4pb8p2cTHdQb9WmU68n6AtQ3rrEHEzkQoESAXADzwKSF
   ```
