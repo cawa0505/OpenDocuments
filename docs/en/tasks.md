@@ -37,3 +37,26 @@ This document tracks execution status and concrete verification criteria across 
   - [ ] Bind `Enter` (or a dedicated inspector key `i`) on selected search results in TUI.
   - [ ] Render a structured popup modal detailing raw text chunk content, metadata properties, and similarity score.
   - *Verification*: Select a document in TUI, press `Enter`, inspect modal text, ensure scroll keys (`Up`/`Down`) work inside the popup, and `Esc` closes it cleanly.
+
+---
+
+## 📋 Planned Execution Items (Phase 2 — Task Execution Layer & Native AI Engines)
+
+Spec: [`openspec/specs/task-execution-ai-engines/spec.md`](../../openspec/specs/task-execution-ai-engines/spec.md)
+Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/task-execution-ai-engines-verification.md)
+
+### 2.0 Phase 0 — Baseline Hardening (no behavior change)
+
+- [ ] **2.0.1 Audit `search_and_rerank` call sites**: enumerate all callers of the sync `SearchBackend` trait (mcp `lib.rs:187`/`:441`, CLI `SearchWrapper` main.rs:30, storage stub `lib.rs:394`) before the async signature change.
+- [ ] **2.0.2 Async `SearchBackend` failing tests**: write failing unit tests for the trait method changing from `fn search_and_rerank(...) -> Vec<DocumentChunk>` to `async fn ... -> Vec<DocumentChunk>` (all call sites move to `.await`).
+- [ ] **2.0.3 `[ai]`/`[task]` config parsing**: add sections to `AppConfig` with `#[serde(default)]` so existing `config.toml` files load unchanged (backward compat).
+  - *Verification*: `cargo check` zero warnings; existing config loads; new config with `[ai]`/`[task]` parses.
+
+### 2.1 Phase 1 — Task & AI Abstractions (pure Rust, CPU)
+
+- [ ] **2.1.1 `opendoc-task` crate**: `TaskEnvelope`/`TaskResult`/`TaskType`, `TaskExecutor` trait, `InProcessExecutor`.
+- [ ] **2.1.2 `opendoc-ai` crate**: `AiEngine` trait, `EngineConfig`, `HardwareBackend` probe (Vulkan→HIP→CPU).
+- [ ] **2.1.3 `opendoc-ai-fastembed` crate**: bge-m3 embed + reranker on ONNX CPU (dim 1024).
+- [ ] **2.1.4 Upload pipeline**: parse → embed (fastembed CPU) → LanceDB write (compat schema).
+- [ ] **2.1.5 Real `LanceDbRetriever`**: vector + FTS5 + RRF + threshold replaces stub `search_and_rerank`.
+  - *Verification*: real documents round-trip — index then query returns actual chunks; empty `Vec::new()` on no match.

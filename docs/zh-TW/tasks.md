@@ -37,3 +37,26 @@
   - [ ] 在 TUI 的檢索結果列表上綁定 `Enter` 鍵（或獨立按鍵 `i`）。
   - [ ] 渲染一個結構化的彈出式 Modal，顯示原始文字片段內容、中繼資料屬性與相似度評分（Score）。
   - *驗證方式*：在 TUI 中選擇一份文件並按下 `Enter`，確認彈窗內容正確，且能使用方向鍵 `Up`/`Down` 在彈窗內滾動閱讀，按 `Esc` 即可乾淨關閉。
+
+---
+
+## 📋 規劃中執行任務 (Phase 2 — 任務執行層與原生 AI 引擎)
+
+規格：[`openspec/specs/task-execution-ai-engines/spec.md`](../../openspec/specs/task-execution-ai-engines/spec.md)
+參考：[`docs/ref/zh-TW/task-execution-ai-engines-verification.md`](../ref/zh-TW/task-execution-ai-engines-verification.md)
+
+### 2.0 Phase 0 — 基線強化（不改變行為）
+
+- [ ] **2.0.1 稽核 `search_and_rerank` call sites**：在 async 簽名變更前，列出所有同步 `SearchBackend` trait 的呼叫點（mcp `lib.rs:187`/`:441`、CLI `SearchWrapper` main.rs:30、storage stub `lib.rs:394`）。
+- [ ] **2.0.2 async `SearchBackend` 失敗測試**：撰寫 trait 方法由 `fn search_and_rerank(...) -> Vec<DocumentChunk>` 改為 `async fn ... -> Vec<DocumentChunk>` 的失敗單元測試（所有 call sites 改為 `.await`）。
+- [ ] **2.0.3 `[ai]`/`[task]` 設定解析**：以 `#[serde(default)]` 在 `AppConfig` 新增段落，使既有 `config.toml` 檔案原樣載入（向後相容）。
+  - *驗證方式*：`cargo check` 零警告；既有設定可載入；含 `[ai]`/`[task]` 的新設定可解析。
+
+### 2.1 Phase 1 — Task 與 AI 抽象層（純 Rust，CPU）
+
+- [ ] **2.1.1 `opendoc-task` crate**：`TaskEnvelope`/`TaskResult`/`TaskType`、`TaskExecutor` trait、`InProcessExecutor`。
+- [ ] **2.1.2 `opendoc-ai` crate**：`AiEngine` trait、`EngineConfig`、`HardwareBackend` probe（Vulkan→HIP→CPU）。
+- [ ] **2.1.3 `opendoc-ai-fastembed` crate**：bge-m3 embed + reranker 於 ONNX CPU（dim 1024）。
+- [ ] **2.1.4 上傳管線**：parse → embed（fastembed CPU）→ LanceDB 寫入（compat schema）。
+- [ ] **2.1.5 真實 `LanceDbRetriever`**：向量 + FTS5 + RRF + threshold 取代 stub `search_and_rerank`。
+  - *驗證方式*：真實文件往返——索引後查詢回傳實際 chunks；無匹配時回傳空 `Vec::new()`。
