@@ -44,7 +44,7 @@ impl SearchBackend for SearchWrapper {
 #[command(name = "opendocuments-rust")]
 #[command(author = "Jimmy Yen")]
 #[command(about = "OpenDocuments Rust — 極致性能、強型別防禦與 Ratatui TUI 終端三位一體之自建 RAG 旗艦 CLI")]
-#[command(version = "0.1.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

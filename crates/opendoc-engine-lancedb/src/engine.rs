@@ -30,7 +30,7 @@ use lancedb::index::Index;
 use lancedb::index::scalar::FtsIndexBuilder;
 
 const PROTOCOL_VERSION: &str = "1";
-const ENGINE_VERSION: &str = "0.1.0";
+const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 const SCHEMA_VERSION: &str = "1";
 
 /// Compat schema aligned with the legacy Node.js (Apache Arrow) layout.

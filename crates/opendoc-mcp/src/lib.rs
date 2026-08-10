@@ -228,7 +228,7 @@ pub async fn message_handler(
             "result": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": { "tools": {} },
-                "serverInfo": { "name": "opendocuments-rust", "version": "0.1.0" }
+                "serverInfo": { "name": "opendocuments-rust", "version": env!("CARGO_PKG_VERSION") }
             }
         }),
 
@@ -482,7 +482,7 @@ pub async fn run_mcp_stdio_server(
                             "listChanged": false
                         }
                     },
-                    "serverInfo": { "name": "opendocuments-rust", "version": "0.1.0" }
+                    "serverInfo": { "name": "opendocuments-rust", "version": env!("CARGO_PKG_VERSION") }
                 }
             }),
 
