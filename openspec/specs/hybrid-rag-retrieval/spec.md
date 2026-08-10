@@ -1,7 +1,7 @@
 # OpenSpec Requirement: Hybrid RAG Dense/Sparse Retrieval
 
 **Spec ID**: `hybrid-rag-retrieval`  
-**Status**: Approved / Production  
+**Status**: Approved Target / Partially Implemented
 **Priority**: P0  
 **Primary Language**: English  
 
@@ -10,6 +10,11 @@
 ## 1. Overview & Core Objective
 
 This specification defines the dual-retrieval hybrid RAG architecture of OpenDocuments. To achieve high recall and exact keyword precision, the system combines LanceDB dense vector similarity search with SQLite FTS5 sparse text search, merged via Reciprocal Rank Fusion (RRF) reranking.
+
+**Implementation status (2026-08-10):** dense vector search, LanceDB FTS, and RRF are
+implemented. The SQLite FTS5 sparse path required by this target architecture is not
+implemented. SQLite FTS5 is not a vector database, and LanceDB FTS MUST NOT be counted
+as completion of the SQLite FTS5 requirement.
 
 ---
 
@@ -20,7 +25,16 @@ This specification defines the dual-retrieval hybrid RAG architecture of OpenDoc
 - **Sparse Path**: SQLite FTS5 full-text keyword indexing for exact term, serial number, and code matching.
 - **Reranker**: Reciprocal Rank Fusion (RRF) algorithm to score, weight, and fuse top candidates from both retrieval paths into a unified ranked list.
 
-### 2.2 Dynamic Zero-Mock Guarantee
+### 2.2 Transition State
+
+- Current lexical candidates come from LanceDB FTS.
+- Target lexical candidates come from core-owned SQLite FTS5.
+- Under the proposed `lancedb-engine-sidecar` architecture, LanceDB vector and Lance
+  FTS move to the engine while SQLite FTS5 remains in core.
+- Until SQLite FTS5 lands, engine unavailability cannot silently fall back to a
+  claimed FTS5 path; vector-dependent search returns `503 engine_unavailable`.
+
+### 2.3 Dynamic Zero-Mock Guarantee
 - Core RAG retrieval flows (including `search_and_rerank`) MUST operate dynamically against physical SQLite and LanceDB data stores.
 - Static mock chunks, hardcoded fallback responses, or dummy search results are strictly prohibited.
 - When no relevant documents match the query, the retriever MUST return an empty vector (`Vec::new()`).

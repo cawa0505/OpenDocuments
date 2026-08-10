@@ -11,7 +11,11 @@
 
 ## 1. Overview & Core Objective
 
-Define enforceable binary size boundaries for the unified native OpenDocuments binary (Axum + LanceDB + SQLite + parsers + BYOK LLM + CLI). The goal is to prevent unbounded growth and make size regression visible in CI. No new features, no AWS/plugin sidecar design — only measurable limits, feature boundaries, and gate rules.
+Define enforceable size boundaries for OpenDocuments release artifacts. The current
+baseline is a unified executable. The proposed `lancedb-engine-sidecar` architecture
+will measure the public core and private engine separately, while also reporting the
+combined installation size. Separating artifacts MUST NOT be represented as reducing
+total size unless the combined measurement proves it.
 
 **Current measured baseline (lancedb 0.23.1, local-only, release build):**
 
@@ -30,7 +34,10 @@ Define enforceable binary size boundaries for the unified native OpenDocuments b
 
 | Artifact | Hard Budget | Rationale |
 |---|---:|---|
-| **Core binary (stripped, release)** | ≤ 150 MiB | Target leaves headroom for future optional features; aligned with home-lab single-binary distribution and CI gate at 160 MiB. |
+| **Current unified binary (stripped, release)** | ≤ 210 MiB transition gate | Matches the measured Phase 0 baseline until sidecar or profile work lands. |
+| **Future core binary (stripped, no vector engine)** | ≤ 100 MiB [待驗證] | Hard architectural target; must contain no Lance/Arrow/DataFusion crates. |
+| **Future LanceDB engine (stripped)** | ≤ 160 MiB [待驗證] | Measured independently; may remain heavy because it owns the vector stack. |
+| **Combined core + engine installation** | Report only until baseline exists | Process separation does not imply aggregate shrinkage. |
 | **RSS at idle (no model cache)** | ≤ 220 MiB | Observed range; prevents silent memory bloat from static buffers. |
 | **Model cache (`<db_dir>/models`)** | ≤ 500 MiB per model | Outside binary; documented and user-configurable. |
 | **Optional feature (TUI / WebUI / fastembed)** | ≤ 30 MiB each | Must be feature-gated; enables `cargo build --release --features <X>` size verification. |
@@ -42,13 +49,16 @@ Define enforceable binary size boundaries for the unified native OpenDocuments b
 | Category | In Core | Optional (feature-gated) | Future Plugin (separate crate/process) |
 |---|---|---|---|
 | **Parsers** | PDF, DOCX, XLSX, PPTX, HTML, Email, Text | — | — |
-| **Vector store** | LanceDB (local, file-manifest) | — | DynamoDB/S3 external manifest |
-| **Embedding** | BYOK (OpenAI-compatible `/v1/embeddings`) | FastEmbed CPU (`embedding-fastembed` feature) | GPU (llama.cpp, ONNX Runtime CUDA) |
+| **Vector store** | None in future core | Local LanceDB engine | DynamoDB/S3 or other engines only after separate approval |
+| **Sparse lexical search** | SQLite FTS5 target (not currently implemented) | LanceDB FTS remains engine-local | — |
+| **Embedding** | BYOK (OpenAI-compatible `/v1/embeddings`) | FastEmbed belongs to an optional engine feature | GPU engines (future) |
 | **Interfaces** | CLI, REST API, MCP server | TUI (`tui` feature), WebUI (`webui` feature) | — |
 | **Auth/License** | Local JWT, workspace isolation | — | Hardware fingerprint, clock-skew (loom-security) |
 | **Observability** | Structured logs | Metrics endpoint | Distributed tracing exporters |
 
-**Rule:** New code that would cross a boundary MUST first be added as an optional feature or plugin proposal with size impact documented.
+**Rule:** New code that would cross a boundary MUST first be added as an optional
+feature or engine proposal with size impact documented. The first sidecar release is a
+single LanceDB engine, not a general plugin framework.
 
 ---
 
@@ -108,7 +118,7 @@ fi
 | **1 — Profile/Strip Optimization (next 2 weeks)** | Enable `strip = "symbols"` (or `--strip-all` post-build), `lto = "thin"`, `codegen-units = 1` in `[profile.release]`; A/B measure size + build time. | If ≥ 15 MiB saved with ≤ 2× build time → keep; else revert. |
 | **2 — Dependency Attribution & Pruning** | Run `cargo bloat --release` (or equivalent) to get per-crate top-5 contributors; drop unused features (`default-features=false` where safe). | Each prune must pass CI gate + full test suite. |
 | **3 — Feature Gating** | Move WebUI/TUI to optional features (already partial); verify core-only build ≤ 150 MiB. | Core build passes 160 MiB gate. |
-| **4 — Future Plugin Boundary (deferred)** | Only when concrete remote/storage need exists; define plugin protocol; keep core ≤ 150 MiB. | No action until approved need. |
+| **4 — Engine Boundary** | Implement the approved `lancedb-engine-sidecar` protocol; remove Lance/Arrow/DataFusion from core. | Measure core, engine, and combined installation independently. |
 
 ---
 

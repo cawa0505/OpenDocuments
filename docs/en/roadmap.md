@@ -10,7 +10,7 @@ This roadmap tracks the development progress of the OpenDocuments open-source pr
 
 | Phase | Title | Focus Area | Status | Target |
 | :--- | :--- | :--- | :---: | :---: |
-| **Phase 0** | **Single-Binary MVP & BYOK Gateway** | Single-binary Axum server, BYOK LLM, Hybrid RAG (LanceDB + FTS5), Tags, CLI/TUI | ✅ Completed | Q3 2026 |
+| **Phase 0** | **Core MVP & BYOK Gateway** | Axum server, BYOK LLM, current LanceDB retrieval, Tags, CLI | ⏳ In Progress | Q3 2026 |
 | **Phase 1** | **ChatGPT-Aligned WebUI & Streaming** | React 19 WebUI, Typewriter SSE, Citation linking, Markdown code highlighting | ⏳ In Progress | Q3 2026 |
 | **Phase 2** | **Task Execution Layer & Native AI Engines** | Decouple parse/embed/rerank/infer via `TaskExecutor`; llama.cpp (Vulkan/HIP) + fastembed (CPU); optional Spur batch compute | 📋 Planned | Q4 2026 |
 
@@ -29,11 +29,13 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 ---
 
-## 🚀 Phase 0: Single-Binary MVP & BYOK Gateway (Completed)
+## 🚀 Phase 0: Core MVP & BYOK Gateway (In Progress)
 
 - [x] **Single-Binary Axum Architecture**: Unified server embedding React WebUI assets via `rust-embed`.
 - [x] **BYOK LLM Layer**: Encrypted SQLite storage for OpenAI-compatible API keys with health-check diagnostics.
-- [x] **Hybrid RAG Retrieval Engine**: Dense vector similarity (LanceDB) + Sparse full-text search (SQLite FTS5) with Reciprocal Rank Fusion (RRF).
+- [x] **Current Retrieval Engine**: LanceDB dense-vector search + LanceDB FTS with Reciprocal Rank Fusion (RRF).
+- [ ] **Target Hybrid Retrieval**: Add core-owned SQLite FTS5 as the sparse lexical path; do not confuse LanceDB FTS with SQLite FTS5.
+- [ ] **LanceDB Engine Boundary**: Move LanceDB/Arrow/DataFusion into a private core-managed sidecar after `lancedb-engine-sidecar` approval.
 - [x] **Tags & Complex Metadata Filtering**: Tag CRUD, document status/type filters, and multi-field sorting.
 - [x] **Cross-Platform Distribution**: Installer script (`install.sh`) and GitHub Release automation.
 

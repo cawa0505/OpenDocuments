@@ -34,7 +34,10 @@ WHEN a document is submitted via `opendoc document index <path>` or WebUI upload
 THEN the system MUST route the file to its corresponding `opendoc-parser-*` crate based on MIME type or extension.
 
 WHEN parsing completes
-THEN text MUST be split into semantic chunks (`DocumentChunk`), embedded into LanceDB vectors, indexed in SQLite FTS5, and stored with source file metadata.
+THEN text MUST be split into semantic chunks (`DocumentChunk`), embedded for LanceDB vector indexing, and stored with source file metadata.
+
+WHEN the target SQLite FTS5 sparse path is implemented
+THEN the same normalized chunks MUST also be indexed in core-owned SQLite FTS5 without describing LanceDB FTS as SQLite FTS5.
 
 WHEN an unsupported file type or corrupted file is encountered
 THEN the document status MUST be marked as `failed` with an explicit error message in SQLite without crashing the background worker.

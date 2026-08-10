@@ -1,7 +1,7 @@
 # OpenSpec Requirement: Single-Binary Architecture & Embedded WebUI
 
 **Spec ID**: `single-binary-architecture`  
-**Status**: Approved / Production  
+**Status**: Approved / Production — Process Boundary Supersession Proposed
 **Priority**: P0  
 **Primary Language**: English  
 
@@ -9,7 +9,11 @@
 
 ## 1. Overview & Core Objective
 
-This specification defines the single-binary deployment contract for OpenDocuments. The entire backend (Axum HTTP server, SQLite storage, LanceDB vector index, LLM client, and background indexing) and the built-in React WebUI static assets MUST be compiled and packaged into a single standalone native executable (`opendoc`).
+This specification defines the currently deployed single-binary contract for OpenDocuments. The current backend (Axum HTTP server, SQLite storage, LanceDB vector index, LLM client, and background indexing) and the built-in React WebUI static assets are compiled and packaged into a single standalone native executable (`opendoc`).
+
+The draft `lancedb-engine-sidecar` specification proposes replacing only the LanceDB
+process boundary with a private, core-managed child process. Until that draft is
+approved and implemented, this specification remains the production contract.
 
 No external Node.js runtime, Python process, Docker daemon, or separate static web server is permitted for deployment.
 
@@ -24,6 +28,17 @@ No external Node.js runtime, Python process, Docker daemon, or separate static w
 ### 2.2 Storage & Process Isolation
 - All database connections (SQLite via `sqlx` and LanceDB vector store) MUST share connections safely via Axum's `WithState` pattern within the single Rust process.
 - External multi-process access or Node.js bridge servers are strictly prohibited.
+
+### 2.3 Proposed Supersession Boundary
+
+If `lancedb-engine-sidecar` is approved, §2.2 is superseded only for the private
+LanceDB child process. The following constraints remain:
+
+- `opendoc` is the only public Axum/API service.
+- SQLite remains core-owned and MUST NOT be opened by the engine.
+- No Node.js or Python runtime is introduced.
+- The engine is spawned and terminated by core rather than installed as a separate
+  public daemon.
 
 ---
 

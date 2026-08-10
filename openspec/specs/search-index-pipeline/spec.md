@@ -17,7 +17,7 @@ search REST endpoint and a programmatically triggerable index write path
 (`file → chunk → embedding → LanceDB → searchable`). Layer 1 (hard links) is already
 shipped with zero OD dependency; Layer 2 is consulted only when a hard link is absent.
 
-**Current verified state (2026-08-10)**:
+**Original verified state before implementation (2026-08-10)**:
 
 | Item | State | Evidence |
 |------|-------|----------|
@@ -27,11 +27,15 @@ shipped with zero OD dependency; Layer 2 is consulted only when a hard link is a
 | Index write path (embed → LanceDB write) | None; `lancedb.rs` has compat schema + FTS self-heal only | `crates/opendoc-storage/src/lancedb.rs` |
 | Embedding dependency | None (no fastembed/onnx in workspace) | Cargo.toml scan |
 
-**Related specs**: `hybrid-rag-retrieval` (Approved/Production) defines the target
-dense+FTS5+RRF architecture but its core retriever is still the stub above; this spec
-is the concrete, minimal contract to land first. `task-execution-ai-engines` (Draft)
-plans the async `SearchBackend` evolution and `LanceDbRetriever` — this spec does not
-duplicate those sections, only the REST/index contracts they must satisfy.
+**Implementation clarification:** the current retriever performs LanceDB dense-vector
+search plus **LanceDB FTS**, fused with RRF. SQLite FTS5 is a documented target sparse
+path but is not implemented. SQLite Vector is not used. The proposed
+`lancedb-engine-sidecar` boundary moves current Lance vector and Lance FTS operations
+to the engine; core-owned SQLite FTS5 remains future work.
+
+**Related specs**: `hybrid-rag-retrieval` defines the target LanceDB vector + SQLite
+FTS5 + RRF architecture. `lancedb-engine-sidecar` defines the proposed process and
+storage boundary. This spec owns only the public REST/index contracts they must satisfy.
 
 ---
 
@@ -81,8 +85,8 @@ duplicate those sections, only the REST/index contracts they must satisfy.
 - The current MCP index tool is an HTTP forward to single-file
   `/api/v1/documents/upload` with no batch/directory/change-detection — batch
   capability is the gap this requirement closes.
-- Embedding execution is delegated to the `task-execution-ai-engines` plan
-  (InProcess fastembed CPU default); the search results MUST be dynamic — no static
+- Embedding execution is provided through BYOK by default; FastEmbed remains an
+  optional feature and belongs outside the future lightweight core. Search results MUST be dynamic — no static
   chunks, empty `Vec::new()`/`hits: []` when nothing matches (#3317).
 
 ### 2.4 Workspace Isolation (R4)
@@ -142,6 +146,8 @@ THEN the system MUST return HTTP 200 with `hits: []` — never static or mock ch
 - **Graphify graph mutation / TOON serialization**: plugin-side.
 - **Vector DB & embedding model selection**: OD decides (LanceDB/Qdrant, engine per
   `task-execution-ai-engines`).
+- **SQLite FTS5 implementation**: tracked by `hybrid-rag-retrieval`; it MUST NOT be
+  claimed complete based on the current LanceDB FTS implementation.
 - **R6 (synchronous Rust `SearchBackend` API)**: P2 — deferred until the MCP route is
   validated; not a blocker.
 

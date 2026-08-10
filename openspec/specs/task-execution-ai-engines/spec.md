@@ -336,7 +336,7 @@ Upload/CLI index → opendoc_parser::parse_file → chunks
 ```
 Search query (API/MCP/TUI)
   → LanceDB dense vector search (query embedded via AiEngine.embed)
-  → SQLite FTS5 sparse search (existing)
+  → SQLite FTS5 sparse search (target; not currently implemented)
   → merge candidates
   → TaskEnvelope{rerank} → AiEngine.rerank (llama.cpp /rerank or fastembed reranker)
   → score threshold filter ([model].score_threshold) + top-k
@@ -394,7 +394,8 @@ Phased; each phase ends with the project verification cycle:
 - [ ] `opendoc-ai`: AiEngine trait + `EngineConfig` + hardware probe (Vulkan→HIP→CPU).
 - [ ] `opendoc-ai-fastembed`: bge-m3 embed + reranker on ONNX CPU (dim 1024).
 - [ ] Wire upload handler: parse → embed (fastembed CPU) → LanceDB write (compat schema).
-- [ ] Replace stub `search_and_rerank` with `LanceDbRetriever` (vector + FTS5 + RRF + threshold).
+- [x] Replace stub `search_and_rerank` with `LanceDbRetriever` (LanceDB vector + LanceDB FTS + RRF + threshold).
+- [ ] Add core-owned SQLite FTS5 as the target sparse lexical path.
 - Gate: real documents round-trip — index → query returns actual chunks from DB, empty on no match.
 
 ### Phase 2 — llama.cpp GPU backend
