@@ -35,7 +35,7 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 - [x] **BYOK LLM Layer**: Encrypted SQLite storage for OpenAI-compatible API keys with health-check diagnostics.
 - [x] **Current Retrieval Engine**: LanceDB dense-vector search + LanceDB FTS with Reciprocal Rank Fusion (RRF).
 - [ ] **Target Hybrid Retrieval**: Add core-owned SQLite FTS5 as the sparse lexical path; do not confuse LanceDB FTS with SQLite FTS5.
-- [ ] **LanceDB Engine Boundary**: Move LanceDB/Arrow/DataFusion into a private core-managed sidecar after `lancedb-engine-sidecar` approval.
+- [x] **LanceDB Engine Boundary**: LanceDB/Arrow/DataFusion moved into a private core-managed sidecar (spec Approved / Production).
 - [x] **Tags & Complex Metadata Filtering**: Tag CRUD, document status/type filters, and multi-field sorting.
 - [x] **Cross-Platform Distribution**: Installer script (`install.sh`) and GitHub Release automation.
 

@@ -35,7 +35,7 @@
 - [x] **BYOK LLM 層**：SQLite 加密儲存自備 API 金鑰，支援 OpenAI 格式並具備連線健康診斷。
 - [x] **現行檢索引擎**：LanceDB 稠密向量搜尋 + LanceDB FTS，搭配 RRF 重排。
 - [ ] **目標混合檢索**：新增由核心管理的 SQLite FTS5 稀疏文字路徑；不可將 LanceDB FTS 誤寫成 SQLite FTS5。
-- [ ] **LanceDB Engine 邊界**：`lancedb-engine-sidecar` 規格批准後，將 LanceDB／Arrow／DataFusion 移至由核心管理的私有 sidecar。
+- [x] **LanceDB Engine 邊界**：LanceDB／Arrow／DataFusion 已移至由核心管理的私有 sidecar（spec Approved / Production）。
 - [x] **標籤與複合條件過濾**：標籤 CRUD、文件狀態/類型過濾，以及動態升降冪排序。
 - [x] **跨平台發布**：一鍵安裝腳本 (`install.sh`) 與 GitHub Release 自動化建置。
 

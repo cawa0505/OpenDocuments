@@ -1,7 +1,7 @@
 # OpenSpec Requirement: Single-Binary Architecture & Embedded WebUI
 
 **Spec ID**: `single-binary-architecture`  
-**Status**: Approved / Production — Process Boundary Supersession Proposed
+**Status**: Approved / Production — §2.2 Superseded for LanceDB by `lancedb-engine-sidecar`
 **Priority**: P0  
 **Primary Language**: English  
 
@@ -29,9 +29,9 @@ No external Node.js runtime, Python process, Docker daemon, or separate static w
 - All database connections (SQLite via `sqlx` and LanceDB vector store) MUST share connections safely via Axum's `WithState` pattern within the single Rust process.
 - External multi-process access or Node.js bridge servers are strictly prohibited.
 
-### 2.3 Proposed Supersession Boundary
+### 2.3 Supersession Boundary (Effective)
 
-If `lancedb-engine-sidecar` is approved, §2.2 is superseded only for the private
+`lancedb-engine-sidecar` (Approved / Production) supersedes §2.2 for the private
 LanceDB child process. The following constraints remain:
 
 - `opendoc` is the only public Axum/API service.

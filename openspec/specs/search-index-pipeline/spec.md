@@ -1,7 +1,7 @@
 # OpenSpec Requirement: Search & Index Pipeline (Layer 2 Fallback)
 
 **Spec ID**: `search-index-pipeline`  
-**Status**: Draft — Pending Implementation  
+**Status**: Approved / Production  
 **Priority**: P0  
 **Primary Language**: English  
 **Last Updated**: 2026-08-10  

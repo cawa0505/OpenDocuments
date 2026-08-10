@@ -1,7 +1,7 @@
 # OpenSpec Requirement: LanceDB Engine Sidecar Protocol
 
 **Spec ID**: `lancedb-engine-sidecar`
-**Status**: Draft — Pending Approval
+**Status**: Approved / Production
 **Priority**: P0
 **Primary Language**: English
 **Last Updated**: 2026-08-10
