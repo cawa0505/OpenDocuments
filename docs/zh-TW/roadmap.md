@@ -71,7 +71,7 @@ v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → �
 | **目標混合檢索 — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | 核心擁有的稀疏詞法路徑；engine 不可用時可提供純詞法 fallback。在此之前 LanceDB FTS 仍是現行詞法路徑。 |
 | **Phase 2 — 任務執行層與原生 AI 引擎** | [`task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md) | llama.cpp (Vulkan/HIP) embed/rerank/infer、`opendoc-ai-fastembed` 進程邊界、`[ai.models.inference]` 生成切換。 |
 | **Spur 整合與 server/worker 模式** | deferred note #33 | `SpurDaemonExecutor` (Mode 1)、`opendoc-worker daemon` + scale-to-zero (Mode 3)、批次 ETL (Mode 2)；私有網路 LAN worker。stdio JSON-RPC 保持 transport 無關（未來 TCP/unix socket）；engine 設定獨立於 core。注意：#2039 禁止 Docker 部署 — server/worker 是未來方向，非容器。 |
-| **TUI 增強** | [`tui-enhancements`](../../openspec/specs/tui-enhancements/spec.md) | 壓到很後面；預設建置完全不編譯 TUI。 |
+| ~~TUI 增強~~ | [`tui-enhancements`](../../openspec/specs/tui-enhancements/spec.md) | **已取消（2026-08-10）**：架構上不適合本專案，暫時沒有能取代 WebUI 的更好做法。Spec 撤回；`opendoc-tui` crate 與 `tui` feature 列為移除候選。 |
 | **二進位瘦身** | [`binary-size-architecture`](../../openspec/specs/binary-size-architecture/spec.md) | Engine 354 MB (strip+LTO)；zero-behavior-change slimming backlog。 |
 | **Graphify Layer 2 完整整合** | — | Plugin 端消費 `heading`/`spec_id`、向量 fallback 端到端驗證（Layer 1 不受影響）。 |
 | **FastEmbed 進程邊界** | `task-execution-ai-engines` | 目前 feature-gated 於 `opendoc-storage`（`embedding-fastembed`）；日後可能移入 engine/worker 邊界。 |

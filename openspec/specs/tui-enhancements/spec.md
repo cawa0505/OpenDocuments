@@ -1,7 +1,7 @@
 # OpenSpec Requirement: Enhanced Terminal User Interface (TUI)
 
 **Spec ID**: `tui-enhancements`  
-**Status**: Draft / Proposed  
+**Status**: Withdrawn (2026-08-10) — architecturally unsuitable; WebUI is the terminal interface
 **Priority**: P1  
 **Primary Language**: English  
 
