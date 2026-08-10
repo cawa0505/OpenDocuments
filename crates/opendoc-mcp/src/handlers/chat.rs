@@ -189,8 +189,15 @@ pub async fn chat_stream_handler(
         }
     }
 
+    // ponytail: profile determines top_k for focused vs broad recall
+    let top_k = match profile.as_str() {
+        "fast" => 5,
+        "precise" => 20,
+        _ => 10,
+    };
+
     let results = state.search.search_and_rerank(&expanded_query, threshold);
-    let limited: Vec<_> = results.into_iter().take(10).collect();
+    let limited: Vec<_> = results.into_iter().take(top_k).collect();
 
     let answer = if limited.is_empty() {
         "在現有文獻中未找到相關內容。".to_string()
@@ -291,13 +298,15 @@ pub async fn chat_stream_handler(
 
         match llm_stream_res {
             Ok(mut llm_stream) => {
-                let s = async_stream::stream! {
-                    yield Ok::<Event, std::convert::Infallible>(Event::default().event("sources").data(sources_json_clone));
-                    yield Ok::<Event, std::convert::Infallible>(Event::default().event("confidence").data(confidence_json_clone));
-
-                    let mut full_answer = String::new();
-
-                    while let Some(res) = llm_stream.next().await {
+                 let s = async_stream::stream! {
+                     yield Ok::<Event, std::convert::Infallible>(Event::default().event("status").data(json!({ "phase": "searching" })));
+                     yield Ok::<Event, std::convert::Infallible>(Event::default().event("sources").data(sources_json_clone));
+                     yield Ok::<Event, std::convert::Infallible>(Event::default().event("confidence").data(confidence_json_clone));
+                     yield Ok::<Event, std::convert::Infallible>(Event::default().event("status").data(json!({ "phase": "generating" })));
+ 
+                     let mut full_answer = String::new();
+ 
+                     while let Some(res) = llm_stream.next().await {
                         match res {
                             Ok(token) => {
                                 full_answer.push_str(&token);
@@ -377,8 +386,10 @@ pub async fn chat_stream_handler(
 
     // Fallback stream (concatenated chunks)
     let s_fallback = async_stream::stream! {
+        yield Ok::<Event, std::convert::Infallible>(Event::default().event("status").data(json!({ "phase": "searching" })));
         yield Ok::<Event, std::convert::Infallible>(Event::default().event("sources").data(sources_json));
         yield Ok::<Event, std::convert::Infallible>(Event::default().event("confidence").data(confidence_json));
+        yield Ok::<Event, std::convert::Infallible>(Event::default().event("status").data(json!({ "phase": "generating" })));
         yield Ok::<Event, std::convert::Infallible>(Event::default().event("chunk").data(serde_json::to_string(&answer).unwrap_or_default()));
 
         if let Some(cid) = &conversation_id {
@@ -479,7 +490,14 @@ pub async fn chat_handler(
     }
 
     let results = state.search.search_and_rerank(&expanded_query, threshold);
-    let limited: Vec<_> = results.into_iter().take(10).collect();
+
+    let top_k = match profile.as_str() {
+        "fast" => 5,
+        "precise" => 20,
+        _ => 10,
+    };
+
+    let limited: Vec<_> = results.into_iter().take(top_k).collect();
 
     let locale_str = headers.get("x-locale")
         .and_then(|v| v.to_str().ok())
