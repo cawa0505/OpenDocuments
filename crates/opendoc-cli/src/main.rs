@@ -9,8 +9,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
-#[cfg(feature = "tui")]
-use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
 use opendoc_mcp::{start_mcp_and_api_server, SearchBackend};
 use opendoc_llm::{embedding::ByokEmbeddingProvider, LlmProvider};
 #[cfg(feature = "embedding-fastembed")]
@@ -19,14 +17,6 @@ use opendoc_storage::{AppConfig, retriever::SidecarRetriever};
 use opendoc_types::EmbeddingProvider;
 use walkdir::WalkDir;
 use reqwest::multipart;
-#[cfg(feature = "tui")]
-use crossterm::{
-    event::{self, Event as CrossEvent, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-#[cfg(feature = "tui")]
-use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use sha2::{Digest, Sha256};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
@@ -43,7 +33,7 @@ impl SearchBackend for SearchWrapper {
 #[derive(Parser)]
 #[command(name = "opendocuments-rust")]
 #[command(author = "Jimmy Yen")]
-#[command(about = "OpenDocuments Rust — 極致性能、強型別防禦與 Ratatui TUI 終端三位一體之自建 RAG 旗艦 CLI")]
+#[command(about = "OpenDocuments Rust — 極致性能、強型別防禦之自建 RAG 旗艦 CLI")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     #[command(subcommand)]
@@ -52,12 +42,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// 啟動輕量化 Ratatui TUI 檢索與進度調試終端（預設不編譯，啟用 `tui` feature）
-    #[cfg(feature = "tui")]
-    Tui,
-
     /// 對 RAG 知識庫進行快速終端問答
-Ask {
+    Ask {
         query: String,
         #[arg(short, long, default_value = "default")]
         workspace: Option<String>,
@@ -332,23 +318,6 @@ let app_cfg = config_manager.get_config().await;
      };
 
      match cli.command {
-        #[cfg(feature = "tui")]
-        Commands::Tui => {
-            // 完美註冊全局 Panic Hook, 確保 TUI 崩潰時強制還原終端
-            let default_hook = std::panic::take_hook();
-            std::panic::set_hook(Box::new(move |info| {
-                let _ = disable_raw_mode();
-                let mut stdout = io::stdout();
-                let _ = execute!(stdout, LeaveAlternateScreen);
-                default_hook(info);
-            }));
-
-            if let Err(e) = run_tui_loop(&config_manager).await {
-                eprintln!("💥 TUI 異常退出: {e}");
-            }
-            // 物理防護：確保直接向作業系統交還控制權，防範背景常駐 Task 導致死鎖卡死
-            std::process::exit(0);
-        }
         Commands::Ask { query, workspace, collections } => {
             let resolved_workspace = resolve_ws(workspace);
             println!("正在向空間 '{resolved_workspace}' 提問: '{query}' .. (API 端點: {})", app_cfg.server.url);
@@ -1031,297 +1000,5 @@ match sub {
         }
     }
 
-    Ok(())
-}
-
-/// 運行 Ratatui TUI 主循環，具備 100% 非同步事件調度與背景阻斷保護
-#[cfg(feature = "tui")]
-async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn std::error::Error>> {
-    let app_cfg = config_manager.get_config().await;
-    let initial_workspace = app_cfg.model.active_workspace.clone()
-        .unwrap_or_else(|| app_cfg.model.default_workspace.clone());
-    let _score_threshold = app_cfg.model.score_threshold;
-
-    // 1. 初始化終端機環境
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-    
-    // 【防禦起手式】開啟獨立異步 Task 監聽鍵盤輸入，絕不阻塞主執行緒
-    let tx_clone = tx.clone();
-    tokio::task::spawn_blocking(move || {
-        loop {
-            // 每 50 毫秒檢查一次有沒有鍵盤輸入
-            if let Ok(true) = event::poll(Duration::from_millis(50)) {
-                if let Ok(CrossEvent::Key(key)) = event::read() {
-                    // 支援 Ctrl+W
-                    if key.modifiers.contains(event::KeyModifiers::CONTROL) && key.code == event::KeyCode::Char('w') {
-                        let _ = tx_clone.blocking_send(TuiEvent::Input(event::KeyCode::F(12))); // F12 用作內部 Ctrl+W 觸發
-                    } else {
-                        let _ = tx_clone.blocking_send(TuiEvent::Input(key.code));
-                    }
-                }
-            }
-            // 定時發送 Tick 事件，用來更新動畫或檢查背景進度
-            let _ = tx_clone.blocking_send(TuiEvent::Tick);
-        }
-    });
-
-    let mut state = TuiAppState::new(initial_workspace.clone());
-
-    // Trigger initial document fetch on startup
-    let mgr_init = Arc::clone(config_manager);
-    let tx_init = tx.clone();
-    let ws_init = initial_workspace;
-    tokio::spawn(async move {
-        let mut results = Vec::new();
-        if let Ok(pool) = mgr_init.init_db_pool().await {
-            let ws_row: Option<(String,)> = sqlx::query_as("SELECT id FROM workspaces WHERE id = ? OR name = ?")
-                .bind(&ws_init)
-                .bind(&ws_init)
-                .fetch_optional(&pool)
-                .await
-                .unwrap_or(None);
-
-            if let Some((ws_id,)) = ws_row {
-                let q = sqlx::query_as::<_, (String, String, i32)>(
-                    "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
-                ).bind(&ws_id);
-                if let Ok(rows) = q.fetch_all(&pool).await {
-                    for row in rows {
-                        results.push(TuiSearchResult {
-                            file_name: row.0,
-                            status: row.1,
-                            chunk_count: row.2,
-                            score: None,
-                            snippet: String::new(),
-                        });
-                    }
-                }
-            }
-        }
-        let _ = tx_init.send(TuiEvent::FetchResults(results)).await;
-    });
-
-    // TUI 主事件循環
-    loop {
-        terminal.draw(|f| render_ui(f, &state))?;
-
-        if let Some(event) = rx.recv().await {
-            match event {
-                TuiEvent::Input(KeyCode::Esc) => {
-                    if state.switching_workspace {
-                        state.switching_workspace = false;
-                        state.workspace_input.clear();
-                    } else {
-                        break;
-                    }
-                }
-                TuiEvent::Input(KeyCode::F(12)) => {
-                    state.switching_workspace = true;
-                    state.workspace_input.clear();
-                    
-                    // 觸發背景非同步加載 workspaces
-                    let mgr = Arc::clone(config_manager);
-                    let tx_ws = tx.clone();
-                    tokio::spawn(async move {
-                        if let Ok(pool) = mgr.init_db_pool().await {
-                            if let Ok(rows) = sqlx::query_as::<_, (String,)>("SELECT name FROM workspaces").fetch_all(&pool).await {
-                                let list: Vec<String> = rows.into_iter().map(|r| r.0).collect();
-                                let _ = tx_ws.send(TuiEvent::FetchWorkspaces(list)).await;
-                            }
-                        }
-                    });
-                }
-                TuiEvent::Input(KeyCode::Up) => {
-                    if state.switching_workspace && !state.workspaces_list.is_empty() {
-                        if state.workspace_cursor > 0 {
-                            state.workspace_cursor -= 1;
-                        } else {
-                            state.workspace_cursor = state.workspaces_list.len() - 1;
-                        }
-                        if let Some(selected) = state.workspaces_list.get(state.workspace_cursor) {
-                            state.workspace_input = selected.clone();
-                        }
-                    }
-                }
-                TuiEvent::Input(KeyCode::Down) => {
-                    if state.switching_workspace && !state.workspaces_list.is_empty() {
-                        if state.workspace_cursor + 1 < state.workspaces_list.len() {
-                            state.workspace_cursor += 1;
-                        } else {
-                            state.workspace_cursor = 0;
-                        }
-                        if let Some(selected) = state.workspaces_list.get(state.workspace_cursor) {
-                            state.workspace_input = selected.clone();
-                        }
-                    }
-                }
-                TuiEvent::Input(KeyCode::Tab) => {
-                    if state.switching_workspace && !state.workspaces_list.is_empty() {
-                        // 自動補全當前選中的 workspace
-                        if let Some(selected) = state.workspaces_list.get(state.workspace_cursor) {
-                            state.workspace_input = selected.clone();
-                        }
-                    }
-                }
-                TuiEvent::Input(KeyCode::Char(c)) => {
-                    if state.switching_workspace {
-                        state.workspace_input.push(c);
-                        // 當用戶輸入時，嘗試模糊/字首過濾並自動聚焦匹配的第一個
-                        if let Some(pos) = state.workspaces_list.iter().position(|name| name.to_lowercase().contains(&state.workspace_input.to_lowercase())) {
-                            state.workspace_cursor = pos;
-                        }
-                    } else {
-                        state.search_query.push(c);
-                    }
-                }
-                TuiEvent::Input(KeyCode::Backspace) => {
-                    if state.switching_workspace {
-                        state.workspace_input.pop();
-                        if !state.workspace_input.is_empty() {
-                            if let Some(pos) = state.workspaces_list.iter().position(|name| name.to_lowercase().contains(&state.workspace_input.to_lowercase())) {
-                                state.workspace_cursor = pos;
-                            }
-                        }
-                    } else {
-                        state.search_query.pop();
-                    }
-                }
-                TuiEvent::Input(KeyCode::Enter) => {
-                    if state.switching_workspace {
-                        // 優先使用 Tab 補全、Up/Down 聚焦，或者直接輸入
-                        let selected_ws = if !state.workspace_input.trim().is_empty() {
-                            state.workspace_input.trim().to_string()
-                        } else if !state.workspaces_list.is_empty() {
-                            state.workspaces_list[state.workspace_cursor].clone()
-                        } else {
-                            String::new()
-                        };
-
-                        if !selected_ws.is_empty() {
-                            state.active_workspace = selected_ws.clone();
-                            
-                            // 在背景非同步切換、持久化配置並自動重新載入
-                            let mgr = Arc::clone(config_manager);
-                            let tx_ws_switch = tx.clone();
-                            let ws_for_fetch = selected_ws.clone();
-                            tokio::spawn(async move {
-                                let mut cfg = mgr.get_config().await.clone();
-                                cfg.model.active_workspace = Some(selected_ws);
-                                let _ = mgr.update_config(cfg).await;
-                                
-                                // After switch, fetch documents for new workspace
-                                let mut results = Vec::new();
-                                if let Ok(pool) = mgr.init_db_pool().await {
-                                    let ws_row: Option<(String,)> = sqlx::query_as("SELECT id FROM workspaces WHERE id = ? OR name = ?")
-                                        .bind(&ws_for_fetch)
-                                        .bind(&ws_for_fetch)
-                                        .fetch_optional(&pool)
-                                        .await
-                                        .unwrap_or(None);
-
-                                     if let Some((ws_id,)) = ws_row {
-                                         let q = sqlx::query_as::<_, (String, String, i32)>(
-                                             "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
-                                         ).bind(&ws_id);
-                                         if let Ok(rows) = q.fetch_all(&pool).await {
-                                             for row in rows {
-                                                 results.push(TuiSearchResult {
-                                                     file_name: row.0,
-                                                     status: row.1,
-                                                     chunk_count: row.2,
-                                                     score: None,
-                                                     snippet: String::new(),
-                                                 });
-                                             }
-                                         }
-                                     }
-                                }
-                                let _ = tx_ws_switch.send(TuiEvent::FetchResults(results)).await;
-                            });
-                        }
-                        state.switching_workspace = false;
-                        state.workspace_input.clear();
-                    } else {
-                        // 當按下 Enter，觸發非同步資料庫動態文件檢索與載入
-                        let query = state.search_query.clone();
-                        let mgr = Arc::clone(config_manager);
-                        let tx_res = tx.clone();
-                        let current_ws = state.active_workspace.clone();
-
-                        tokio::spawn(async move {
-                            let mut results = Vec::new();
-                            if let Ok(pool) = mgr.init_db_pool().await {
-                                // 1. 先解析工作區 UUID
-                                let ws_row: Option<(String,)> = sqlx::query_as("SELECT id FROM workspaces WHERE id = ? OR name = ?")
-                                    .bind(&current_ws)
-                                    .bind(&current_ws)
-                                    .fetch_optional(&pool)
-                                    .await
-                                    .unwrap_or(None);
-
-                                 if let Some((ws_id,)) = ws_row {
-                                     // 2. 依照工作空間查詢實體 documents 列表，並視需要進行模糊搜尋
-                                     if query.trim().is_empty() {
-                                         let q = sqlx::query_as::<_, (String, String, i32)>(
-                                             "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL ORDER BY created_at DESC"
-                                         ).bind(&ws_id);
-                                         if let Ok(rows) = q.fetch_all(&pool).await {
-                                             for row in rows {
-                                                 results.push(TuiSearchResult {
-                                                     file_name: row.0,
-                                                     status: row.1,
-                                                     chunk_count: row.2,
-                                                     score: None,
-                                                     snippet: String::new(),
-                                                 });
-                                             }
-                                         }
-                                     } else {
-                                         let pattern = format!("%{}%", query);
-                                         let q = sqlx::query_as::<_, (String, String, i32)>(
-                                             "SELECT source_path, status, chunk_count FROM documents WHERE workspace_id = ? AND deleted_at IS NULL AND (title LIKE ? OR source_path LIKE ?) ORDER BY created_at DESC"
-                                         ).bind(&ws_id).bind(&pattern).bind(&pattern);
-                                         if let Ok(rows) = q.fetch_all(&pool).await {
-                                             for row in rows {
-                                                 results.push(TuiSearchResult {
-                                                     file_name: row.0,
-                                                     status: row.1,
-                                                     chunk_count: row.2,
-                                                     score: None,
-                                                     snippet: String::new(),
-                                                 });
-                                             }
-                                         }
-                                     }
-                                 }
-                            }
-                            let _ = tx_res.send(TuiEvent::FetchResults(results)).await;
-                        });
-                    }
-                }
-                TuiEvent::FetchResults(new_results) => {
-                    state.results = new_results;
-                }
-                TuiEvent::FetchWorkspaces(list) => {
-                    state.workspaces_list = list;
-                    state.workspace_cursor = state.workspaces_list.iter()
-                        .position(|name| name == &state.active_workspace)
-                        .unwrap_or(0);
-                }
-                TuiEvent::Tick => {}
-                _ => {}
-            }
-        }
-    }
-
-    // 還原終端機
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
 }

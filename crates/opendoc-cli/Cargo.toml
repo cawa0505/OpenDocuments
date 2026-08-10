@@ -9,16 +9,12 @@ opendoc-parser = { path = "../opendoc-parser" }
 opendoc-storage = { path = "../opendoc-storage" }
 opendoc-mcp = { path = "../opendoc-mcp" }
 opendoc-llm = { path = "../opendoc-llm" }
-# TUI 本階段不編譯：`--features tui` 才引入 opendoc-tui + crossterm + ratatui
-opendoc-tui = { path = "../opendoc-tui", optional = true }
 clap = { version = "4.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 reqwest = { version = "0.11", features = ["multipart", "json"] }
 walkdir = "2.4"
-crossterm = { version = "0.27", optional = true }
-ratatui = { version = "0.26", optional = true }
 chrono = "0.4.40"
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
 ignore = "0.4"
@@ -26,6 +22,5 @@ sha2 = "0.10"
 
 [features]
 default = []
-tui = ["dep:opendoc-tui", "dep:crossterm", "dep:ratatui"]
 # 離線 ONNX embedding（BGE-M3 1024 維）；預設關閉以保持建置輕量，啟用後 binary 增 ~數十 MB
 embedding-fastembed = ["opendoc-storage/embedding-fastembed"]
