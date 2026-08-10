@@ -48,3 +48,19 @@
 - [ ] **SSE 串流事件規範化**：統一 `StreamEvent` 封裝 (`Thought`, `Text`, `Status`)。
 - [ ] **互動式 Citation 連結**：將 Markdown 的 `[1]` / `[2]` 出處轉化為可點擊聚焦文獻卡片的標籤。
 - [ ] **RAG 檢索偏好設定**：提供 `Fast`、`Balanced`、`Precise` 三種檢索模式。
+
+---
+
+## 🗄️ v1.0.0 之後 (Backlog)
+
+明確延後至 v1.0.0 發布之後的功能，集中在此追蹤以免遺忘。每一項都連結其管轄規格（若存在）。
+
+| 功能 | 規格 | 備註 |
+| :--- | :--- | :--- |
+| **目標混合檢索 — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | 核心擁有的稀疏詞法路徑；engine 不可用時可提供純詞法 fallback。在此之前 LanceDB FTS 仍是現行詞法路徑。 |
+| **Phase 2 — 任務執行層與原生 AI 引擎** | [`task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md) | llama.cpp (Vulkan/HIP) embed/rerank/infer、`opendoc-ai-fastembed` 進程邊界、`[ai.models.inference]` 生成切換。 |
+| **Spur 整合與 server/worker 模式** | deferred note #33 | `SpurDaemonExecutor` (Mode 1)、`opendoc-worker daemon` + scale-to-zero (Mode 3)、批次 ETL (Mode 2)；私有網路 LAN worker。stdio JSON-RPC 保持 transport 無關（未來 TCP/unix socket）；engine 設定獨立於 core。注意：#2039 禁止 Docker 部署 — server/worker 是未來方向，非容器。 |
+| **TUI 增強** | [`tui-enhancements`](../../openspec/specs/tui-enhancements/spec.md) | 壓到很後面；預設建置完全不編譯 TUI。 |
+| **二進位瘦身** | [`binary-size-architecture`](../../openspec/specs/binary-size-architecture/spec.md) | Engine 354 MB (strip+LTO)；zero-behavior-change slimming backlog。 |
+| **Graphify Layer 2 完整整合** | — | Plugin 端消費 `heading`/`spec_id`、向量 fallback 端到端驗證（Layer 1 不受影響）。 |
+| **FastEmbed 進程邊界** | `task-execution-ai-engines` | 目前 feature-gated 於 `opendoc-storage`（`embedding-fastembed`）；日後可能移入 engine/worker 邊界。 |
