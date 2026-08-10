@@ -15,7 +15,7 @@ use opendoc_mcp::{start_mcp_and_api_server, SearchBackend};
 use opendoc_llm::{embedding::ByokEmbeddingProvider, LlmProvider};
 #[cfg(feature = "embedding-fastembed")]
 use opendoc_storage::embeddings::FastEmbedProvider;
-use opendoc_storage::{AppConfig, retriever::LanceDbRetriever};
+use opendoc_storage::{AppConfig, retriever::SidecarRetriever};
 use opendoc_types::EmbeddingProvider;
 use walkdir::WalkDir;
 use reqwest::multipart;
@@ -232,7 +232,7 @@ async fn build_search_backend(
         let dim = provider.dim();
         let embed = Arc::new(provider) as Arc<dyn EmbeddingProvider>;
         let retriever =
-            LanceDbRetriever::connect(lance_uri, table, dim, default_ws_name, embed).await?;
+            SidecarRetriever::connect(&engine_path(), &lance_uri, &table, dim, &default_ws_name, embed).await?;
         return Ok(Arc::new(retriever) as Arc<dyn SearchBackend>);
     }
 
@@ -298,8 +298,15 @@ async fn build_search_backend(
 
     let db_dir = ConfigManager::resolve_db_dir(&app_cfg.database.path)?;
     let lance_uri = db_dir.to_string_lossy().to_string();
-    let retriever = LanceDbRetriever::connect(lance_uri, table, dim, default_ws_name, embed).await?;
+    let retriever =
+        SidecarRetriever::connect(&engine_path(), &lance_uri, &table, dim, &default_ws_name, embed).await?;
     Ok(Arc::new(retriever) as Arc<dyn SearchBackend>)
+}
+
+/// 引擎執行檔路徑：`OPENDOC_ENGINE_PATH` 環境變數覆蓋，預設查 PATH 的
+/// `opendoc-engine-lancedb`。ponytail: server/worker 部署（roadmap）時改為連線位址。
+fn engine_path() -> String {
+    std::env::var("OPENDOC_ENGINE_PATH").unwrap_or_else(|_| "opendoc-engine-lancedb".to_string())
 }
 
 #[tokio::main]

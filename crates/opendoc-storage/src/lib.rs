@@ -1,7 +1,7 @@
 #![recursion_limit = "512"]
 
-pub mod lancedb;
 pub mod retriever;
+pub mod sidecar_client;
 #[cfg(feature = "embedding-fastembed")]
 pub mod embeddings;
 

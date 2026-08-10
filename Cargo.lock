@@ -5433,6 +5433,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "opendoc-engine-lancedb"
+version = "0.1.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "futures",
+ "lancedb",
+ "opendoc-types",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "opendoc-llm"
 version = "0.1.0"
 dependencies = [
@@ -5593,14 +5607,9 @@ dependencies = [
 name = "opendoc-storage"
 version = "0.1.0"
 dependencies = [
- "arrow-array",
- "arrow-ord",
- "arrow-schema",
  "async-trait",
  "directories",
  "fastembed",
- "futures",
- "lancedb",
  "opendoc-types",
  "serde",
  "serde_json",

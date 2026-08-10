@@ -95,13 +95,23 @@ pub trait SearchBackend: Send + Sync {
     ) -> Result<(), String> {
         Err("indexing not supported by this backend".into())
     }
+
+    /// 引擎可用性探測（spec §5.3：引擎不可用時 search 回 503 engine_unavailable）。
+    /// 預設 true；SidecarRetriever 覆寫為 child-process 存活檢查。
+    fn engine_available(&self) -> bool {
+        true
+    }
 }
 
-/// `impl SearchBackend for opendoc_storage::retriever::LanceDbRetriever`。
-/// 透過 `block_in_place` + `Handle::block_on` 從 sync trait 呼叫 async lancedb，
+/// `impl SearchBackend for opendoc_storage::retriever::SidecarRetriever`。
+/// 透過 `block_in_place` + `Handle::block_on` 從 sync trait 呼叫 async embedding，
 /// 與本 crate 既有慣例（sse/message handler）一致。
 /// ponytail: 單請求佔用一個 runtime worker；高併發升級為 async trait / 連線池。
-impl SearchBackend for opendoc_storage::retriever::LanceDbRetriever {
+impl SearchBackend for opendoc_storage::retriever::SidecarRetriever {
+    fn engine_available(&self) -> bool {
+        opendoc_storage::retriever::SidecarRetriever::engine_available(self)
+    }
+
     fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current()

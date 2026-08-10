@@ -1,75 +1,63 @@
-use std::sync::Arc;
+//! Core-side search retriever backed by the LanceDB engine sidecar.
+//!
+//! Core owns: embedding (BYOK / local models), RRF fusion, threshold/top-k,
+//! and SearchHit formatting. Engine owns: LanceDB connection, compat schema,
+//! index writes, vector/FTS search, and deletion — reached over stdio.
+//!
+//! Sync trait (`SearchBackend`) bridges to async embedding via the same
+//! `block_in_place` + `Handle::block_on` convention used elsewhere.
 
-use arrow_array::{
-    builder::{FixedSizeListBuilder, Float32Builder},
-    Array, Float32Array, RecordBatch, RecordBatchIterator, StringArray,
-};
-use futures::StreamExt;
-use lancedb::query::{ExecutableQuery, QueryBase, Select};
-use lancedb::table::Table;
-use opendoc_types::{ChunkType, DocumentChunk, EmbeddingProvider};
-use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-use crate::lancedb::get_compat_schema;
+use opendoc_types::{ChunkType, DocumentChunk, EmbeddingProvider};
+use serde_json::Value;
 
-/// 檢索 hit。由 graphify-plugin-opendoc Layer 2 消費。
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct SearchHit {
-    pub doc_path: String,
-    pub spec_id: String,
-    /// R2：chunk 所屬 section 的原始 heading 文字（非 slug）。Plugin 拿
-    /// `doc_path + heading` 自算 `sha1(...)[0..12]` 對映回內部 spec_id。
-    pub heading: String,
-    pub score: f32,
-    pub snippet: String,
-}
+use crate::sidecar_client::SidecarClient;
 
-/// LanceDB 後檢索器。open 連線、維護相容 schema 表、index write（embed→LanceDB）與向量+FTS 混合檢索。
+/// 檢索 hit。定義於 opendoc_types::protocol，由 graphify-plugin-opendoc Layer 2 消費。
+pub use opendoc_types::protocol::SearchHit;
+
+/// Sidecar-backed 檢索器。替換原 in-process `LanceDbRetriever`。
 ///
-/// ponytail: index 與 search 均為 async；上層（opendoc-mcp）透過既有的
-/// `tokio::task::block_in_place` + `Handle::block_on` 慣例從 sync trait 呼叫，
-/// 單 search 請求會佔住一個 runtime worker 執行緒；高併發想升級為 per-request embed 池。
-pub struct LanceDbRetriever {
-    conn: lancedb::Connection,
-    table_name: String,
+/// ponytail: `SidecarClient` 為 request/response 序列化通訊，單 `Mutex` 就夠；
+/// 若未來需平行查詢，升級為連線池 / 背景 reader thread。
+pub struct SidecarRetriever {
+    client: Mutex<SidecarClient>,
     dim: usize,
     embed: Arc<dyn EmbeddingProvider>,
-    /// chat 透過既有 sync `search_and_rerank`（無 workspace 參數）時使用。
-    /// ponytail: 升級上限——chat 路徑應改帶入 per-request workspace，目前用伺服器預設值。
+    /// chat 既有 sync `search_and_rerank`（無 workspace 參數）使用。
     default_workspace: String,
 }
 
-impl LanceDbRetriever {
+impl SidecarRetriever {
+    /// Spawn 引擎子程序並完成 handshake。`engine_path` 為執行檔路徑（config 或 PATH）。
     pub async fn connect(
-        uri: impl Into<String>,
-        table_name: impl Into<String>,
+        engine_path: &str,
+        lance_uri: &str,
+        table_name: &str,
         dim: usize,
-        default_workspace: impl Into<String>,
+        default_workspace: &str,
         embed: Arc<dyn EmbeddingProvider>,
     ) -> Result<Self, String> {
-        let uri = uri.into();
-        let conn = lancedb::connect(&uri)
-            .execute()
-            .await
-            .map_err(|e| e.to_string())?;
-        let embed_dim = self_embed_dim_for_check(&embed);
+        let embed_dim = embed.dim();
         if embed_dim != 0 && embed_dim != dim {
             return Err(format!(
                 "embedding provider dim {} != 請求 dim {}",
                 embed_dim, dim
             ));
         }
+        let mut client = SidecarClient::spawn(engine_path, lance_uri, table_name)?;
+        client.handshake(dim)?;
         Ok(Self {
-            conn,
-            table_name: table_name.into(),
+            client: Mutex::new(client),
             dim,
             embed,
-            default_workspace: default_workspace.into(),
+            default_workspace: default_workspace.to_string(),
         })
     }
 
-    /// chat 既有 sync 路徑（`search_and_rerank`）委派至此：用 default_workspace、threshold、top_k=10。
+    /// chat 既有 sync 路徑（`search_and_rerank`）委派至此：default_workspace、threshold、top_k=10。
     pub async fn search_default(
         &self,
         query: &str,
@@ -96,59 +84,37 @@ impl LanceDbRetriever {
             .collect()
     }
 
-    async fn open_or_create_table(&self) -> Result<Table, String> {
-        let names = self
-            .conn
-            .table_names()
-            .execute()
-            .await
-            .map_err(|e| e.to_string())?;
-        if names.iter().any(|n| n == &self.table_name) {
-            self.conn
-                .open_table(&self.table_name)
-                .execute()
-                .await
-                .map_err(|e| e.to_string())
-        } else {
-            let schema = get_compat_schema(self.dim as i32);
-            self.conn
-                .create_empty_table(&self.table_name, schema)
-                .execute()
-                .await
-                .map_err(|e| e.to_string())
+    /// Lock the engine client and run `f`. If the engine crashed mid-call,
+    /// respawn it once and retry (bounded restart, spec §6).
+    fn with_client<T>(
+        &self,
+        mut f: impl FnMut(&mut SidecarClient) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let mut client = self
+            .client
+            .lock()
+            .map_err(|_| String::from("engine lock poisoned"))?;
+        match f(&mut client) {
+            Ok(v) => Ok(v),
+            Err(e) if !client.is_alive() => {
+                // ponytail: fixed 500ms delay, single retry. Backoff policy is [待討論] per spec §6;
+                // exponential backoff if crash-looping becomes a real problem.
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                client
+                    .respawn()
+                    .map_err(|re| format!("engine_respawn_failed: {re}; original: {e}"))?;
+                drop(client);
+                let mut client = self
+                    .client
+                    .lock()
+                    .map_err(|_| String::from("engine lock poisoned"))?;
+                f(&mut client)
+            }
+            Err(e) => Err(e),
         }
     }
 
-    /// 移除指定文件的全部 chunks（軟刪除文件時呼叫，避免已刪文件仍被搜尋命中）。
-    /// workspace_id/document_id 皆為 UUID，無需跳脫；若日後開放任意字串需 escape。
-    pub async fn delete_document(
-        &self,
-        workspace_id: &str,
-        document_id: &str,
-    ) -> Result<(), String> {
-        let table = self.open_or_create_table().await?;
-        let predicate = format!(
-            "workspace_id = '{}' AND document_id = '{}'",
-            workspace_id, document_id
-        );
-        table
-            .delete(&predicate)
-            .await
-            .map(|_| ())
-            .map_err(|e| format!("lancedb delete 失敗: {e}"))
-    }
-
-    /// 確保 content 欄有 FTS 索引。首次 insert 後呼叫；best-effort（已存在或失敗皆忽略）。
-    async fn ensure_fts_index(&self, table: &Table) {
-        use lancedb::index::Index;
-        use lancedb::index::scalar::FtsIndexBuilder;
-        let _ = table
-            .create_index(&["content"], Index::FTS(FtsIndexBuilder::default()))
-            .execute()
-            .await;
-    }
-
-    /// Index：embed chunks → delete 舊 chunks(document_id) → insert LanceDB。reindex 冪等。
+    /// Index：embed chunks → 送引擎寫入 LanceDB（引擎內先刪該 document 舊 chunks，reindex 冪等）。
     pub async fn index_chunks(
         &self,
         document_id: &str,
@@ -171,220 +137,22 @@ impl LanceDbRetriever {
         }
         for v in &vectors {
             if v.len() != self.dim {
-                return Err(format!(
-                    "向量維度 {} != table dim {}",
-                    v.len(),
-                    self.dim
-                ));
+                return Err(format!("向量維度 {} != table dim {}", v.len(), self.dim));
             }
         }
-
-        let table = self.open_or_create_table().await?;
-
-        // delete 舊 chunks（reindex 冪等）。document_id 為 uuid，無單引號逸出需求。
-        let predicate = format!("document_id = '{}'", document_id.replace('\'', ""));
-        let _ = table.delete(&predicate).await;
-
-        let n = chunks.len();
-        let document_id_col = StringArray::from(vec![document_id; n]);
-        let chunk_types: Vec<String> = chunks
-            .iter()
-            .map(|c| format!("{:?}", c.chunk_type))
-            .collect();
-        let chunk_type_col = StringArray::from(
-            chunk_types
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>(),
-        );
-        let content_col = StringArray::from(
-            chunks
-                .iter()
-                .map(|c| c.content.as_str())
-                .collect::<Vec<_>>(),
-        );
-        let workspace_id_col = StringArray::from(vec![workspace_id; n]);
-        let collection_id_col = StringArray::from(
-            chunks
-                .iter()
-                .map(|c| {
-                    let cid = c.collection_id.as_str();
-                    if cid.is_empty() {
-                        collection_id.unwrap_or("")
-                    } else {
-                        cid
-                    }
-                })
-                .collect::<Vec<_>>(),
-        );
-        let metadatas: Vec<String> = chunks
-            .iter()
-            .enumerate()
-            .map(|(i, c)| {
-                let headers = c
-                    .metadata
-                    .get("headers")
-                    .and_then(|h| h.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str())
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
-                serde_json::to_string(&json!({
-                    "doc_path": source_path,
-                    "headers": headers,
-                    "chunk_idx": i,
-                }))
-                .unwrap_or_default()
-            })
-            .collect();
-        let metadata_json_col = StringArray::from(
-            metadatas
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>(),
-        );
-
-        // vector 欄：FixedSizeList<f32, dim>
-        let mut fsl = FixedSizeListBuilder::new(
-            Float32Builder::with_capacity(self.dim * n),
-            self.dim as i32,
-        );
-        for v in &vectors {
-            fsl.values().append_slice(v);
-            fsl.append(true);
-        }
-        let vector_array = fsl.finish();
-
-        let schema = get_compat_schema(self.dim as i32);
-        let batch = RecordBatch::try_new(
-            schema,
-            vec![
-                Arc::new(document_id_col),
-                Arc::new(chunk_type_col),
-                Arc::new(vector_array),
-                Arc::new(content_col),
-                Arc::new(workspace_id_col),
-                Arc::new(collection_id_col),
-                Arc::new(metadata_json_col),
-            ],
-        )
-        .map_err(|e| e.to_string())?;
-
-        let reader = RecordBatchIterator::new(
-            vec![Ok(batch)].into_iter(),
-            get_compat_schema(self.dim as i32),
-        );
-        table
-            .add(reader)
-            .execute()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        // best-effort FTS 索引
-        self.ensure_fts_index(&table).await;
-
-        Ok(())
+        self.with_client(|client| {
+            client.index_chunks(
+                workspace_id,
+                document_id,
+                collection_id,
+                source_path,
+                chunks,
+                &vectors,
+            )
+        })
     }
 
-    /// 向量檢索：embed query → cosine nearest → 過濾 workspace → filter threshold。
-    async fn vector_search(
-        &self,
-        table: &Table,
-        qvec: &[f32],
-        workspace_id: &str,
-        top_k: usize,
-    ) -> Result<Vec<RankedRow>, String> {
-        let mut q = table
-            .query()
-            .only_if(format!("workspace_id = '{}'", workspace_id.replace('\'', "")))
-            .select(Select::columns(&[
-                "document_id",
-                "content",
-                "metadata_json",
-                "_distance",
-            ]))
-            .nearest_to(qvec.to_vec())
-            .map_err(|e| e.to_string())?;
-        q = q.limit(top_k * 3);
-        let stream = q.execute().await.map_err(|e| e.to_string())?;
-        let mut rows = Vec::new();
-        let mut rank = 0usize;
-        let mut stream = stream;
-        while let Some(batch_res) = stream.next().await {
-            let batch = batch_res.map_err(|e| e.to_string())?;
-            let distances = batch
-                .column_by_name("_distance")
-                .ok_or("missing _distance")?;
-            let distances = distances
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .ok_or("_distance not f32")?;
-            for i in 0..batch.num_rows() {
-                let dist = distances.value(i);
-                rows.push(RankedRow::from_batch(&batch, i, "vector", dist, rank)?);
-                rank += 1;
-            }
-        }
-        Ok(rows)
-    }
-
-    /// 全文檢索：best-effort。FTS 索引未建或查無結果 → 回空 Vec（退化為純向量）。
-    async fn fts_search(
-        &self,
-        table: &Table,
-        query: &str,
-        workspace_id: &str,
-        top_k: usize,
-    ) -> Vec<RankedRow> {
-        use lancedb::index::scalar::FullTextSearchQuery;
-        let fts = match FullTextSearchQuery::new(query.to_owned()) {
-            fts => fts,
-        };
-        let q = table
-            .query()
-            .only_if(format!("workspace_id = '{}'", workspace_id.replace('\'', "")))
-            .select(Select::columns(&[
-                "document_id",
-                "content",
-                "metadata_json",
-                "_score",
-            ]))
-            .full_text_search(fts)
-            .limit(top_k * 3);
-        let stream = match q.execute().await {
-            Ok(s) => s,
-            Err(_) => return Vec::new(),
-        };
-        let mut rows = Vec::new();
-        let mut rank = 0usize;
-        let mut stream = stream;
-        while let Some(Ok(batch)) = stream.next().await {
-            let scores = match batch.column_by_name("_score") {
-                Some(s) => s,
-                None => continue,
-            };
-            // _score 可能 f32 / f64；best-effort 取 f32，否則跳過該 batch
-            let scores = match scores.as_any().downcast_ref::<Float32Array>() {
-                Some(s) => s,
-                None => {
-                    continue;
-                }
-            };
-            for i in 0..batch.num_rows() {
-                let _sc = scores.value(i);
-                if let Ok(row) = RankedRow::from_batch(&batch, i, "fts", 0.0, rank) {
-                    rows.push(row);
-                    rank += 1;
-                }
-            }
-        }
-        rows
-    }
-
-    /// 主檢索入口：向量 + FTS RRF 融合，回傳 top_k 且 score >= threshold。
-    /// score = cosine 相似度（1 - distance/2），∈ [0,1]；RRF 只影響排序，不改 score。
+    /// 主檢索入口：embed query → 引擎向量+FTS 候選 → core RRF 融合 → threshold/top-k → SearchHit。
     pub async fn search(
         &self,
         query: &str,
@@ -396,25 +164,28 @@ impl LanceDbRetriever {
             return Ok(Vec::new());
         }
         let qvec = self.embed.embed(&[query.to_owned()]).await?;
-        let qvec = qvec
-            .into_iter()
-            .next()
-            .ok_or("embed 回傳空向量")?;
+        let qvec = qvec.into_iter().next().ok_or("embed 回傳空向量")?;
         if qvec.len() != self.dim {
             return Err(format!("query 向量維度 {} != {}", qvec.len(), self.dim));
         }
 
-        let table = self.open_or_create_table().await?;
-        let vec_rows = self.vector_search(&table, &qvec, workspace_id, top_k).await?;
-        let fts_rows = self.fts_search(&table, query, workspace_id, top_k).await;
+        let result = self.with_client(|client| client.search(workspace_id, &qvec, query, top_k))?;
 
-        // RRF：以 (document_id, chunk_idx) 為 key 融合 rank。
+        // RRF：以 (document_id, chunk_idx) 為 key 融合 vector + FTS rank。
         let mut fused: HashMap<String, RankedRow> = HashMap::new();
-        for (rank_weight, rows) in [((60, "vector"), vec_rows), ((60, "fts"), fts_rows)] {
+        for (k, rows) in [(60u32, result.vector_rows), (60u32, result.fts_rows)] {
             for r in rows {
-                let key = format!("{}#{}", r.document_id, r.chunk_idx);
-                let rrf = 1.0 / (rank_weight.0 as f32 + 1.0 + r.rank as f32);
-                let entry = fused.entry(key.clone()).or_insert(r);
+                let (doc_path, headers, chunk_idx) = parse_metadata(&r.metadata_json, &r.document_id);
+                let key = format!("{}#{}", r.document_id, chunk_idx);
+                let rrf = 1.0 / (k as f32 + 1.0 + r.rank as f32);
+                let entry = fused.entry(key.clone()).or_insert_with(|| RankedRow {
+                    chunk_idx,
+                    content: r.content.clone(),
+                    doc_path,
+                    headers,
+                    cosine_distance: r.cosine_distance,
+                    rrf_score: 0.0,
+                });
                 entry.rrf_score += rrf;
             }
         }
@@ -423,11 +194,7 @@ impl LanceDbRetriever {
         hits.sort_by(|a, b| b.rrf_score.partial_cmp(&a.rrf_score).unwrap_or(std::cmp::Ordering::Equal));
         let mut out = Vec::new();
         for r in hits {
-            // score = cosine 相似度
-            let cos = {
-                let d = r.cosine_distance;
-                (1.0 - d / 2.0).max(0.0).min(1.0)
-            };
+            let cos = (1.0 - r.cosine_distance / 2.0).max(0.0).min(1.0);
             if cos < threshold {
                 continue;
             }
@@ -444,53 +211,33 @@ impl LanceDbRetriever {
         }
         Ok(out)
     }
+
+    /// 軟刪除文件時移除其引擎內 chunks（避免已刪文件仍被搜尋命中）。
+    pub async fn delete_document(
+        &self,
+        workspace_id: &str,
+        document_id: &str,
+    ) -> Result<(), String> {
+        self.with_client(|client| client.delete_document(workspace_id, document_id))
+    }
+
+    /// Engine availability probe (spec §5.3: search without the engine → 503 engine_unavailable).
+    pub fn engine_available(&self) -> bool {
+        match self.client.lock() {
+            Ok(mut c) => c.is_alive(),
+            Err(_) => false,
+        }
+    }
 }
 
-/// 一筆檢索中間列。
+/// 一筆檢索中間列（core 端 RRF 用）。
 struct RankedRow {
-    document_id: String,
     chunk_idx: usize,
     content: String,
     doc_path: String,
     headers: Vec<String>,
     cosine_distance: f32,
-    rank: usize,
     rrf_score: f32,
-}
-
-impl RankedRow {
-    fn from_batch(
-        batch: &RecordBatch,
-        i: usize,
-        _source: &str,
-        cosine_distance: f32,
-        rank: usize,
-    ) -> Result<Self, String> {
-        let get_str = |name: &str| -> Result<String, String> {
-            let arr = batch
-                .column_by_name(name)
-                .ok_or_else(|| format!("missing column {}", name))?;
-            let arr = arr
-                .as_any()
-                .downcast_ref::<StringArray>()
-                .ok_or_else(|| format!("column {} not utf8", name))?;
-            Ok(arr.value(i).to_string())
-        };
-        let document_id = get_str("document_id")?;
-        let content = get_str("content")?;
-        let metadata_json = get_str("metadata_json").unwrap_or_default();
-        let (doc_path, headers, chunk_idx) = parse_metadata(&metadata_json, &document_id);
-        Ok(RankedRow {
-            document_id,
-            chunk_idx,
-            content,
-            doc_path,
-            headers,
-            cosine_distance,
-            rank,
-            rrf_score: 0.0,
-        })
-    }
 }
 
 fn parse_metadata(metadata_json: &str, document_id: &str) -> (String, Vec<String>, usize) {
@@ -542,9 +289,4 @@ fn snippet(content: &str) -> String {
     }
     let s: String = chars.iter().take(240).collect();
     format!("{}…", s)
-}
-
-/// lancedb::Connection 的查詢輔助（dim 校驗在 connect 階段以 provider::dim() 為準）。
-fn self_embed_dim_for_check(embed: &Arc<dyn EmbeddingProvider>) -> usize {
-    embed.dim()
 }

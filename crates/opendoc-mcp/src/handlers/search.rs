@@ -38,6 +38,12 @@ pub async fn search_handler(
     let workspace_id = resolve_workspace_id(&state, &headers)
         .await
         .map_err(|s| (s, "workspace 解析失敗".to_string()))?;
+    if !state.search.engine_available() {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            "engine_unavailable: LanceDB 引擎未啟動或已崩潰".to_string(),
+        ));
+    }
     let cfg = state.config_manager.get_config().await;
     let top_k = body.top_k.unwrap_or(10);
     let threshold = body.threshold.unwrap_or(cfg.model.score_threshold);
