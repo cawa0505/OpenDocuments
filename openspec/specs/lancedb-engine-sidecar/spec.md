@@ -226,6 +226,22 @@ After SQLite FTS5 lands:
 - Core and engine size budgets SHALL be measured independently; combined installation
   size SHALL also be reported and MUST NOT be presented as reduced unless measured.
 
+### 7.1 Repository Boundary Decision
+
+- The first sidecar implementation SHALL remain in the OpenDocuments remote repository
+  as a separate workspace crate and executable.
+- A process boundary does not imply an immediate Git repository boundary. Keeping core,
+  protocol, and engine changes in one repository permits atomic changes while the stdio
+  protocol is still evolving.
+- Core MUST communicate with the engine only through the sidecar protocol; it MUST NOT
+  link the engine crate as a Rust library. This preserves the dependency and binary-size
+  boundary even while both executables share one repository.
+- Moving `opendoc-engine-lancedb` to a separate remote repository SHALL be reconsidered
+  only after the protocol is stable and the engine has a demonstrated need for an
+  independent release cycle, ownership boundary, or reuse by another project.
+- A standalone protocol crate or repository is deferred until there is a second real
+  consumer. It MUST NOT be introduced speculatively.
+
 ---
 
 ## 8. Superseded and Related Specifications
