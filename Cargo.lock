@@ -5345,7 +5345,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "clap",
@@ -5366,7 +5366,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-engine-lancedb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -5380,7 +5380,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-llm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -5394,7 +5394,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-stream",
  "axum",
@@ -5421,7 +5421,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "opendoc-parser-code",
@@ -5440,7 +5440,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-code"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "opendoc-types",
@@ -5450,7 +5450,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-docx"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "docx-rs",
@@ -5461,7 +5461,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-email"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "mail-parser",
@@ -5472,7 +5472,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-html"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "opendoc-types",
@@ -5483,7 +5483,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-jupyter"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "opendoc-types",
@@ -5493,7 +5493,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-pdf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "lopdf",
@@ -5504,7 +5504,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-pptx"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "opendoc-types",
@@ -5516,7 +5516,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-text"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "opendoc-types",
@@ -5526,7 +5526,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-parser-xlsx"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "calamine",
@@ -5537,7 +5537,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-storage"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "directories",
@@ -5553,7 +5553,7 @@ dependencies = [
 
 [[package]]
 name = "opendoc-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "serde",

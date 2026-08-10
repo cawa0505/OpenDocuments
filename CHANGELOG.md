@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - Rust rewrite era
+## [0.2.0] - 2026-08-10
 
-Full Rust rewrite of the Node.js backend. Single-binary Axum server with embedded WebUI.
+Rust rewrite era: full rewrite of the Node.js backend. Single-binary Axum server with embedded WebUI.
 
 ### Added
 - **Single-binary Axum architecture**: `opendoc` server embedding the React WebUI assets via `rust-embed` (`single-binary-architecture`).
@@ -20,6 +20,7 @@ Full Rust rewrite of the Node.js backend. Single-binary Axum server with embedde
 ### Changed
 - **Architecture**: Node.js multi-process backend → single Rust process + managed engine sidecar; core binary ~51 MB (strip+LTO), engine ~354 MB (strip+LTO).
 - **FTS**: LanceDB FTS active lexical path; SQLite FTS5 is the planned target (`hybrid-rag-retrieval`, Partially Implemented).
+- **TUI removed**: `opendoc-tui` crate, `tui` feature gate, and `opendoc tui` subcommand removed — architecturally unsuitable; WebUI is the sole user interface. TUI-related planning removed from roadmap/specs before v1.0.0 GA.
 
 ## [0.2.0] - 2026-03-31
 
