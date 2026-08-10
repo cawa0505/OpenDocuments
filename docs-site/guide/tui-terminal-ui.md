@@ -18,5 +18,5 @@ opendoc tui
 
 ## 🔍 2. Responsive Ingestion Debugging
 
-- **Async Fetch**: Pressing **`Enter`** triggers a background mixed retrieval (LanceDB Vector + SQLite FTS5) with zero UI thread blocking.
+- **Async Fetch**: Pressing **`Enter`** triggers a background mixed retrieval (LanceDB Vector + LanceDB Full-Text) with zero UI thread blocking.
 - **Media Query Adaptation**: If your terminal window is narrower than `85` characters, the `Score` column is automatically hidden to reserve text readability. On wider terminals, scores above threshold are dynamically color-coded (**Green** for highly relevant, **Yellow** for lower relevance).

@@ -9,7 +9,7 @@
 In OpenDocuments' 100% local, zero-trust RAG architecture, alongside the modern web interface, a lightweight **zero-external-dependency Terminal User Interface (TUI)** is built directly into the main Rust binary (`opendoc tui`).
 
 This TUI communicates directly with the local SQLite metadata database and LanceDB vector store without launching browser processes or Node.js runtimes:
-1. **Parallel Hybrid Search**: Combines Dense (LanceDB vectors) + Sparse (SQLite FTS5) with Reciprocal Rank Fusion and score filtering.
+1. **Parallel Hybrid Search**: Combines dense vectors and full-text keyword search from LanceDB with Reciprocal Rank Fusion and score filtering.
 2. **On-the-Fly Workspace Switching**: Instantly switch workspace pointers with keyboard shortcuts, auto-persisted to `config.toml`.
 
 ---

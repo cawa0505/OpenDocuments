@@ -63,7 +63,7 @@ To apply changes, simply restart your running `opendoc start` service.
 In WebUI system settings or RAG APIs, OpenDocuments provides three built-in **Query Profiles** to balance local hardware resource usage with retrieval precision.
 
 ### 1. Fast Profile
-* **Retrieval Strategy**: Keywords-only search (SQLite FTS5) with the lightest semantic pre-filtering.
+* **Retrieval Strategy**: Keywords-only search (LanceDB full-text) with the lightest semantic pre-filtering.
 * **Best For**: Highly constrained local hardware (such as legacy office PCs without a GPU) or when searching for pure factual named entities (e.g., finding specific document serial numbers or names).
 * **Technical Details**:
   * Skips the local ONNX Reranker model.
@@ -74,7 +74,7 @@ In WebUI system settings or RAG APIs, OpenDocuments provides three built-in **Qu
 * **Retrieval Strategy**: Two-way hybrid search (Dense + Sparse Hybrid Search).
 * **Best For**: Most daily administrative audits and material search tasks. This is the default recommended profile.
 * **Technical Details**:
-  * Concurrently queries SQLite FTS5 for full-text index and LanceDB for vector similarity.
+  * Concurrently queries LanceDB full-text index and LanceDB for vector similarity.
   * Uses Reciprocal Rank Fusion (RRF) to merge scores from both pathways.
   * Sets Top-K Chunks to 5 and applies a lightweight local re-ranking.
   * Perfectly balances semantic understanding and exact keyword matching with moderate CPU overhead.

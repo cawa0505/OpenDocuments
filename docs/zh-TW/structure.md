@@ -25,7 +25,7 @@ OpenDocuments/ (儲存庫根目錄)
 ├── crates/                          # 高度隔離之模組化 Rust Cargo Workspace
 │   ├── opendoc-cli/                 # 主控伺服器 CLI 與進入點 (main.rs)，整合 TUI 與服務背景啟動
 │   ├── opendoc-mcp/                 # Axum 路由、SSE 串流、MCP 協議及 API 控制器核心，內嵌前端 WebUI
-│   ├── opendoc-storage/             # SQLite 與 LanceDB 向量儲存、FTS5 與 RAG 混合檢索
+│   ├── opendoc-storage/             # SQLite 與 LanceDB 向量儲存、LanceDB 全文搜尋與 RAG 混合檢索
 │   ├── opendoc-llm/                 # OpenAI-compatible BYOK 客戶端與漸進式 SSE 串流解析
 │   ├── opendoc-types/               # 跨模組共享之強型別數據模型 (DocumentChunk, Tag, etc.)
 │   └── opendoc-parser-*/            # 獨立沙盒化之各式文件格式解析器 (PDF, DOCX, XLSX, HTML, Email, Jupyter)
@@ -75,7 +75,7 @@ OpenDocuments/ (儲存庫根目錄)
 ### 4.2 混合檢索流程 (Hybrid Query Flow)
 ```plaintext
 使用者問題 ──> 問題向量化 Embedder
-  ──> 雙路並行檢索 Retriever (LanceDB 向量相似度 + SQLite FTS5 全文檢索)
+  ──> 雙路並行檢索 Retriever (LanceDB 向量相似度 + LanceDB 全文搜尋)
   ──> 重排 Reranker (RRF 排序與融合) ──> 上下文組裝 Context Window
   ──> 大型語言模型 Generator (BYOK) ──> SSE 漸進式串流
 ```

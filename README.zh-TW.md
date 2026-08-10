@@ -20,7 +20,7 @@ OpenDocuments 最初靈感來自 TypeScript / Node.js 單體儲存庫 (使用 Ho
 
 1. **真正單一二進位檔 (Single-Binary Distribution)**：透過 `rust-embed` 將 Axum API 路由與 React WebUI 靜態資產直接編譯進二進位檔記憶體中，只需單一執行檔即可運行，零外部依賴。
 2. **確定性記憶體佔用 (Deterministic Memory Footprint)**：無需啟動多個動輒佔用 150MB+ 的 Node.js 執行階段，Rust 執行階段將所有子系統封裝在單一高效能 OS 執行緒池中，提供微秒級排程。
-3. **Rust 原生內嵌儲存 (Embedded Storage)**：透過 SQLite (FTS5) 處理詮釋資料與全文檢索，並透過 LanceDB 處理向量相似度，完全內嵌於單一進程，消除 IPC 跨進程開銷與慢速 C 語言綁定橋接。
+3. **Rust 原生內嵌儲存 (Embedded Storage)**：透過 SQLite 處理詮釋資料，並透過 LanceDB 處理向量相似度與全文檢索，完全內嵌於單一進程，消除 IPC 跨進程開銷與慢速 C 語言綁定橋接。
 4. **顯著效能提升**：文字解析、語意切片與互惠排名融合 (RRF) 查詢規劃在 Rust 原生執行圖下可達到 **5x 至 15x 的速度提升**，即使在舊型或低規格 Homelab 設備上也能即時回應。
 
 ---
@@ -100,7 +100,7 @@ opendoc start --port 3000
 OpenDocuments 作為 **Token 高效型 RAG 網關 (Token-Efficient RAG Gateway)**，旨在將私有文件知識庫無縫連接至各大前沿 AI 模型與 LLM 供應商。
 
 ### 1. Token 成本深度優化 (降低 70%+ 上下文浪費)
-結合 **LanceDB 稠密向量**、**SQLite FTS5 稀疏關鍵字索引** 與 **RRF (Reciprocal Rank Fusion) 互惠重排**，OpenDocuments 能在建構 Prompt 上下文前精準過濾無關片段，將 Token 開銷**降低 70%+**，大幅提升呼叫 **Claude 3.7 Sonnet**、**GPT-4o/o3-mini**、**Google Gemini 1.5 Pro**、**Grok 3** 與 **Ollama** 時的回答品質與回應速度。
+結合 **LanceDB 稠密向量**、**LanceDB 全文稀疏關鍵字搜尋** 與 **RRF (Reciprocal Rank Fusion) 互惠重排**，OpenDocuments 能在建構 Prompt 上下文前精準過濾無關片段，將 Token 開銷**降低 70%+**，大幅提升呼叫 **Claude 3.7 Sonnet**、**GPT-4o/o3-mini**、**Google Gemini 1.5 Pro**、**Grok 3** 與 **Ollama** 時的回答品質與回應速度。
 
 ### 2. 標準化 BYOK 與通訊協定相容性
 - **BYOK (自備 API 金鑰)**：金鑰加密儲存於本地 SQLite 表 (`600` 權限)，零遠端追蹤，絕不洩漏至前端或第三方伺服器。
@@ -121,7 +121,7 @@ OpenDocuments 作為 **Token 高效型 RAG 網關 (Token-Efficient RAG Gateway)*
 |---------|------|
 | **私有化 RAG 部署** | 在您自己的安全基礎設施上運行完整的 AI 文件搜尋系統。 |
 | **附帶出處引用** | 以自然語言提問，並能明確查看支撐解答的原始文件章節與頁碼。 |
-| **混合檢索 (Hybrid)** | 結合稠密向量搜尋、SQLite FTS5 關鍵字搜尋、重排 (Reranking) 與父文件召回。 |
+| **混合檢索 (Hybrid)** | 結合稠密向量搜尋、LanceDB 全文關鍵字搜尋、重排 (Reranking) 與父文件召回。 |
 | **單一二進位封裝** | Axum 後端與 React WebUI 透過 `rust-embed` 打包為單一執行檔，零外部資源需求與 Port 衝突。 |
 | **豐富檔案格式** | 原生支援 Markdown, PDF, DOCX, XLSX, CSV, HTML 與程式碼解析。 |
 | **本地或雲端模型** | 可選擇完全在地運行 Ollama，或連接 OpenAI, Anthropic, Google, xAI 等雲端服務。 |

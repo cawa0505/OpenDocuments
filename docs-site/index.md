@@ -36,7 +36,7 @@ features:
   - icon:
       src: /icons/globe.svg
     title: Cross-Lingual Search
-    details: Find cross-lingual docs. Hybrid search combines semantic vectors (LanceDB) with keyword matching (SQLite FTS5) via Reciprocal Rank Fusion.
+    details: Find cross-lingual docs. Hybrid search combines semantic vectors (LanceDB) with keyword matching (LanceDB full-text search) via Reciprocal Rank Fusion.
   - icon:
       src: /icons/shield.svg
     title: Role & Workspace Isolation

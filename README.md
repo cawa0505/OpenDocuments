@@ -20,7 +20,7 @@ OpenDocuments was originally inspired by and built as a TypeScript / Node.js mon
 
 1. **True Single-Binary Distribution**: The complete Axum API router and React WebUI static assets are compiled directly into the binary memory using `rust-embed`. Runs as a standalone file with zero external dependencies.
 2. **Deterministic Memory Footprint**: Rather than spawning multiple heavy JS runtimes (each consuming 150MB+ overhead), the Rust runtime encapsulates all subsystems within a single, highly-optimized OS thread pool with microsecond-level scheduling.
-3. **Rust-Native Embedded Storage**: Metadata indexing via SQLite (FTS5) and vector similarity via LanceDB are embedded natively into the binary process—eliminating any IPC crossing or slow C-binding bridges.
+3. **Rust-Native Embedded Storage**: Metadata indexing via SQLite and vector similarity + full-text search via LanceDB are embedded natively into the binary process—eliminating any IPC crossing or slow C-binding bridges.
 4. **Performance Gains**: Text extraction, semantic chunking, and Reciprocal Rank Fusion (RRF) query planning perform **5x to 15x faster** under the Rust-native execution graph, unlocking real-time responsiveness even on constrained homelab hardware.
 
 ---
@@ -101,7 +101,7 @@ All technical specifications, architecture maps, and task tracking documents are
 OpenDocuments acts as a **Token-Efficient RAG Gateway** designed to connect private document knowledge with frontier AI models and LLM providers.
 
 ### 1. Token Cost Optimization (Slashes Prompt Bloat by 70%+)
-By combining **LanceDB dense vectors**, **SQLite FTS5 sparse keyword indexing**, and **Reciprocal Rank Fusion (RRF) reranking**, OpenDocuments filters out irrelevant content before constructing the prompt context. This reduces token overhead by **up to 70%+**, ensuring high-precision context delivery to API endpoints like **Claude 3.7 Sonnet**, **GPT-4o/o3-mini**, **Google Gemini 1.5 Pro**, **Grok 3**, and **Ollama**.
+By combining **LanceDB dense vectors**, **LanceDB full-text sparse keyword search**, and **Reciprocal Rank Fusion (RRF) reranking**, OpenDocuments filters out irrelevant content before constructing the prompt context. This reduces token overhead by **up to 70%+**, ensuring high-precision context delivery to API endpoints like **Claude 3.7 Sonnet**, **GPT-4o/o3-mini**, **Google Gemini 1.5 Pro**, **Grok 3**, and **Ollama**.
 
 ### 2. Standardized BYOK & Protocol Compatibility
 - **BYOK (Bring Your Own Key)**: API keys are encrypted and stored in a local SQLite table (`600` permission) with zero telemetry, never leaking to frontend or remote servers.
@@ -122,7 +122,7 @@ We actively welcome AI model vendors, API aggregators, and Cloud infrastructure 
 |---------|---------------|
 | **Self-hosted RAG** | Run the full document search stack on your own secure infrastructure. |
 | **Cited AI answers** | Ask natural-language questions and see exactly which documents support the answer. |
-| **Hybrid retrieval** | Combine dense vector search, SQLite FTS5 keyword search, reranking, and parent-document recall. |
+| **Hybrid retrieval** | Combine dense vector search, LanceDB full-text keyword search, reranking, and parent-document recall. |
 | **Single-Binary Package** | Axum backend and React WebUI are packaged into a single binary via `rust-embed`. Zero external asset requirements or port collision. |
 | **Broad file formats** | Native support for Markdown, PDF, DOCX, XLSX, CSV, HTML, and code. |
 | **Local or cloud models** | Use Ollama locally or cloud providers such as OpenAI, Anthropic, Google, and xAI. |

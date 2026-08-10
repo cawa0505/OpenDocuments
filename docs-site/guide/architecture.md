@@ -20,7 +20,7 @@ crates/
 ## Data Flow
 
 ```
-Document Source → Parser (chunks) → Chunker (semantic split) 
+Document Source → Parser (chunks) → Chunker (semantic split)
   → Embedder (vectors) → Storage (SQLite + LanceDB)
 
 User Query → Embedder (query vector) → Retriever (dense + sparse search)
@@ -33,7 +33,7 @@ User Query → Embedder (query vector) → Retriever (dense + sparse search)
 All layers (database, vector search, LLM clients, HTTP server, and MCP) compile into a single Rust binary. The React WebUI is compiled and fully embedded into the binary using `rust-embed`, allowing deployment with zero external Node.js dependencies.
 
 ### Hybrid Search (Dense + Sparse)
-Combines dense vector similarity (LanceDB) with keyword matching (SQLite FTS5) via Reciprocal Rank Fusion (RRF). 
+Combines dense vector similarity (LanceDB) with keyword matching (LanceDB full-text search) via Reciprocal Rank Fusion (RRF).
 
 ### Multi-Profile RAG
 Three built-in profiles (fast/balanced/precise) trade off speed vs quality. Each profile configures retrieval depth and reranking.

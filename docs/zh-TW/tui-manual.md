@@ -9,7 +9,7 @@
 在 OpenDocuments 的 100% 本地、零信任 RAG 架構中，除了現代化的左右對話流 WebUI 之外，專案特別針對**極客與本機運維除錯**，內建並特化了一款 **「0 外部依賴、極致輕量、動態響應」的終端機 RAG 檢索面板 (TUI)**。
 
 這款 TUI 允許用戶直接與本地的 SQLite 元數據和 LanceDB 向量庫並行溝通，無須啟動任何外接 Node.js 進程或瀏覽器，即可原地在終端機內進行：
-1. **多重混合檢索 (Hybrid Search)**：結合 Dense (Vector) + Sparse (FTS5) 並進行重排與 Score Filter。
+1. **多重混合檢索 (Hybrid Search)**：結合 LanceDB 稠密向量與全文關鍵字搜尋，並進行 RRF 重排與分數過濾。
 2. **多 Role 空間無縫管理**：透過快捷鍵即時切換工作空間並進行持久化，即時改變 pointer。
 
 ---

@@ -25,7 +25,7 @@ OpenDocuments/ (Repository Root)
 ├── crates/                          # Modular Rust Workspace (Cargo Workspace)
 │   ├── opendoc-cli/                 # Main CLI binary entry point (main.rs) with TUI & background daemon
 │   ├── opendoc-mcp/                 # Axum routes, SSE streaming, MCP protocol, and embedded WebUI assets
-│   ├── opendoc-storage/             # SQLite & LanceDB vector storage, FTS5 & RAG retrieval engine
+│   ├── opendoc-storage/             # SQLite & LanceDB vector storage, LanceDB FTS & RAG retrieval engine
 │   ├── opendoc-llm/                 # OpenAI-compatible BYOK client with SSE stream parsing
 │   ├── opendoc-types/               # Shared strongly-typed data models (DocumentChunk, Tag, etc.)
 │   └── opendoc-parser-*/            # Sandboxed file parsers (PDF, DOCX, XLSX, HTML, Email, Jupyter)
@@ -75,11 +75,11 @@ Local File ──> Parser (Text/Table/PDF/DOCX)
 ### 4.2 Hybrid Retrieval Query Flow
 ```plaintext
 User Query ──> Query Embedder
-  ──> Dual Parallel Retriever (LanceDB Vector Similarity + SQLite FTS5 Full-Text)
+  ──> Dual Parallel Retriever (LanceDB Vector Similarity + LanceDB Full-Text Search)
   ──> Reciprocal Rank Fusion (RRF Reranker)
   ──> Context Window Assembler
   ──> LLM Generator (BYOK Streaming) ──> SSE Response
 ```
 
 ### 4.3 Hybrid Search (Dense + Sparse)
-Combines LanceDB dense vector embeddings with SQLite FTS5 exact keyword matching, fused via Reciprocal Rank Fusion (RRF) for optimal relevance and terminology precision.
+Combines LanceDB dense vector embeddings with LanceDB full-text keyword matching, fused via Reciprocal Rank Fusion (RRF) for optimal relevance and terminology precision.
