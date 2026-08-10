@@ -51,6 +51,17 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 ---
 
+## 🎯 v1.0.0 Scope
+
+**v1.0.0 = Phase 0 (Core MVP) + Phase 1 (WebUI) completion.** Single-machine deployment only.
+
+- **Primary focus: WebUI + API.** Every chat feature must actually work — correct end-to-end search from the WebUI is the release gate, not compilation.
+- **File identity: reference full paths.** Documents are located by absolute `source_path` (no relative-name or virtual-file indirection); future multi-machine storage extends this, it does not replace it.
+
+The acceptance bar for v1.0.0: `cargo check` zero warnings → install → real upload → real search → chat round-trip verified in the WebUI, for every listed feature below.
+
+---
+
 ## 🗄️ Beyond v1.0.0 (Backlog)
 
 Features explicitly deferred past the v1.0.0 release, tracked here so they are not forgotten. Each item links to its governing spec where one exists.
@@ -64,3 +75,5 @@ Features explicitly deferred past the v1.0.0 release, tracked here so they are n
 | **Binary size reduction** | [`binary-size-architecture`](../../openspec/specs/binary-size-architecture/spec.md) | Engine is 354 MB (strip+LTO); zero-behavior-change slimming backlog. |
 | **Graphify Layer 2 full integration** | — | Plugin-side consumption of `heading`/`spec_id`, vector fallback end-to-end verification (Layer 1 unaffected). |
 | **FastEmbed process boundary** | `task-execution-ai-engines` | Currently feature-gated inside `opendoc-storage` (`embedding-fastembed`); may move into the engine/worker boundary later. |
+| **LanceDB S3 backend** | — | Use case: a school with an IT admin deploys LAN storage on older machines (S3-compatible services such as Garage / SeaweedFS); LanceDB table over S3 instead of local disk. |
+| **S3 object store as NAS replacement** | — | When LanceDB scales multi-machine, the app can be configured to also store physical files to an in-LAN S3 service, building a "NAS + AI Search" foundation that replaces a conventional NAS. |

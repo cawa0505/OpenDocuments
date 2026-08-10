@@ -51,6 +51,17 @@
 
 ---
 
+## 🎯 v1.0.0 範圍
+
+**v1.0.0 = Phase 0（Core MVP）+ Phase 1（WebUI）完成。僅支援單機部署。**
+
+- **重點：WebUI 與 API。** 每個 chat 功能都必須真正可用——WebUI 端到端正確搜尋是發行門檻，不是「能編譯就好」。
+- **檔案定位：reference full path。** 文件以絕對 `source_path` 定位（不做相對名稱或虛擬檔案間接層）；未來多機儲存是延伸此設計，不是取代它。
+
+v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → 真實搜尋 → WebUI 中 chat 來回驗證，以下每個 feature 都要過。
+
+---
+
 ## 🗄️ v1.0.0 之後 (Backlog)
 
 明確延後至 v1.0.0 發布之後的功能，集中在此追蹤以免遺忘。每一項都連結其管轄規格（若存在）。
@@ -64,3 +75,5 @@
 | **二進位瘦身** | [`binary-size-architecture`](../../openspec/specs/binary-size-architecture/spec.md) | Engine 354 MB (strip+LTO)；zero-behavior-change slimming backlog。 |
 | **Graphify Layer 2 完整整合** | — | Plugin 端消費 `heading`/`spec_id`、向量 fallback 端到端驗證（Layer 1 不受影響）。 |
 | **FastEmbed 進程邊界** | `task-execution-ai-engines` | 目前 feature-gated 於 `opendoc-storage`（`embedding-fastembed`）；日後可能移入 engine/worker 邊界。 |
+| **LanceDB S3 後端** | — | 情境：有網管的小學校可以用舊電腦部署區網內儲存（S3 相容服務如 Garage、SeaweedFS）；LanceDB 表建於 S3 而非本地磁碟。 |
+| **S3 物件儲存取代 NAS** | — | LanceDB 擴充成多機時，應用可設定同時把實體檔案存入區網內 S3 服務，建立「NAS + AI Search」基礎建設，取代傳統 NAS。 |
