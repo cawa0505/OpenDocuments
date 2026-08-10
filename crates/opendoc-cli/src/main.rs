@@ -9,15 +9,23 @@ use std::path::PathBuf;
 use std::time::Duration;
 use opendoc_parser::parse_file;
 use opendoc_storage::ConfigManager;
+#[cfg(feature = "tui")]
 use opendoc_tui::{render_ui, TuiAppState, TuiEvent, TuiSearchResult};
 use opendoc_mcp::{start_mcp_and_api_server, SearchBackend};
+use opendoc_llm::{embedding::ByokEmbeddingProvider, LlmProvider};
+#[cfg(feature = "embedding-fastembed")]
+use opendoc_storage::embeddings::FastEmbedProvider;
+use opendoc_storage::{AppConfig, retriever::LanceDbRetriever};
+use opendoc_types::EmbeddingProvider;
 use walkdir::WalkDir;
 use reqwest::multipart;
+#[cfg(feature = "tui")]
 use crossterm::{
     event::{self, Event as CrossEvent, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+#[cfg(feature = "tui")]
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use sha2::{Digest, Sha256};
@@ -44,7 +52,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// 啟動輕量化 Ratatui TUI 檢索與進度調試終端
+    /// 啟動輕量化 Ratatui TUI 檢索與進度調試終端（預設不編譯，啟用 `tui` feature）
+    #[cfg(feature = "tui")]
     Tui,
 
     /// 對 RAG 知識庫進行快速終端問答
@@ -95,7 +104,7 @@ Ask {
         port: u16,
     },
 
-    /// 啟動 Axum API、MCP SSE 伺服器與 TUI 背景執行緒
+    /// 啟動 Axum API 與 MCP SSE 伺服器
     Start {
         /// Web API 與 MCP 連接埠
         #[arg(short, long, default_value_t = 3000)]
@@ -198,6 +207,101 @@ enum ConfigSubcommands {
     },
 }
 
+/// 建立向量檢索後端：讀取 llm_providers（優先 kind='embedding' 行，否則退化為 active chat
+/// provider + embedding_provider_name 當模型名）→ ByokEmbeddingProvider → LanceDbRetriever。
+/// 失敗時呼叫端退化為 SearchWrapper（空搜），不阻塞伺服器啟動。
+async fn build_search_backend(
+    app_cfg: &AppConfig,
+    pool: &sqlx::SqlitePool,
+) -> Result<Arc<dyn SearchBackend>, String> {
+    use sqlx::Row;
+    let model = &app_cfg.model;
+    let dim = model.embedding_dim;
+    let table = model.embedding_table_name.clone();
+    let default_ws_name = model.default_workspace.clone();
+    let embed_model_name = model.embedding_provider_name.clone();
+
+    // fastembed 離線後端（opt-in `embedding-fastembed` feature）：完全本機、無需 provider 設定。
+    // 未以 `--features embedding-fastembed` 編譯時此分支不存在 → 自動走 BYOK。
+    // ponytail: 模型檔首次使用時自 HF 下載至 <db_dir>/models，之後離線。
+    #[cfg(feature = "embedding-fastembed")]
+    if model.embedding_backend == "fastembed" {
+        let db_dir = ConfigManager::resolve_db_dir(&app_cfg.database.path)?;
+        let lance_uri = db_dir.to_string_lossy().to_string();
+        let provider = FastEmbedProvider::new(Some(db_dir.join("models")))?;
+        let dim = provider.dim();
+        let embed = Arc::new(provider) as Arc<dyn EmbeddingProvider>;
+        let retriever =
+            LanceDbRetriever::connect(lance_uri, table, dim, default_ws_name, embed).await?;
+        return Ok(Arc::new(retriever) as Arc<dyn SearchBackend>);
+    }
+
+    // R5：workspace_id 為 TEXT，不強制 UUID。找預設工作空間 UUID；查不到就以名稱當 id。
+    let ws_id: String = match sqlx::query("SELECT id FROM workspaces WHERE name = ? LIMIT 1")
+        .bind(&default_ws_name)
+        .fetch_optional(pool)
+        .await
+    {
+        Ok(Some(r)) => Row::get::<String, _>(&r, "id"),
+        _ => default_ws_name.clone(),
+    };
+
+    // 1) 優先取 kind='embedding' 且 name=embedding_provider_name 的獨立 provider 行。
+    let (base_url, api_key, emb_model): (String, Option<String>, String) =
+        match sqlx::query(
+            "SELECT base_url, api_key, model FROM llm_providers \
+             WHERE workspace_id = ? AND name = ? AND kind = 'embedding' LIMIT 1",
+        )
+        .bind(&ws_id)
+        .bind(&embed_model_name)
+        .fetch_optional(pool)
+        .await
+        {
+            Ok(Some(r)) => {
+                let k: String = Row::get::<String, _>(&r, "api_key");
+                (
+                    Row::get::<String, _>(&r, "base_url"),
+                    if k.is_empty() { None } else { Some(k) },
+                    Row::get::<String, _>(&r, "model"),
+                )
+            }
+            _ => {
+                // 2) 退化：active chat provider + embedding_provider_name 當模型名。
+                match sqlx::query(
+                    "SELECT base_url, api_key FROM llm_providers \
+                     WHERE workspace_id = ? AND is_active = 1 AND kind = 'chat' LIMIT 1",
+                )
+                .bind(&ws_id)
+                .fetch_optional(pool)
+                .await
+                {
+                    Ok(Some(r)) => {
+                        let k: String = Row::get::<String, _>(&r, "api_key");
+                        (
+                            Row::get::<String, _>(&r, "base_url"),
+                            if k.is_empty() { None } else { Some(k) },
+                            embed_model_name.clone(),
+                        )
+                    }
+                    _ => return Err("未設定任何 LLM provider，向量檢索後端無法建立".into()),
+                }
+            }
+        };
+
+    let provider = LlmProvider {
+        name: embed_model_name.clone(),
+        base_url,
+        model: emb_model,
+        api_key,
+    };
+    let embed = Arc::new(ByokEmbeddingProvider::new(provider, dim)) as Arc<dyn EmbeddingProvider>;
+
+    let db_dir = ConfigManager::resolve_db_dir(&app_cfg.database.path)?;
+    let lance_uri = db_dir.to_string_lossy().to_string();
+    let retriever = LanceDbRetriever::connect(lance_uri, table, dim, default_ws_name, embed).await?;
+    Ok(Arc::new(retriever) as Arc<dyn SearchBackend>)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cli = Cli::parse();
@@ -221,6 +325,7 @@ let app_cfg = config_manager.get_config().await;
      };
 
      match cli.command {
+        #[cfg(feature = "tui")]
         Commands::Tui => {
             // 完美註冊全局 Panic Hook, 確保 TUI 崩潰時強制還原終端
             let default_hook = std::panic::take_hook();
@@ -844,7 +949,6 @@ match sub {
             println!("👉 請重啟你的 OpenCode 客戶端以載入大一統 Rust 向量引擎！");
         }
         Commands::Start { port, mcp_only } => {
-            let search = Arc::new(SearchWrapper(Arc::clone(&config_manager))) as Arc<dyn SearchBackend>;
             let db_pool = match tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(config_manager.init_db_pool())
             }) {
@@ -852,6 +956,15 @@ match sub {
                 Err(e) => {
                     eprintln!("💥 初始化資料庫連線失敗: {e}");
                     std::process::exit(1);
+                }
+            };
+
+            // 建立向量檢索後端（BYOK embedding + LanceDB）。失敗則退化為空搜（chat 仍可用）。
+            let search: Arc<dyn SearchBackend> = match build_search_backend(&app_cfg, &db_pool).await {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("⚠️ 向量檢索後端初始化失敗，退化為空搜（不阻塞啟動）: {e}");
+                    Arc::new(SearchWrapper(Arc::clone(&config_manager))) as Arc<dyn SearchBackend>
                 }
             };
 
@@ -915,6 +1028,7 @@ match sub {
 }
 
 /// 運行 Ratatui TUI 主循環，具備 100% 非同步事件調度與背景阻斷保護
+#[cfg(feature = "tui")]
 async fn run_tui_loop(config_manager: &Arc<ConfigManager>) -> Result<(), Box<dyn std::error::Error>> {
     let app_cfg = config_manager.get_config().await;
     let initial_workspace = app_cfg.model.active_workspace.clone()

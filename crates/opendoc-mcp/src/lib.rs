@@ -37,6 +37,7 @@ use handlers::stats::stats_handler;
 use handlers::query::{query_log_handler, query_feedback_handler, chat_feedback_handler};
 use handlers::upload::upload_handler;
 use handlers::chat::{chat_handler, chat_stream_handler};
+use handlers::search::search_handler;
 use handlers::system::{health_handler, version_check_handler, readyz_handler};
 
 use std::net::SocketAddr;
@@ -61,8 +62,95 @@ use uuid::Uuid;
 // ── Search backend trait ─────────────────────────────────────
 // Add when ConfigManager's search API stabilizes.
 
+/// 檢索 hit（R1/R2 契約）。graphify-plugin-opendoc Layer 2 消費 doc_path + spec_id。
+/// 定義在 opendoc-storage，於此 re-export 統一型別。
+pub use opendoc_storage::retriever::SearchHit;
+
 pub trait SearchBackend: Send + Sync {
     fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk>;
+
+    /// 工作區感知 + top_k 的結構化檢索（R1）。預設回空；LanceDbRetriever 覆寫。
+    fn search_hits(
+        &self,
+        _query: &str,
+        _top_k: usize,
+        _threshold: f32,
+        _workspace_id: &str,
+    ) -> Vec<SearchHit> {
+        Vec::new()
+    }
+
+    /// 軟刪除文件時同步移除其 LanceDB chunks（spec 待討論 #2：排除已失效文件）。
+    /// 預設 no-op；LanceDbRetriever 覆寫。
+    fn delete_document(&self, _workspace_id: &str, _document_id: &str) {}
+
+    /// Index pipeline（R3）：embed chunks → LanceDB。預設回未支援；LanceDbRetriever 覆寫。
+    fn index_chunks(
+        &self,
+        _document_id: &str,
+        _workspace_id: &str,
+        _collection_id: Option<&str>,
+        _source_path: &str,
+        _chunks: &[opendoc_types::DocumentChunk],
+    ) -> Result<(), String> {
+        Err("indexing not supported by this backend".into())
+    }
+}
+
+/// `impl SearchBackend for opendoc_storage::retriever::LanceDbRetriever`。
+/// 透過 `block_in_place` + `Handle::block_on` 從 sync trait 呼叫 async lancedb，
+/// 與本 crate 既有慣例（sse/message handler）一致。
+/// ponytail: 單請求佔用一個 runtime worker；高併發升級為 async trait / 連線池。
+impl SearchBackend for opendoc_storage::retriever::LanceDbRetriever {
+    fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async { self.search_default(query, threshold).await })
+        })
+    }
+
+    fn search_hits(
+        &self,
+        query: &str,
+        top_k: usize,
+        threshold: f32,
+        workspace_id: &str,
+    ) -> Vec<SearchHit> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async {
+                    self.search(query, top_k, threshold, workspace_id)
+                        .await
+                        .unwrap_or_default()
+                })
+        })
+    }
+
+    fn delete_document(&self, workspace_id: &str, document_id: &str) {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async {
+                    let _ = self.delete_document(workspace_id, document_id).await;
+                })
+        });
+    }
+
+    fn index_chunks(
+        &self,
+        document_id: &str,
+        workspace_id: &str,
+        collection_id: Option<&str>,
+        source_path: &str,
+        chunks: &[opendoc_types::DocumentChunk],
+    ) -> Result<(), String> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async {
+                    self.index_chunks(document_id, workspace_id, collection_id, source_path, chunks)
+                        .await
+                })
+        })
+    }
 }
 
 // ── Shared state ──────────────────────────────────────────────
@@ -706,7 +794,8 @@ pub async fn start_mcp_and_api_server(
         .route("/query/feedback", post(query_feedback_handler))
         .route("/chat/feedback", post(chat_feedback_handler))
         .route("/chat", post(chat_handler))
-        .route("/chat/stream", post(chat_stream_handler))
+.route("/chat/stream", post(chat_stream_handler))
+            .route("/search", post(search_handler))
         .route("/stats", get(stats_handler))
         // 放寬 multipart 內建 2MB 上限到 60MiB，讓 upload_handler 自己的 50MiB 檢查（Node 相容 413）優先生效
         .layer(axum::extract::DefaultBodyLimit::max(60 * 1024 * 1024));
@@ -760,7 +849,7 @@ mod tests {
         ).execute(&db_pool).await.unwrap();
 
         sqlx::query(
-            "CREATE TABLE llm_providers (id TEXT PRIMARY KEY, workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL, provider TEXT NOT NULL, base_url TEXT NOT NULL, model TEXT NOT NULL, api_key TEXT NOT NULL DEFAULT '', is_active INTEGER NOT NULL DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), UNIQUE(workspace_id, name))"
+            "CREATE TABLE llm_providers (id TEXT PRIMARY KEY, workspace_id TEXT REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL, provider TEXT NOT NULL, base_url TEXT NOT NULL, model TEXT NOT NULL, api_key TEXT NOT NULL DEFAULT '', is_active INTEGER NOT NULL DEFAULT 0, kind TEXT NOT NULL DEFAULT 'chat', created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')), UNIQUE(workspace_id, name))"
         ).execute(&db_pool).await.unwrap();
 
         sqlx::query(
@@ -1083,7 +1172,8 @@ mod tests {
             .route("/documents/:id", get(get_document_handler).delete(delete_document_handler))
             .route("/chat", post(chat_handler))
             .route("/chat/feedback", post(chat_feedback_handler))
-            .route("/chat/stream", post(chat_stream_handler))
+.route("/chat/stream", post(chat_stream_handler))
+        .route("/search", post(search_handler))
             .route("/stats", get(stats_handler))
             .route("/workbench", get(workbench_handler))
             .layer(axum::extract::DefaultBodyLimit::max(60 * 1024 * 1024))

@@ -203,6 +203,14 @@ pub async fn upload_handler(
         }
     };
 
+    // 7. 索引 chunks → embedding → LanceDB（套件介面搜尋用）。best-effort：失敗不阻塞上傳。
+    if let Err(e) = state
+        .search
+        .index_chunks(&document_id, &workspace_id, Some(&collection_id), &source_path, &chunks)
+    {
+        eprintln!("⚠️ 向量索引寫入失敗（文件已入庫但搜尋暫時查不到）: {e}");
+    }
+
     Ok(Json(UploadResponse {
         document_id,
         chunks: chunks_count,

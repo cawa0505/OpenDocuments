@@ -13,5 +13,18 @@ async-trait = "0.1"
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros"] }
 uuid = { version = "1.0", features = ["v4"] }
 tokio = { version = "1.0", features = ["full"] }
-lancedb = "0.10"
-arrow-schema = "52.2.0"
+lancedb = { version = "0.23.1", default-features = false }
+arrow-schema = "56.2"
+arrow-array = "56.2"
+arrow-ord = "56.2"
+futures = "0.3"
+
+[features]
+default = []
+# ponytail: in-process ONNX CPU embedding; off by default to keep build light.
+# Upgrade to a pluggable provider if BYOK + fastembed both needed at runtime.
+embedding-fastembed = ["dep:fastembed"]
+
+[dependencies.fastembed]
+version = "5"
+optional = true

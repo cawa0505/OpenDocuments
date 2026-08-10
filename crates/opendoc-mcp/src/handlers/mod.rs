@@ -13,3 +13,4 @@ pub mod assets;
 pub mod query;
 pub mod upload;
 pub mod chat;
+pub mod search;

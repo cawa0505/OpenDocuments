@@ -1,6 +1,9 @@
 #![recursion_limit = "512"]
 
 pub mod lancedb;
+pub mod retriever;
+#[cfg(feature = "embedding-fastembed")]
+pub mod embeddings;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -31,6 +34,31 @@ pub struct ModelConfig {
     pub active_workspace: Option<String>,
     pub score_threshold: f32,
     pub local_reranker_path: Option<String>,
+    /// 向量維度。bge-m3 預設 1024。改 provider 時須同步（LanceDB 表 dim 固定）。
+    #[serde(default = "default_embedding_dim")]
+    pub embedding_dim: usize,
+    /// "byok"（OpenAI 相容 /v1/embeddings，預設）或 "fastembed"（需 embedding-fastembed feature）。
+    #[serde(default = "default_embedding_backend")]
+    pub embedding_backend: String,
+    /// llm_providers 表中 kind='embedding' 的 name；缺失時退化為 active chat provider + 此值當 model 名。
+    #[serde(default = "default_embedding_provider_name")]
+    pub embedding_provider_name: String,
+    /// LanceDB 表名。
+    #[serde(default = "default_embedding_table")]
+    pub embedding_table_name: String,
+}
+
+fn default_embedding_dim() -> usize {
+    1024
+}
+fn default_embedding_backend() -> String {
+    "byok".to_string()
+}
+fn default_embedding_provider_name() -> String {
+    "bge-m3".to_string()
+}
+fn default_embedding_table() -> String {
+    "od_chunks".to_string()
 }
 
 /// ~/.config/opendocuments/config.toml 對應的強型別結構
@@ -56,6 +84,10 @@ model: ModelConfig {
                      active_workspace: None,
                      score_threshold: 0.60,
                      local_reranker_path: Some("~/.opendocuments/models/bge-reranker-base.onnx".to_string()),
+                     embedding_dim: default_embedding_dim(),
+                     embedding_backend: default_embedding_backend(),
+                     embedding_provider_name: default_embedding_provider_name(),
+                     embedding_table_name: default_embedding_table(),
                  },
         }
     }
@@ -112,6 +144,13 @@ impl ConfigManager {
         let content = toml::to_string_pretty(&new_cfg).map_err(|e| format!("無法序列化設定檔: {}", e))?;
         fs::write(&self.config_path, content).map_err(|e| format!("無法寫入設定檔: {}", e))?;
         Ok(())
+    }
+
+    /// 解析 `~` 並回傳資料庫目錄實體路徑（供 LanceDB URI 與 init_db_pool 共用）。
+    pub fn resolve_db_dir(raw_path: &str) -> Result<PathBuf, String> {
+        let home_dir = dirs::home_dir().ok_or("無法獲取使用者家目錄")?;
+        let db_dir_str = raw_path.replace("~", &home_dir.to_string_lossy());
+        Ok(PathBuf::from(&db_dir_str))
     }
 
     /// 初始化 SQLite 數據庫連線池 (WAL 與快取優化)
@@ -235,6 +274,7 @@ impl ConfigManager {
         
         // BYOK LLM migrations
         sqlx::query("ALTER TABLE llm_providers ADD COLUMN provider TEXT NOT NULL DEFAULT 'custom'").execute(&pool).await.ok();
+        sqlx::query("ALTER TABLE llm_providers ADD COLUMN kind TEXT NOT NULL DEFAULT 'chat'").execute(&pool).await.ok();
         
         // 兼容舊資料: 若無 title 欄位，用 name 欄位填入
         sqlx::query("UPDATE documents SET title = name WHERE title IS NULL AND name IS NOT NULL").execute(&pool).await.ok();
@@ -315,6 +355,7 @@ impl ConfigManager {
                 model TEXT NOT NULL,
                 api_key TEXT NOT NULL DEFAULT '',
                 is_active INTEGER NOT NULL DEFAULT 0,
+                kind TEXT NOT NULL DEFAULT 'chat',
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now')),
                 UNIQUE(workspace_id, name)

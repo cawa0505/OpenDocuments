@@ -3,6 +3,8 @@
 //! 只做 OpenAI-compatible `/chat/completions` protocol（含 SSE streaming），
 //! 不逐家特化。DeepSeek / Moonshot / OpenRouter / Ollama 全部掛同一 protocol。
 
+pub mod embedding;
+
 use futures_util::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;

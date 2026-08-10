@@ -23,7 +23,7 @@ pub struct ExtractAssetRequest {
 
 async fn get_active_llm_client(db_pool: &sqlx::SqlitePool, workspace_id: &str) -> Option<opendoc_llm::LlmClient> {
     let row_res = sqlx::query(
-        "SELECT name, provider, base_url, model, api_key FROM llm_providers WHERE workspace_id = ? AND is_active = 1 LIMIT 1"
+        "SELECT name, provider, base_url, model, api_key FROM llm_providers WHERE workspace_id = ? AND is_active = 1 AND kind = 'chat' LIMIT 1"
     )
     .bind(workspace_id)
     .fetch_optional(db_pool)

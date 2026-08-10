@@ -36,3 +36,13 @@ pub trait DocumentParser {
     fn supported_extensions(&self) -> Vec<&'static str>;
     async fn parse(&self, file_path: &Path, workspace_id: &str, collection_id: &str) -> Result<Vec<DocumentChunk>, String>;
 }
+
+/// 向量化供應商抽象：BYOK HTTP 與 in-process ONNX (fastembed) 兩條實作共用此契約。
+/// ponytail: 只暴露 embed + dim；模型選擇與傳輸細節由各 impl 私有。
+#[async_trait]
+pub trait EmbeddingProvider: Send + Sync {
+    /// 回傳向量維度；LanceDB 表的 FixedSizeList 維度必須與此一致。
+    fn dim(&self) -> usize;
+    /// 批次嵌入；回傳向量大小的順序與輸入 texts 嚴格對齊。
+    async fn embed(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, String>;
+}

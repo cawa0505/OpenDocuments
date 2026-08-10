@@ -61,7 +61,12 @@ impl TextParser {
             if trimmed.starts_with('#') {
                 let header_level = trimmed.chars().take_while(|&c| c == '#').count();
                 if header_level >= 1 && header_level <= 6 {
-                    let header_text = trimmed[header_level..].trim().to_string();
+                    let header_text = trimmed[header_level..]
+                        .trim()
+                        // R2 契約：heading 需與 plugin 端 pulldown-cmark 解析結果一致
+                        // （inline code 反引號被消去）。ponytail: 只處理反引號；heading 內的
+                        // bold/emphasis/link 需完整 markdown flatten 時再引入 pulldown-cmark。
+                        .replace('`', "");
                     
                     // 壓入標題堆疊，清除更深層標題
                     if header_stack.len() >= header_level {
