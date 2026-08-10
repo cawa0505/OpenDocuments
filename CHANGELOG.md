@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - Rust rewrite era
+
+Full Rust rewrite of the Node.js backend. Single-binary Axum server with embedded WebUI.
+
+### Added
+- **Single-binary Axum architecture**: `opendoc` server embedding the React WebUI assets via `rust-embed` (`single-binary-architecture`).
+- **BYOK LLM gateway**: SQLite-stored provider keys (never exposed to the frontend), OpenAI-compatible chat, embedding via `kind`-tagged provider rows (`byok-llm-providers`).
+- **Hybrid retrieval pipeline**: `POST /api/v1/search` (R1) with `top_k`/`threshold`; `SearchHit` carrying `doc_path` + slug-based `spec_id` + original `heading` (R2); upload→chunk→embed→index pipeline (R3); workspace isolation (R4); TEXT workspace-id resolution (R5) (`search-index-pipeline`, Approved / Production).
+- **LanceDB engine sidecar**: `opendoc-engine-lancedb` stdio JSON-RPC child process owning LanceDB schema/index/search/delete/FTS self-heal; core owns embedding, RRF fusion, threshold, `SearchHit` formatting; bounded crash restart; 503 `engine_unavailable` on engine death; graceful shutdown, no orphans (`lancedb-engine-sidecar`, Approved / Production).
+- **Workspace management**: multi-workspace with strict `X-Workspace` header → `active_workspace` → `default_workspace` resolution (`workspace-management`).
+- **Tags & complex filtering**: tag CRUD, document status/type filters, multi-field sorting (`tags-and-complex-filtering`).
+- **Document parsers**: per-format standalone crates — PDF (`lopdf`), DOCX (`docx-rs`), XLSX (`calamine`), PPTX, HTML, email, markdown/text (`document-parsers`).
+- **Cross-platform distribution**: `install.sh` + GitHub Release automation.
+- **Version management**: all version strings unified under `CARGO_PKG_VERSION` from `Cargo.toml`.
+
+### Changed
+- **Architecture**: Node.js multi-process backend → single Rust process + managed engine sidecar; core binary ~51 MB (strip+LTO), engine ~354 MB (strip+LTO).
+- **FTS**: LanceDB FTS active lexical path; SQLite FTS5 is the planned target (`hybrid-rag-retrieval`, Partially Implemented).
+
 ## [0.2.0] - 2026-03-31
 
 ### Added
