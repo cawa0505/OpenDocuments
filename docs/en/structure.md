@@ -23,7 +23,7 @@ OpenDocuments/ (Repository Root)
 │                                    # ─ ChatGPT/Gemini-aligned chat flow, Markdown rendering, Light Mode default
 │
 ├── crates/                          # Modular Rust Workspace (Cargo Workspace)
-│   ├── opendoc-cli/                 # Main CLI binary entry point (main.rs) with TUI & background daemon
+│   ├── opendoc-cli/                 # Main CLI binary entry point (main.rs) with background daemon
 │   ├── opendoc-mcp/                 # Axum routes, SSE streaming, MCP protocol, and embedded WebUI assets
 │   ├── opendoc-storage/             # SQLite & LanceDB vector storage, LanceDB FTS & RAG retrieval engine
 │   ├── opendoc-llm/                 # OpenAI-compatible BYOK client with SSE stream parsing
@@ -35,12 +35,10 @@ OpenDocuments/ (Repository Root)
 │   │   ├── structure.md             # System Architecture & Directory Map
 │   │   ├── roadmap.md               # Multi-phase R&D Roadmap
 │   │   ├── tasks.md                 # Task Backlog & Execution Tracking
-│   │   └── tui-manual.md            # Terminal UI (TUI) User Manual
 │   └── zh-TW/                       # Traditional Chinese Synchronized Documentation
 │       ├── structure.md
 │       ├── roadmap.md
-│       ├── tasks.md
-│       └── tui-manual.md
+│       └── tasks.md
 │
 ├── docs-site/                       # Documentation Site Source (VitePress)
 ├── openspec/                        # System Behavior Specifications (OpenSpec 1.7)

@@ -23,7 +23,7 @@ OpenDocuments/ (儲存庫根目錄)
 │                                    # ─ 對齊 ChatGPT/Gemini 聊天流，Markdown 渲染與預設 Light Mode
 │
 ├── crates/                          # 高度隔離之模組化 Rust Cargo Workspace
-│   ├── opendoc-cli/                 # 主控伺服器 CLI 與進入點 (main.rs)，整合 TUI 與服務背景啟動
+│   ├── opendoc-cli/                 # 主控伺服器 CLI 與進入點 (main.rs)，整合服務背景啟動
 │   ├── opendoc-mcp/                 # Axum 路由、SSE 串流、MCP 協議及 API 控制器核心，內嵌前端 WebUI
 │   ├── opendoc-storage/             # SQLite 與 LanceDB 向量儲存、LanceDB 全文搜尋與 RAG 混合檢索
 │   ├── opendoc-llm/                 # OpenAI-compatible BYOK 客戶端與漸進式 SSE 串流解析
@@ -35,12 +35,10 @@ OpenDocuments/ (儲存庫根目錄)
 │   │   ├── structure.md             # 系統架構與目錄結構
 │   │   ├── roadmap.md               # 多階段研發藍圖
 │   │   ├── tasks.md                 # 任務清單與執行追蹤
-│   │   └── tui-manual.md            # 終端機 TUI 使用手冊
 │   └── zh-TW/                       # 繁體中文同步技術文檔
 │       ├── structure.md
 │       ├── roadmap.md
-│       ├── tasks.md
-│       └── tui-manual.md
+│       └── tasks.md
 │
 ├── docs-site/                       # 官方文檔網站 (VitePress)
 ├── openspec/                        # 系統級行為契約規格定義 (OpenSpec 1.7)

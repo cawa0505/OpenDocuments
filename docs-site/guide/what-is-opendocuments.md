@@ -53,7 +53,6 @@ OpenDocuments includes:
 
 - **Web UI** — beautiful chat interface, workspace manager, and admin stats dashboard
 - **CLI (`opendoc`)** — terminal utility for indexing, querying, and configuring your self-hosted instance
-- **TUI (Terminal UI)** — fully interactive CLI terminal chatbot interface for local-first execution
 - **Unified API & MCP Server** — Axum-powered backend supporting REST queries and local-first Claude/Cursor MCP integration
 
 ## Short answer

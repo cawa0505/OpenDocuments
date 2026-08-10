@@ -40,7 +40,7 @@ total size unless the combined measurement proves it.
 | **Combined core + engine installation** | Report only until baseline exists | Process separation does not imply aggregate shrinkage. |
 | **RSS at idle (no model cache)** | ≤ 220 MiB | Observed range; prevents silent memory bloat from static buffers. |
 | **Model cache (`<db_dir>/models`)** | ≤ 500 MiB per model | Outside binary; documented and user-configurable. |
-| **Optional feature (TUI / WebUI / fastembed)** | ≤ 30 MiB each | Must be feature-gated; enables `cargo build --release --features <X>` size verification. |
+| **Optional feature (WebUI / fastembed)** | ≤ 30 MiB each | Must be feature-gated; enables `cargo build --release --features <X>` size verification. |
 
 ---
 
@@ -52,7 +52,7 @@ total size unless the combined measurement proves it.
 | **Vector store** | None in future core | Local LanceDB engine | DynamoDB/S3 or other engines only after separate approval |
 | **Sparse lexical search** | SQLite FTS5 target (not currently implemented) | LanceDB FTS remains engine-local | — |
 | **Embedding** | BYOK (OpenAI-compatible `/v1/embeddings`) | FastEmbed belongs to an optional engine feature | GPU engines (future) |
-| **Interfaces** | CLI, REST API, MCP server | TUI (`tui` feature), WebUI (`webui` feature) | — |
+| **Interfaces** | CLI, REST API, MCP server | WebUI (`webui` feature) | — |
 | **Auth/License** | Local JWT, workspace isolation | — | Hardware fingerprint, clock-skew (loom-security) |
 | **Observability** | Structured logs | Metrics endpoint | Distributed tracing exporters |
 
@@ -105,7 +105,7 @@ fi
 |---|---|
 | **Minor/Patch (lancedb, arrow, datafusion, tokio, etc.)** | CI gate passes; no new transitive `aws-*`, `google-cloud-*`, `azure-*` crates added. |
 | **Major version (lance 1.x → 2.x, datafusion 50 → 60, etc.)** | 1. Local stripped build ≤ 150 MiB. 2. All existing tests pass. 3. No new non-Rust build deps (protoc already allowed). 4. User approval recorded in PR. |
-| **New optional feature (e.g. `embedding-fastembed`, `tui`, `webui`)** | Size delta measured and documented in PR; default feature set MUST NOT enable it. |
+| **New optional feature (e.g. `embedding-fastembed`, `webui`)** | Size delta measured and documented in PR; default feature set MUST NOT enable it. |
 | **Any dependency pulling `cc`, `pkg-config`, or system libs** | Must be optional feature; justification in PR. |
 
 ---
@@ -117,7 +117,7 @@ fi
 | **0 — Immediate (this PR)** | Add `scripts/measure-size.sh` + CI gate at 160 MiB; document current 200.3 MiB baseline as accepted tech debt with target milestone. | Gate runs, records size; build passes (gate is 160 MiB, current 200 MiB → build will fail; must raise gate to 210 MiB for now with milestone comment). |
 | **1 — Profile/Strip Optimization (next 2 weeks)** | Enable `strip = "symbols"` (or `--strip-all` post-build), `lto = "thin"`, `codegen-units = 1` in `[profile.release]`; A/B measure size + build time. | If ≥ 15 MiB saved with ≤ 2× build time → keep; else revert. |
 | **2 — Dependency Attribution & Pruning** | Run `cargo bloat --release` (or equivalent) to get per-crate top-5 contributors; drop unused features (`default-features=false` where safe). | Each prune must pass CI gate + full test suite. |
-| **3 — Feature Gating** | Move WebUI/TUI to optional features (already partial); verify core-only build ≤ 150 MiB. | Core build passes 160 MiB gate. |
+| **3 — Feature Gating** | Move WebUI to an optional feature (already partial); verify core-only build ≤ 150 MiB. | Core build passes 160 MiB gate. |
 | **4 — Engine Boundary** | Implement the approved `lancedb-engine-sidecar` protocol; remove Lance/Arrow/DataFusion from core. | Measure core, engine, and combined installation independently. |
 
 ---

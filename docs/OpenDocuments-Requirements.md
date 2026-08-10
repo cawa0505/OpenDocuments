@@ -153,12 +153,12 @@ top_k 排序與 threshold 過濾。
 
 ### 3.4 對 OD 無副作用
 
-`heading` 欄位只用于 plugin 端算回內部 spec_id，不影響 OD 自家 ranking/TUI/MCP。
+`heading` 欄位只用于 plugin 端算回內部 spec_id，不影響 OD 自家 ranking/MCP。
 OD 既有 slug 路徑（`SearchHit.spec_id = slug(heading)`）保留不動。
 
 ## 4. R3 — Index write path
 
-OD 需有可程式化觸發的 index 管線（不只是手動 TUI 操作）：
+OD 需有可程式化觸發的 index 管線（REST API / CLI 觸發）：
 
 ```
 file → chunk → embedding → LanceDB / Qdrant → 可 search

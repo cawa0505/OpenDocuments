@@ -64,16 +64,6 @@ Or simply drag-and-drop your files directly onto the Web UI!
 
 ---
 
-## Ask Questions in Terminal (TUI)
-
-OpenDocuments features a high-performance terminal chat interface (TUI) for local operations:
-
-```bash
-opendoc tui
-```
-
----
-
 ## Next Steps
 
 - [Deployment & Auto-Start](/guide/deployment) — run persistently on Windows, macOS, and Linux

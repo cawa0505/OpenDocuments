@@ -334,7 +334,7 @@ Upload/CLI index → opendoc_parser::parse_file → chunks
 ### 7.2 Retrieval + Re-ranking (query path — realtime, never per-request `spur run`)
 
 ```
-Search query (API/MCP/TUI)
+Search query (API/MCP)
   → LanceDB dense vector search (query embedded via AiEngine.embed)
   → SQLite FTS5 sparse search (target; not currently implemented)
   → merge candidates

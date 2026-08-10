@@ -25,18 +25,10 @@ This document tracks execution status and concrete verification criteria across 
   - [ ] Implement backend profile routing: `Fast` (FTS5 top-5), `Balanced` (LanceDB + Reranker top-10), and `Precise` (Hybrid + Heavy Reranker top-15).
   - *Verification*: Verify REST request carrying profile headers matches expected chunk count and search strategy in backend logs.
 
-### 1.2 CLI & TUI Enhancements
+### 1.2 CLI Enhancements
 
 - [x] **1.2.1 Workspace Switching Persistence**: `opendoc workspace switch <name>` persists selection to `active_workspace` in `config.toml`.
 - [x] **1.2.2 One-Line Cross-Platform Installer**: `install.sh` script supporting Linux and macOS x86_64/aarch64 binaries.
-- [ ] **1.2.3 TUI On-the-Fly Workspace Switcher**:
-  - [ ] Bind `Ctrl+W` in TUI to trigger an inline workspace selector modal.
-  - [ ] Redraw and re-query active list immediately upon workspace selection without restarting TUI.
-  - *Verification*: Open `opendoc tui`, press `Ctrl+W`, select a different workspace, verify footer/header updates and search queries scope to new workspace.
-- [ ] **1.2.4 TUI Chunk Inspector Modal**:
-  - [ ] Bind `Enter` (or a dedicated inspector key `i`) on selected search results in TUI.
-  - [ ] Render a structured popup modal detailing raw text chunk content, metadata properties, and similarity score.
-  - *Verification*: Select a document in TUI, press `Enter`, inspect modal text, ensure scroll keys (`Up`/`Down`) work inside the popup, and `Esc` closes it cleanly.
 
 ---
 

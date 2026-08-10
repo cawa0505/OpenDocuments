@@ -25,18 +25,10 @@
   - [ ] 實作後端路由邏輯：`Fast` (FTS5 Top-5)、`Balanced` (LanceDB Top-10)、`Precise` (混合 + 重度 Reranker Top-15)。
   - *驗證方式*：驗證前端發送的 REST 請求帶有對應的 Profile 標頭，且後端日誌中顯示正確的檢索策略與 Chunk 數量。
 
-### 1.2 CLI 與 TUI 優化
+### 1.2 CLI 優化
 
 - [x] **1.2.1 工作區切換持久化**：`opendoc workspace switch <name>` 正確將選擇寫入 `config.toml` 的 `active_workspace`。
 - [x] **1.2.2 一鍵跨平台安裝腳本**：`install.sh` 腳本支援 Linux 與 macOS (x86_64/aarch64)。
-- [ ] **1.2.3 TUI 即時工作區切換**：
-  - [ ] 在 TUI 中綁定 `Ctrl+W` 快速鍵，觸發原地彈出的工作空間選擇選單。
-  - [ ] 選擇工作空間後立即重新載入並查詢當前文件列表，不需重啟 TUI。
-  - *驗證方式*：開啟 `opendoc tui`，按下 `Ctrl+W` 切換到另一個工作區，確認頁首/頁尾工作區名稱同步更新，且搜尋結果變更為新工作區的資料。
-- [ ] **1.2.4 TUI Chunk 檢視彈窗**：
-  - [ ] 在 TUI 的檢索結果列表上綁定 `Enter` 鍵（或獨立按鍵 `i`）。
-  - [ ] 渲染一個結構化的彈出式 Modal，顯示原始文字片段內容、中繼資料屬性與相似度評分（Score）。
-  - *驗證方式*：在 TUI 中選擇一份文件並按下 `Enter`，確認彈窗內容正確，且能使用方向鍵 `Up`/`Down` 在彈窗內滾動閱讀，按 `Esc` 即可乾淨關閉。
 
 ---
 

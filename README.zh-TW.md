@@ -88,9 +88,8 @@ opendoc start --port 3000
 
 - 🗂️ **[系統架構與專案結構圖](docs/zh-TW/structure.md)**：單一二進位 Rust Workspace 版圖、BYOK 金鑰安全防線與混合檢索資料流。
 - 🗺️ **[多階段研發藍圖](docs/zh-TW/roadmap.md)**：從 MVP 單一二進位到 Tauri 2.0 行政工作艙與 MCP 生態發布器。
-- 📋 **[待開發任務清單與狀態](docs/zh-TW/tasks.md)**：Phase 1 當前開發任務、CLI/TUI 優化與後續待辦事項。
-- 📟 **[終端機 TUI 使用與調試手冊](docs/zh-TW/tui-manual.md)**：快捷鍵導覽、動態響應式斷點與本地除錯技巧。
-- 📐 **[OpenSpec 系統規格](openspec/specs/)**：系統行為契約規格（標籤過濾、BYOK、工作區解析、TUI 優化）。
+- 📋 **[待開發任務清單與狀態](docs/zh-TW/tasks.md)**：Phase 1 當前開發任務、CLI 優化與後續待辦事項。
+- 📐 **[OpenSpec 系統規格](openspec/specs/)**：系統行為契約規格（標籤過濾、BYOK、工作區解析）。
 - 📖 **[官方文檔網站](https://cawa0505.github.io/OpenDocuments/)**：部署指南、API 參考與使用者手冊。
 
 ---
@@ -140,7 +139,6 @@ apps/
 crates/
   opendoc-cli      - 主控 CLI 與終端介面 (opendoc)
   opendoc-mcp      - Axum API 伺服器、SSE 串流與 MCP 協定核心
-  opendoc-tui      - 基於 Ratatui 的輕量化終端 RAG 介面
   opendoc-storage  - SQLite 詮釋資料與 LanceDB 向量混合檢索儲存庫
   opendoc-llm      - OpenAI 相容 LLM 客戶端與漸進式串流解析器
   opendoc-types    - 跨模組共享之強型別資料模型 (DocumentChunk, Tag 等)

@@ -10,7 +10,6 @@ apps/
 crates/
   opendoc-cli - Main CLI and terminal interface (opendoc)
   opendoc-mcp - Axum API server, SSE streaming, and MCP protocol core
-  opendoc-tui - Lightweight Ratatui-based terminal RAG UI
   opendoc-storage - SQLite metadata and LanceDB vector mixed retrieval store
   opendoc-llm - OpenAI-compatible LLM client and progressively-parsed streaming
   opendoc-types - Shared strong types (DocumentChunk, Tag, etc.)

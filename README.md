@@ -88,10 +88,9 @@ All technical specifications, architecture maps, and task tracking documents are
 
 - 🗂️ **[System Architecture & Directory Map](docs/en/structure.md)**: Single-binary Rust workspace layout, BYOK secret boundaries, and dual-retrieval data flow.
 - 🗺️ **[R&D Roadmap & Milestones](docs/en/roadmap.md)**: Multi-phase engineering roadmap from single-binary MVP to Tauri 2.0 control cabin and MCP publisher.
-- 📋 **[Task Backlog & Status Tracker](docs/en/tasks.md)**: Active Phase 1 tasks, CLI/TUI enhancements, and upcoming work packages.
+- 📋 **[Task Backlog & Status Tracker](docs/en/tasks.md)**: Active Phase 1 tasks, CLI enhancements, and upcoming work packages.
 - ⚡ **[Open Source RAG Engine Spec](docs/en/open-source-rag-engine.md)**: Complete Data Plane technical documentation for LanceDB integration and SQL-like pre-filtering.
-- 📟 **[Terminal UI (TUI) User Manual](docs/en/tui-manual.md)**: Deep dive into keyboard navigation, responsive breakpoints, and local debugging.
-- 📐 **[OpenSpec Specifications](openspec/specs/)**: Formal system behavior contracts (Tags, BYOK, Workspace resolution, TUI enhancements).
+- 📐 **[OpenSpec Specifications](openspec/specs/)**: Formal system behavior contracts (Tags, BYOK, Workspace resolution).
 - 📖 **[Official Documentation Site](https://cawa0505.github.io/OpenDocuments/)**: Hosted guides, API references, and deployment tutorials.
 
 ---
@@ -141,7 +140,6 @@ apps/
 crates/
   opendoc-cli      - Main CLI and terminal interface (opendoc)
   opendoc-mcp      - Axum API server, SSE streaming, and MCP protocol core
-  opendoc-tui      - Lightweight Ratatui-based terminal RAG UI
   opendoc-storage  - SQLite metadata and LanceDB vector mixed retrieval store
   opendoc-llm      - OpenAI-compatible LLM client and progressively-parsed streaming
   opendoc-types    - Shared strong types (DocumentChunk, Tag, etc.)
