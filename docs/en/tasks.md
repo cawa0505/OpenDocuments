@@ -30,6 +30,15 @@ This document tracks execution status and concrete verification criteria across 
 - [x] **1.2.1 Workspace Switching Persistence**: `opendoc workspace switch <name>` persists selection to `active_workspace` in `config.toml`.
 - [x] **1.2.2 One-Line Cross-Platform Installer**: `install.sh` script supporting Linux and macOS x86_64/aarch64 binaries.
 
+### 1.3 GA Contract Audit
+
+- [x] **1.3.1 Workspace card source audit**: `/workbench`, `/admin/stats`, and `/admin/connectors` query through `X-Workspace`; no direct `default_workspace` use was found in the card flow.
+- [x] **1.3.2 CLI index sync code audit**: SHA-256 deduplication, changed-file re-upload, directory deletion pruning, and `X-Workspace` propagation are present.
+- [ ] **1.3.3 CLI index sync integration tests**: verify empty directories, nested paths, and cross-workspace deletion isolation.
+- [ ] **1.3.4 GitHub connector contract**: WebUI calls `/admin/connectors/github` and `/admin/connectors/github/sync`, but the Rust router does not provide these routes; workspace isolation must not be marked complete before implementation.
+- [x] **1.3.5 Activity-log workspace read audit**: stats, workbench, and query-log reads include `workspace_id` filtering.
+- [ ] **1.3.6 Activity-log completeness**: fix total/pagination/DTO alignment, add workspace scoping to feedback updates, and implement delete API/UI.
+
 ---
 
 ## 📋 Planned Execution Items (Phase 2 — Task Execution Layer & Native AI Engines)

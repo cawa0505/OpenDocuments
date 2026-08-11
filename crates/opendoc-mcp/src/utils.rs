@@ -1,12 +1,12 @@
 // removed unused std::sync::Arc
+use crate::McpState;
 use axum::http::StatusCode;
 use serde::Serialize;
-use crate::McpState;
 
 // ── Workspace resolver ────────────────────────────────────────
 /// 將 X-Workspace header（id 或 name）解析成 workspace UUID id（Node getById ?? getByName 向後相容）。
 /// - header 非空：`SELECT id FROM workspaces WHERE id = ? OR name = ?` → 命中回 id；未命中 → 400（嚴格，不 auto-create）
-/// - header 缺/空：取 config default_workspace 名稱 → 同查詢 → 未命中 → 500（default 啟動必建，缺失 = invariant 破壞）
+/// - header 缺/空：取 config active_workspace，未設定則取 default_workspace → 同查詢 → 未命中 → 500
 pub async fn resolve_workspace_id(
     state: &McpState,
     headers: &axum::http::HeaderMap,
@@ -17,31 +17,33 @@ pub async fn resolve_workspace_id(
         .map(|s| s.trim())
         .filter(|s| !s.is_empty());
 
-    let default_ws;
-    let lookup_name = match header_val {
-        Some(ws) => ws,
+    let (lookup_name, explicit) = match header_val {
+        Some(ws) => (ws.to_owned(), true),
         None => {
-            default_ws = state.config_manager.get_config().await.model.default_workspace;
-            default_ws.as_str()
+            let model = state.config_manager.get_config().await.model;
+            let workspace = model
+                .active_workspace
+                .filter(|ws| !ws.trim().is_empty())
+                .unwrap_or(model.default_workspace);
+            (workspace.trim().to_owned(), false)
         }
     };
 
-    let found: Option<String> = sqlx::query_scalar(
-        "SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1"
-    )
-    .bind(lookup_name)
-    .bind(lookup_name)
-    .fetch_optional(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 解析工作空間失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let found: Option<String> =
+        sqlx::query_scalar("SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1")
+            .bind(&lookup_name)
+            .bind(&lookup_name)
+            .fetch_optional(&state.db_pool)
+            .await
+            .map_err(|e| {
+                eprintln!("💥 解析工作空間失敗: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     match found {
         Some(id) => Ok(id),
         None => {
-            if header_val.is_some() {
+            if explicit {
                 // header 指定了未知 workspace → 嚴格 400
                 Err(StatusCode::BAD_REQUEST)
             } else {

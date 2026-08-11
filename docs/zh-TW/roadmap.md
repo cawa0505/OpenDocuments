@@ -45,9 +45,9 @@
 
 - [x] **BYOK 設定 UI**：完成 `SettingsPage.tsx` 供應商管理介面。
 - [x] **預設 Light Mode 視覺優化**：鎖定高質感明亮模式。
-- [ ] **SSE 串流事件規範化**：統一 `StreamEvent` 封裝 (`Thought`, `Text`, `Status`)。
-- [ ] **互動式 Citation 連結**：將 Markdown 的 `[1]` / `[2]` 出處轉化為可點擊聚焦文獻卡片的標籤。
-- [ ] **RAG 檢索偏好設定**：提供 `Fast`、`Balanced`、`Precise` 三種檢索模式。
+- [x] **SSE 串流事件規範化**：統一 `StreamEvent` 封裝 (`chunk`, `sources`, `confidence`, `done`, `error`)。
+- [x] **互動式 Citation 連結**：將 Markdown 的 `[1]` / `[2]` 出處轉化為可點擊聚焦文獻卡片的標籤。
+- [x] **RAG 檢索偏好設定**：提供 `Fast`、`Balanced`、`Precise` 三種檢索模式。`[待討論] 實際檢索流程差異` 另行討論中。
 
 ---
 
@@ -59,6 +59,10 @@
 - **檔案定位：reference full path。** 文件以絕對 `source_path` 定位（不做相對名稱或虛擬檔案間接層）；未來多機儲存是延伸此設計，不是取代它。
 
 v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → 真實搜尋 → WebUI 中 chat 來回驗證，以下每個 feature 都要過。
+
+- [ ] **活動日誌契約**：修正總數／分頁／DTO、feedback workspace 隔離，並補齊刪除 API 與 UI。
+- [ ] **GitHub connector 契約**：補齊 WebUI 已呼叫但 Rust router 尚未提供的建立與同步 route，所有操作均依 workspace 隔離。
+- [ ] **CLI index 同步整合測試**：驗證空目錄、巢狀路徑與跨 workspace 不互刪；程式碼層的 hash 去重、變更重傳與刪除同步已完成稽核。
 
 ---
 

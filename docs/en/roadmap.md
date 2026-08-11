@@ -45,9 +45,9 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 - [x] **BYOK Provider Configuration UI**: Full provider management UI in `SettingsPage.tsx`.
 - [x] **Light Mode Visual Optimization**: Standardized clean Light Mode UI.
-- [ ] **SSE Stream Event Normalization**: Standardized `StreamEvent` handling (`Thought`, `Text`, `Status`).
-- [ ] **Interactive Citation Linking**: Clickable `[1]` / `[2]` citation tags in Markdown response linking directly to source cards.
-- [ ] **Query Profiles**: User-selectable search profiles (`Fast`, `Balanced`, `Precise`).
+- [x] **SSE Stream Event Normalization**: Standardized `StreamEvent` handling (`chunk`, `sources`, `confidence`, `done`, `error`).
+- [x] **Interactive Citation Linking**: Clickable `[1]` / `[2]` citation tags in Markdown response linking directly to source cards.
+- [x] **Query Profiles**: User-selectable search profiles (`Fast`, `Balanced`, `Precise`). `[待討論] 實際檢索流程差異` 另行討論中。
 
 ---
 
@@ -59,6 +59,10 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 - **File identity: reference full paths.** Documents are located by absolute `source_path` (no relative-name or virtual-file indirection); future multi-machine storage extends this, it does not replace it.
 
 The acceptance bar for v1.0.0: `cargo check` zero warnings → install → real upload → real search → chat round-trip verified in the WebUI, for every listed feature below.
+
+- [ ] **Activity-log contract**: fix total/pagination/DTO alignment, workspace-scope feedback updates, and add delete API/UI.
+- [ ] **GitHub connector contract**: implement the create and sync routes already called by the WebUI, with workspace isolation for every operation.
+- [ ] **CLI index sync integration tests**: verify empty directories, nested paths, and cross-workspace deletion isolation; hash deduplication, changed-file re-upload, and deletion pruning have passed code audit.
 
 ---
 

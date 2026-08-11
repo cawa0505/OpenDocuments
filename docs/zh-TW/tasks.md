@@ -30,6 +30,15 @@
 - [x] **1.2.1 工作區切換持久化**：`opendoc workspace switch <name>` 正確將選擇寫入 `config.toml` 的 `active_workspace`。
 - [x] **1.2.2 一鍵跨平台安裝腳本**：`install.sh` 腳本支援 Linux 與 macOS (x86_64/aarch64)。
 
+### 1.3 GA 前契約稽核
+
+- [x] **1.3.1 工作區卡片來源稽核**：`/workbench`、`/admin/stats` 與 `/admin/connectors` 都依 `X-Workspace` 查詢；未發現卡片直接誤用 `default_workspace`。
+- [x] **1.3.2 CLI index 同步程式碼稽核**：已確認 SHA-256 去重、內容變更重傳、目錄內本機刪除同步刪除，以及 `X-Workspace` 傳遞。
+- [ ] **1.3.3 CLI index 同步整合測試**：補驗證空目錄、巢狀路徑與跨 workspace 不互刪。
+- [ ] **1.3.4 GitHub connector 契約**：WebUI 呼叫 `/admin/connectors/github` 與 `/admin/connectors/github/sync`，但 Rust router 尚未提供兩條 route；完成 connector 實作前不得標記 workspace 隔離完成。
+- [x] **1.3.5 活動日誌 workspace 讀取稽核**：統計、workbench 與 query-log 讀取都有 `workspace_id` 條件。
+- [ ] **1.3.6 活動日誌完整功能**：修正總數／分頁／DTO 對齊、feedback workspace 條件，並補刪除 API 與 UI。
+
 ---
 
 ## 📋 規劃中執行任務 (Phase 2 — 任務執行層與原生 AI 引擎)

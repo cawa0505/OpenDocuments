@@ -63,15 +63,26 @@ impl SidecarRetriever {
         query: &str,
         threshold: f32,
     ) -> Vec<opendoc_types::DocumentChunk> {
+        self.search_workspace(query, threshold, &self.default_workspace)
+            .await
+    }
+
+    /// Chat retrieval scoped to the workspace resolved from the request.
+    pub async fn search_workspace(
+        &self,
+        query: &str,
+        threshold: f32,
+        workspace_id: &str,
+    ) -> Vec<opendoc_types::DocumentChunk> {
         let hits = self
-            .search(query, 10, threshold, &self.default_workspace)
+            .search(query, 10, threshold, workspace_id)
             .await
             .unwrap_or_default();
         hits.into_iter()
             .map(|h| opendoc_types::DocumentChunk {
                 chunk_type: ChunkType::Semantic,
                 content: format!("{}\n\n{}", h.doc_path, h.snippet),
-                workspace_id: self.default_workspace.clone(),
+                workspace_id: workspace_id.to_string(),
                 collection_id: String::new(),
                 file_path: h.doc_path,
                 relevance_score: Some(h.score),
