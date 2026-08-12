@@ -60,7 +60,7 @@
 
 v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → 真實搜尋 → WebUI 中 chat 來回驗證，以下每個 feature 都要過。
 
-- [ ] **活動日誌契約**：修正總數／分頁／DTO、feedback workspace 隔離，並補齊刪除 API 與 UI。
+- [x] **活動日誌契約**：修正總數／分頁／DTO、feedback workspace 隔離，並補齊刪除 API 與 UI。
 - [ ] **GitHub connector 契約**：補齊 WebUI 已呼叫但 Rust router 尚未提供的建立與同步 route，所有操作均依 workspace 隔離。
 - [ ] **CLI index 同步整合測試**：驗證空目錄、巢狀路徑與跨 workspace 不互刪；程式碼層的 hash 去重、變更重傳與刪除同步已完成稽核。
 

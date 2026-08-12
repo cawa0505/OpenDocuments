@@ -60,7 +60,7 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 The acceptance bar for v1.0.0: `cargo check` zero warnings → install → real upload → real search → chat round-trip verified in the WebUI, for every listed feature below.
 
-- [ ] **Activity-log contract**: fix total/pagination/DTO alignment, workspace-scope feedback updates, and add delete API/UI.
+- [x] **Activity-log contract**: fix total/pagination/DTO alignment, workspace-scope feedback updates, and add delete API/UI.
 - [ ] **GitHub connector contract**: implement the create and sync routes already called by the WebUI, with workspace isolation for every operation.
 - [ ] **CLI index sync integration tests**: verify empty directories, nested paths, and cross-workspace deletion isolation; hash deduplication, changed-file re-upload, and deletion pruning have passed code audit.
 

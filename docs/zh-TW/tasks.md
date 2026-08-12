@@ -37,7 +37,7 @@
 - [ ] **1.3.3 CLI index 同步整合測試**：補驗證空目錄、巢狀路徑與跨 workspace 不互刪。
 - [ ] **1.3.4 GitHub connector 契約**：WebUI 呼叫 `/admin/connectors/github` 與 `/admin/connectors/github/sync`，但 Rust router 尚未提供兩條 route；完成 connector 實作前不得標記 workspace 隔離完成。
 - [x] **1.3.5 活動日誌 workspace 讀取稽核**：統計、workbench 與 query-log 讀取都有 `workspace_id` 條件。
-- [ ] **1.3.6 活動日誌完整功能**：修正總數／分頁／DTO 對齊、feedback workspace 條件，並補刪除 API 與 UI。
+- [x] **1.3.6 活動日誌完整功能**：修正總數／分頁／DTO 對齊、feedback workspace 條件，並補刪除 API 與 UI。
 
 ---
 

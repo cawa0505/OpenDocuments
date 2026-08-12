@@ -37,7 +37,7 @@ This document tracks execution status and concrete verification criteria across 
 - [ ] **1.3.3 CLI index sync integration tests**: verify empty directories, nested paths, and cross-workspace deletion isolation.
 - [ ] **1.3.4 GitHub connector contract**: WebUI calls `/admin/connectors/github` and `/admin/connectors/github/sync`, but the Rust router does not provide these routes; workspace isolation must not be marked complete before implementation.
 - [x] **1.3.5 Activity-log workspace read audit**: stats, workbench, and query-log reads include `workspace_id` filtering.
-- [ ] **1.3.6 Activity-log completeness**: fix total/pagination/DTO alignment, add workspace scoping to feedback updates, and implement delete API/UI.
+- [x] **1.3.6 Activity-log completeness**: fix total/pagination/DTO alignment, add workspace scoping to feedback updates, and implement delete API/UI.
 
 ---
 
