@@ -279,6 +279,42 @@ impl ConfigManager {
         // 兼容舊資料: 若無 title 欄位，用 name 欄位填入
         sqlx::query("UPDATE documents SET title = name WHERE title IS NULL AND name IS NOT NULL").execute(&pool).await.ok();
 
+        // Migration: 舊版（Node.js 時期）query_logs 使用 TEXT PRIMARY KEY 且資料 id 為 NULL，
+        // 導致 API 讀取 id=0、無法刪除。重建為 INTEGER AUTOINCREMENT 並保留資料。
+        let ql_id_type: Option<String> = sqlx::query_scalar(
+            "SELECT type FROM pragma_table_info('query_logs') WHERE name = 'id'"
+        )
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| e.to_string())?;
+        if let Some(t) = ql_id_type {
+            if t.to_lowercase().contains("text") {
+                let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+                sqlx::query("PRAGMA foreign_keys = OFF").execute(&mut *conn).await.map_err(|e| e.to_string())?;
+                sqlx::query("ALTER TABLE query_logs RENAME TO query_logs_old").execute(&mut *conn).await.map_err(|e| e.to_string())?;
+                sqlx::query(
+                    "CREATE TABLE query_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        query TEXT NOT NULL,
+                        profile TEXT NOT NULL,
+                        confidence_score REAL,
+                        response_time_ms INTEGER,
+                        route TEXT,
+                        feedback TEXT,
+                        workspace_id TEXT NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )"
+                ).execute(&mut *conn).await.map_err(|e| e.to_string())?;
+                sqlx::query(
+                    "INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, feedback, workspace_id, created_at)
+                     SELECT query, COALESCE(profile, 'balanced'), confidence_score, response_time_ms, route, feedback, workspace_id, created_at FROM query_logs_old"
+                ).execute(&mut *conn).await.map_err(|e| e.to_string())?;
+                sqlx::query("DROP TABLE query_logs_old").execute(&mut *conn).await.map_err(|e| e.to_string())?;
+                sqlx::query("PRAGMA foreign_keys = ON").execute(&mut *conn).await.map_err(|e| e.to_string())?;
+                println!("🗂️  migration: query_logs 已從 TEXT id 重建為 INTEGER AUTOINCREMENT");
+            }
+        }
+
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS query_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

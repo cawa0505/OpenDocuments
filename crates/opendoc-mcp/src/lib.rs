@@ -16,7 +16,8 @@ use handlers::conversations::{
 };
 use handlers::admin::{
     get_admin_stats_handler, get_admin_plugins_handler, get_admin_search_quality_handler,
-    get_admin_query_logs_handler, get_admin_benchmark_handler, get_admin_connectors_handler
+    get_admin_query_logs_handler, get_admin_benchmark_handler, get_admin_connectors_handler,
+    delete_query_log_handler
 };
 use handlers::documents::{
     list_documents_handler, get_document_handler, delete_document_handler,
@@ -69,6 +70,13 @@ pub use opendoc_storage::retriever::SearchHit;
 pub trait SearchBackend: Send + Sync {
     fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk>;
 
+    fn search_and_rerank_workspace(
+        &self,
+        query: &str,
+        threshold: f32,
+        workspace_id: &str,
+    ) -> Vec<opendoc_types::DocumentChunk>;
+
     /// 工作區感知 + top_k 的結構化檢索（R1）。預設回空；LanceDbRetriever 覆寫。
     fn search_hits(
         &self,
@@ -116,6 +124,18 @@ impl SearchBackend for opendoc_storage::retriever::SidecarRetriever {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current()
                 .block_on(async { self.search_default(query, threshold).await })
+        })
+    }
+
+    fn search_and_rerank_workspace(
+        &self,
+        query: &str,
+        threshold: f32,
+        workspace_id: &str,
+    ) -> Vec<opendoc_types::DocumentChunk> {
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current()
+                .block_on(async { self.search_workspace(query, threshold, workspace_id).await })
         })
     }
 
@@ -797,6 +817,7 @@ pub async fn start_mcp_and_api_server(
         .route("/admin/benchmark", get(get_admin_benchmark_handler))
         .route("/admin/connectors", get(get_admin_connectors_handler))
         .route("/admin/query-logs", get(get_admin_query_logs_handler))
+        .route("/admin/query-logs/:id", delete(delete_query_log_handler))
         .route("/admin/llm/providers", get(list_llm_providers_handler).post(upsert_llm_provider_handler))
         .route("/admin/llm/providers/:id", delete(delete_llm_provider_handler))
         .route("/admin/llm/test", post(test_llm_provider_handler))
@@ -1115,6 +1136,15 @@ mod tests {
         fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
             vec![]
         }
+
+        fn search_and_rerank_workspace(
+            &self,
+            _query: &str,
+            _threshold: f32,
+            _workspace_id: &str,
+        ) -> Vec<opendoc_types::DocumentChunk> {
+            vec![]
+        }
     }
 
     const TEST_BOUNDARY: &str = "----opendoc-test-boundary";
@@ -1173,7 +1203,8 @@ mod tests {
             .route("/admin/search-quality", get(get_admin_search_quality_handler))
             .route("/admin/benchmark", get(get_admin_benchmark_handler))
             .route("/admin/connectors", get(get_admin_connectors_handler))
-            .route("/admin/query-logs", get(get_admin_query_logs_handler))
+        .route("/admin/query-logs", get(get_admin_query_logs_handler))
+        .route("/admin/query-logs/:id", delete(delete_query_log_handler))
             .route("/admin/llm/providers", get(list_llm_providers_handler).post(upsert_llm_provider_handler))
             .route("/admin/llm/providers/:id", delete(delete_llm_provider_handler))
             .route("/admin/llm/test", post(test_llm_provider_handler))
@@ -1567,6 +1598,108 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let logs = json.get("logs").and_then(|v| v.as_array()).unwrap();
         assert!(!logs.is_empty(), "query logs 應該包含測試資料");
+        // 分頁與 total 欄位
+        assert!(json.get("total").and_then(|v| v.as_i64()).is_some_and(|t| t > 0));
+        assert_eq!(json.get("limit").and_then(|v| v.as_i64()), Some(50));
+        assert_eq!(json.get("offset").and_then(|v| v.as_i64()), Some(0));
+        // camelCase DTO 欄位
+        let first = logs[0].as_object().unwrap();
+        assert!(first.contains_key("confidenceScore"));
+        assert!(first.contains_key("responseTimeMs"));
+        assert!(first.contains_key("createdAt"));
+    }
+
+    #[tokio::test]
+    async fn test_admin_query_logs_pagination() {
+        let state = build_test_state().await;
+        // 插入額外日誌讓分頁有意義
+        sqlx::query("INSERT INTO query_logs (query, profile, workspace_id) VALUES ('分頁測試 A', 'balanced', ?)")
+            .bind("75b9b1dd-4c99-4b7d-a362-24fae18d861d")
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO query_logs (query, profile, workspace_id) VALUES ('分頁測試 B', 'balanced', ?)")
+            .bind("75b9b1dd-4c99-4b7d-a362-24fae18d861d")
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+
+        let res = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/query-logs?limit=1&offset=1")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let logs = json.get("logs").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(logs.len(), 1, "limit=1 應只回 1 筆");
+        assert_eq!(json.get("limit").and_then(|v| v.as_i64()), Some(1));
+        assert_eq!(json.get("offset").and_then(|v| v.as_i64()), Some(1));
+        let total = json.get("total").and_then(|v| v.as_i64()).unwrap();
+        assert!(total >= 3, "total 應包含全部日誌，實際 {total}");
+    }
+
+    #[tokio::test]
+    async fn test_admin_query_log_delete_workspace_scoped() {
+        let state = build_test_state().await;
+
+        // 撈出 homelab 工作區第一筆日誌 id
+        let list = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/query-logs?limit=1")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = axum::body::to_bytes(list.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let id = json.get("logs").and_then(|v| v.as_array()).unwrap()[0]
+            .get("id")
+            .and_then(|v| v.as_i64())
+            .unwrap();
+
+        // 建立第二個工作區，驗證「存在但無權限」的隔離語意
+        sqlx::query("INSERT INTO workspaces (id, name) VALUES ('a2b2c2d2-0000-4000-8000-000000000002', 'other-workspace')")
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+
+        // 用其他工作區刪除 → 404（workspace 隔離）
+        let cross = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/admin/query-logs/{id}"))
+                    .method("DELETE")
+                    .header("X-Workspace", "other-workspace")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(cross.status(), StatusCode::NOT_FOUND, "跨工作區不得刪除");
+
+        // 用正確工作區刪除 → 200
+        let ok = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/admin/query-logs/{id}"))
+                    .method("DELETE")
+                    .header("X-Workspace", "homelab")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(ok.status(), StatusCode::OK);
     }
 
     #[tokio::test]
@@ -1591,6 +1724,50 @@ mod tests {
          assert!(connectors.get("active").is_some(), "connectors 必須包含 active 屬性");
          assert!(connectors.get("total").is_some(), "connectors 必須包含 total 屬性");
      }
+ 
+    #[tokio::test]
+    async fn test_workbench_suggested_questions_follow_locale() {
+        let state = build_test_state().await;
+        let app = build_router(state);
+
+        async fn suggested_for(app: &axum::Router, locale: &str) -> Vec<String> {
+            let res = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/workbench")
+                        .header("X-Workspace", "homelab")
+                        .header("X-Locale", locale)
+                        .body(axum::body::Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+            let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            json.get("suggestedQuestions")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().filter_map(|q| q.as_str().map(String::from)).collect())
+                .unwrap_or_default()
+        }
+
+        let en = suggested_for(&app, "en").await;
+        assert_eq!(en.len(), 3);
+        assert!(en[0].starts_with("Summarize"), "en 應回英文：{en:?}");
+
+        let zh = suggested_for(&app, "zh-TW").await;
+        assert_eq!(zh.len(), 3);
+        assert!(zh[0].contains("總結"), "zh-TW 應回繁中：{zh:?}");
+
+        let ko = suggested_for(&app, "ko").await;
+        assert_eq!(ko.len(), 3);
+        assert!(ko[0].contains("요약"), "ko 應回韓文：{ko:?}");
+
+        // 未知語系 fallback 繁中（預設 locale）
+        let fallback = suggested_for(&app, "none").await;
+        assert!(fallback[0].contains("總結"), "未知語系應 fallback 繁中：{fallback:?}");
+    }
  
     #[tokio::test]
     async fn test_tags_crud_and_document_association() {
@@ -2059,6 +2236,7 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
                     .method("POST")
                     .uri("/chat/feedback")
                     .header("Content-Type", "application/json")
+                    .header("X-Workspace", "homelab")
                     .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
                     .unwrap(),
             )
@@ -2075,6 +2253,42 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
             .await
             .unwrap();
         assert_eq!(stored, "positive");
+    }
+
+    #[tokio::test]
+    async fn test_chat_feedback_isolated_across_workspaces() {
+        let state = build_test_state().await;
+        sqlx::query("INSERT INTO workspaces (id, name) VALUES ('a2b2c2d2-0000-4000-8000-000000000002', 'other-workspace')")
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+        let log_id: i64 = sqlx::query_scalar("SELECT id FROM query_logs LIMIT 1")
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+
+        // 用其他工作區更新 feedback → 404，且資料不被改動
+        let req_body = serde_json::json!({ "queryId": log_id.to_string(), "feedback": "positive" });
+        let res = build_router(state.clone())
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat/feedback")
+                    .header("Content-Type", "application/json")
+                    .header("X-Workspace", "other-workspace")
+                    .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND, "跨工作區不得修改 feedback");
+
+        let stored: Option<String> = sqlx::query_scalar("SELECT feedback FROM query_logs WHERE id = ?")
+            .bind(log_id)
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap();
+        assert_eq!(stored.as_deref(), Some("positive"), "跨工作區請求不得覆寫 feedback");
     }
 
     #[tokio::test]
@@ -2107,6 +2321,7 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
                     .method("POST")
                     .uri("/chat/stream")
                     .header("Content-Type", "application/json")
+                    .header("X-Workspace", "homelab")
                     .body(axum::body::Body::from(serde_json::to_vec(&req_body).unwrap()))
                     .unwrap(),
             )

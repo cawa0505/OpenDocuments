@@ -141,12 +141,15 @@ export async function getSearchQuality(): Promise<SearchQualityResponse> {
   return request('/admin/search-quality')
 }
 
-export async function getQueryLogs(opts?: { limit?: number; offset?: number; intent?: string }): Promise<QueryLogsResponse> {
+export async function getQueryLogs(opts?: { limit?: number; offset?: number }): Promise<QueryLogsResponse> {
   const params = new URLSearchParams()
   if (opts?.limit) params.set('limit', String(opts.limit))
   if (opts?.offset) params.set('offset', String(opts.offset))
-  if (opts?.intent) params.set('intent', opts.intent)
   return request(`/admin/query-logs?${params}`)
+}
+
+export async function deleteQueryLog(id: string): Promise<{ success: boolean }> {
+  return request(`/admin/query-logs/${id}`, { method: 'DELETE' })
 }
 
 // Collections

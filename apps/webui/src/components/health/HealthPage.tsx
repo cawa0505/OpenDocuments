@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Gauge, Plug, RefreshCw, SearchCheck } from 'lucide-react'
-import { getAdminStats, getConnectorStatus, getPluginHealth, getQueryLogs, getSearchQuality } from '../../lib/api'
+import { Activity, Gauge, Plug, RefreshCw, SearchCheck, Trash2 } from 'lucide-react'
+import { deleteQueryLog, getAdminStats, getConnectorStatus, getPluginHealth, getQueryLogs, getSearchQuality } from '../../lib/api'
 import type {
   AdminStatsResponse,
   ConnectorStatusResponse,
@@ -91,6 +91,16 @@ export function HealthPage() {
       setError(err instanceof Error ? err.message : t('activity.loading'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const removeLog = async (logId: string | undefined) => {
+    if (!logId) return
+    try {
+      await deleteQueryLog(logId)
+      setLogs((prev) => (prev ? { ...prev, logs: prev.logs.filter((l) => l.id !== logId), total: prev.total - 1 } : prev))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('activity.loading'))
     }
   }
 
@@ -187,20 +197,27 @@ export function HealthPage() {
               <div className="px-5 py-12 text-center text-[14px] text-slate-400">{t('activity.noQueries')}</div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {queryRows.map((log, index) => (
-                  <div key={log.id || `${log.created_at}-${index}`} className="px-4 py-4">
+                {queryRows.map((log) => (
+                  <div key={log.id || log.createdAt} className="px-4 py-4">
                     <div className="flex items-start justify-between gap-4">
                       <p className="min-w-0 text-[14px] font-semibold text-slate-900">{log.query}</p>
                       <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                         {log.route || 'unknown'}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => void removeLog(log.id)}
+                        title={t('activity.deleteLog')}
+                        className="shrink-0 rounded-md p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-slate-400">
-                      <span>{t('activity.intent')}: {log.intent || 'general'}</span>
                       <span>{t('activity.profile')}: {log.profile}</span>
-                      <span>{t('dashboard.confidence')}: {log.confidence_score === null ? '-' : pct(log.confidence_score)}</span>
-                      <span>{t('activity.response')}: {log.response_time_ms === null ? '-' : `${log.response_time_ms}ms`}</span>
-                      <span>{formatDate(log.created_at, locale)}</span>
+                      <span>{t('dashboard.confidence')}: {log.confidenceScore === null ? '-' : pct(log.confidenceScore)}</span>
+                      <span>{t('activity.response')}: {log.responseTimeMs === null ? '-' : `${log.responseTimeMs}ms`}</span>
+                      <span>{formatDate(log.createdAt, locale)}</span>
                     </div>
                   </div>
                 ))}

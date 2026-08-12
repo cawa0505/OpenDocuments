@@ -1,8 +1,19 @@
-use std::sync::Arc;
-use axum::{extract::State, http::StatusCode, Json};
-use serde_json::json;
-use crate::McpState;
 use crate::utils::resolve_workspace_id;
+use crate::McpState;
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    Json,
+};
+use serde::Deserialize;
+use serde_json::json;
+use std::sync::Arc;
+
+#[derive(Deserialize)]
+pub struct QueryLogsParams {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
 
 pub async fn get_admin_stats_handler(
     State(state): State<Arc<McpState>>,
@@ -107,13 +118,29 @@ pub async fn get_admin_search_quality_handler(
 pub async fn get_admin_query_logs_handler(
     State(state): State<Arc<McpState>>,
     headers: axum::http::HeaderMap,
+    Query(params): Query<QueryLogsParams>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
+    let offset = params.offset.unwrap_or(0).max(0);
+
+    let total_row = sqlx::query("SELECT COUNT(*) FROM query_logs WHERE workspace_id = ?")
+        .bind(&workspace_id)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 計算日誌總數失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    let total: i64 = sqlx::Row::get(&total_row, 0);
+
     let query_rows = sqlx::query(
-        "SELECT id, query, profile, confidence_score, response_time_ms, route, feedback, datetime(created_at, 'localtime') FROM query_logs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 100"
+        "SELECT id, query, profile, confidence_score, response_time_ms, route, feedback, datetime(created_at, 'localtime') FROM query_logs WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
     )
     .bind(&workspace_id)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
@@ -144,7 +171,31 @@ pub async fn get_admin_query_logs_handler(
         }));
     }
 
-    Ok(Json(json!({ "logs": logs })))
+    Ok(Json(json!({ "logs": logs, "total": total, "limit": limit, "offset": offset })))
+}
+
+pub async fn delete_query_log_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    let result = sqlx::query("DELETE FROM query_logs WHERE id = ? AND workspace_id = ?")
+        .bind(id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 刪除日誌失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    Ok(Json(json!({ "success": true })))
 }
 
 pub async fn get_admin_benchmark_handler(
@@ -198,7 +249,10 @@ pub async fn get_admin_connectors_handler(
     for r in rows {
         let config_str = sqlx::Row::get::<String, _>(&r, 3);
         let config_val: serde_json::Value = serde_json::from_str(&config_str).unwrap_or(json!({}));
-        let repo = config_val.get("repo").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let repo = config_val
+            .get("repo")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
 
         connectors.push(json!({
             "connectorId": sqlx::Row::get::<String, _>(&r, 0),

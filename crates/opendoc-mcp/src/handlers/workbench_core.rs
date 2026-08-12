@@ -1,10 +1,10 @@
-use std::sync::Arc;
-use std::collections::HashMap;
+use crate::utils::resolve_workspace_id;
+use crate::McpState;
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::McpState;
-use crate::utils::resolve_workspace_id;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,7 +48,10 @@ pub async fn workbench_handler(
 
     let mut source_distribution = HashMap::new();
     for r in source_rows {
-        source_distribution.insert(sqlx::Row::get::<String, _>(&r, 0), sqlx::Row::get::<i64, _>(&r, 1));
+        source_distribution.insert(
+            sqlx::Row::get::<String, _>(&r, 0),
+            sqlx::Row::get::<i64, _>(&r, 1),
+        );
     }
 
     let status_rows = sqlx::query(
@@ -61,7 +64,10 @@ pub async fn workbench_handler(
 
     let mut status_distribution = HashMap::new();
     for r in status_rows {
-        status_distribution.insert(sqlx::Row::get::<String, _>(&r, 0), sqlx::Row::get::<i64, _>(&r, 1));
+        status_distribution.insert(
+            sqlx::Row::get::<String, _>(&r, 0),
+            sqlx::Row::get::<i64, _>(&r, 1),
+        );
     }
 
     // 3. 查詢質量與回饋
@@ -81,7 +87,7 @@ pub async fn workbench_handler(
         "SELECT
             SUM(CASE WHEN feedback = 'positive' THEN 1 ELSE 0 END) as positive,
             SUM(CASE WHEN feedback = 'negative' THEN 1 ELSE 0 END) as negative
-         FROM query_logs WHERE feedback IS NOT NULL AND workspace_id = ?"
+         FROM query_logs WHERE feedback IS NOT NULL AND workspace_id = ?",
     )
     .bind(&workspace_id)
     .fetch_one(&state.db_pool)
@@ -112,19 +118,52 @@ pub async fn workbench_handler(
         });
     }
 
-    // 5. 建議提問
-    let suggested_questions = if doc_count == 0 {
-        vec![
-            "What should I upload first?".to_string(),
-            "How do I connect a documentation source?".to_string(),
-            "What can OpenDocuments answer once documents are indexed?".to_string(),
-        ]
+    // 5. 建議提問（依 X-Locale 三語；缺省時回傳繁中，與 chat.rs 一致）
+    let locale = headers
+        .get("x-locale")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("zh-TW");
+
+    let empty: [&str; 3] = match locale {
+        "en" => [
+            "What should I upload first?",
+            "How do I connect a documentation source?",
+            "What can OpenDocuments answer once documents are indexed?",
+        ],
+        "ko" => [
+            "어떤 문서를 먼저 업로드해야 하나요?",
+            "문서 소스는 어떻게 연결하나요?",
+            "인덱싱 후 어떤 질문에 답할 수 있나요?",
+        ],
+        _ => [
+            "我該先上傳哪些文件？",
+            "如何連接文件來源？",
+            "文件建立索引後能問什麼？",
+        ],
+    };
+
+    let populated: [&str; 3] = match locale {
+        "en" => [
+            "Summarize the most important docs in this workspace.",
+            "Which source explains the current deployment process?",
+            "Find policy or architecture notes related to authentication.",
+        ],
+        "ko" => [
+            "작업 공간의 주요 문서를 요약해 주세요.",
+            "현재 배포 프로세스를 설명하는 소스는 무엇인가요?",
+            "인증 관련 정책 또는 아키텍처 노트를 찾아주세요.",
+        ],
+        _ => [
+            "總結工作區重點文件",
+            "哪裡說明目前的部署流程？",
+            "尋找認證相關的政策文件",
+        ],
+    };
+
+    let suggested_questions: Vec<String> = if doc_count == 0 {
+        empty.iter().map(|s| s.to_string()).collect()
     } else {
-        vec![
-            "Summarize the most important docs in this workspace.".to_string(),
-            "Which source explains the current deployment process?".to_string(),
-            "Find policy or architecture notes related to authentication.".to_string(),
-        ]
+        populated.iter().map(|s| s.to_string()).collect()
     };
 
     Ok(Json(json!({

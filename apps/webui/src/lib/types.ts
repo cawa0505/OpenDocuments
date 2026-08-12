@@ -68,6 +68,7 @@ export type StreamEvent =
   | { type: 'sources'; data: SearchResult[] }
   | { type: 'confidence'; data: ConfidenceResult }
   | { type: 'done'; data: { queryId: string; route: string; profile: string; conversationId?: string } }
+  | { type: 'error'; data: { error: string } }
 
 export interface Document {
   id: string
@@ -135,8 +136,8 @@ export interface SearchQualityResponse {
 export interface QueryLogsResponse {
   logs: Array<{
     id?: string
-    query: string; intent: string | null; profile: string; route: string | null
-    confidence_score: number | null; response_time_ms: number | null; feedback: string | null; created_at: string
+    query: string; profile: string; route: string | null
+    confidenceScore: number | null; responseTimeMs: number | null; feedback: string | null; createdAt: string
   }>
   total: number; limit: number; offset: number
 }

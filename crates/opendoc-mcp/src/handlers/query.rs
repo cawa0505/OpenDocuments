@@ -1,13 +1,9 @@
-use std::sync::Arc;
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use crate::utils::resolve_workspace_id;
+use crate::McpState;
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::McpState;
-use crate::utils::resolve_workspace_id;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,6 +67,7 @@ pub struct QueryFeedbackResponse {
 
 pub async fn query_feedback_handler(
     State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
     Json(payload): Json<QueryFeedbackRequest>,
 ) -> Result<Json<QueryFeedbackResponse>, (StatusCode, String)> {
     if payload.feedback != "positive" && payload.feedback != "negative" {
@@ -80,14 +77,29 @@ pub async fn query_feedback_handler(
         ));
     }
 
-    sqlx::query(
-        "UPDATE query_logs SET feedback = ? WHERE id = ?"
-    )
-    .bind(&payload.feedback)
-    .bind(payload.log_id)
-    .execute(&state.db_pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("更新回饋紀錄失敗: {e}")))?;
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|e| (e, "解析工作區失敗".to_string()))?;
+
+    let result = sqlx::query("UPDATE query_logs SET feedback = ? WHERE id = ? AND workspace_id = ?")
+        .bind(&payload.feedback)
+        .bind(payload.log_id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("更新回饋紀錄失敗: {e}"),
+            )
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            "找不到對應的查詢紀錄或工作區不符".to_string(),
+        ));
+    }
 
     Ok(Json(QueryFeedbackResponse { success: true }))
 }
@@ -101,6 +113,7 @@ pub struct ChatFeedbackRequest {
 
 pub async fn chat_feedback_handler(
     State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
     Json(payload): Json<ChatFeedbackRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     if payload.feedback != "positive" && payload.feedback != "negative" {
@@ -110,12 +123,29 @@ pub async fn chat_feedback_handler(
         ));
     }
 
-    sqlx::query("UPDATE query_logs SET feedback = ? WHERE id = ?")
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
+        .map_err(|e| (e, "解析工作區失敗".to_string()))?;
+
+    let result = sqlx::query("UPDATE query_logs SET feedback = ? WHERE id = ? AND workspace_id = ?")
         .bind(&payload.feedback)
         .bind(&payload.query_id)
+        .bind(&workspace_id)
         .execute(&state.db_pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("更新回饋紀錄失敗: {e}")))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("更新回饋紀錄失敗: {e}"),
+            )
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            "找不到對應的查詢紀錄或工作區不符".to_string(),
+        ));
+    }
 
     Ok(Json(json!({ "saved": true })))
 }
