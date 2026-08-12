@@ -3,16 +3,16 @@
 //! 回 `{ hits: [{ doc_path, spec_id, score, snippet }] }`（R2）。
 //! 同步呼叫 `SearchBackend::search_hits`（內部以 block_in_place+block_on 跑非同步 lancedb）。
 
-use std::sync::Arc;
+use crate::utils::resolve_workspace_id;
+use crate::McpState;
+use crate::SearchHit;
 use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
     Json,
 };
 use serde::{Deserialize, Serialize};
-use crate::McpState;
-use crate::SearchHit;
-use crate::utils::resolve_workspace_id;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct SearchRequest {
@@ -47,6 +47,8 @@ pub async fn search_handler(
     let cfg = state.config_manager.get_config().await;
     let top_k = body.top_k.unwrap_or(10);
     let threshold = body.threshold.unwrap_or(cfg.model.score_threshold);
-    let hits = state.search.search_hits(query, top_k, threshold, &workspace_id);
+    let hits = state
+        .search
+        .search_hits(query, top_k, threshold, &workspace_id);
     Ok(Json(SearchResponse { hits }))
 }

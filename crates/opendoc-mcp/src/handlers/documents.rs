@@ -1,13 +1,13 @@
-use std::sync::Arc;
+use crate::utils::{map_document_row, resolve_workspace_id, DocumentItem};
+use crate::McpState;
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
 use serde_json::json;
 use std::collections::HashMap;
-use crate::McpState;
-use crate::utils::{resolve_workspace_id, map_document_row, DocumentItem};
+use std::sync::Arc;
 
 pub async fn list_documents_handler(
     State(state): State<Arc<McpState>>,
@@ -26,7 +26,10 @@ pub async fn list_documents_handler(
         }
     }
 
-    if let Some(source_type) = params.get("sourceType").or_else(|| params.get("source_type")) {
+    if let Some(source_type) = params
+        .get("sourceType")
+        .or_else(|| params.get("source_type"))
+    {
         if !source_type.is_empty() && source_type != "all" {
             sql.push_str(" AND source_type = ?");
             binds.push(source_type.clone());
@@ -55,13 +58,10 @@ pub async fn list_documents_handler(
         query = query.bind(val);
     }
 
-    let rows = query
-        .fetch_all(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 查詢 documents 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let rows = query.fetch_all(&state.db_pool).await.map_err(|e| {
+        eprintln!("💥 查詢 documents 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     let documents: Vec<DocumentItem> = rows.iter().map(map_document_row).collect();
 
@@ -121,7 +121,7 @@ pub async fn delete_document_handler(
 
     // Node 契約 documents.ts:42：文件不存在（含其他 workspace）→ 404
     let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM documents WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+        "SELECT COUNT(*) FROM documents WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL",
     )
     .bind(&id)
     .bind(&workspace)
@@ -136,12 +136,14 @@ pub async fn delete_document_handler(
         ));
     }
 
-    sqlx::query("UPDATE documents SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND workspace_id = ?")
-        .bind(&id)
-        .bind(&workspace)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    sqlx::query(
+        "UPDATE documents SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND workspace_id = ?",
+    )
+    .bind(&id)
+    .bind(&workspace)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // 同步移除 LanceDB chunks（待討論 #2：排除已失效文件，避免已刪文件仍被搜尋命中）。
     // Best-effort：索引失敗不影響文件刪除本身。
@@ -161,7 +163,7 @@ pub async fn list_trash_handler(
          connector_id, chunk_count, status, content_hash, error_message, \
          datetime(created_at, 'localtime'), datetime(updated_at, 'localtime'), \
          indexed_at, workspace_id FROM documents WHERE workspace_id = ? AND deleted_at IS NOT NULL \
-         ORDER BY deleted_at DESC"
+         ORDER BY deleted_at DESC",
     )
     .bind(&workspace_id)
     .fetch_all(&state.db_pool)
@@ -180,18 +182,24 @@ pub async fn restore_document_handler(
     headers: axum::http::HeaderMap,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
         .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
 
     sqlx::query(
         "UPDATE documents SET deleted_at = NULL, updated_at = CURRENT_TIMESTAMP \
-         WHERE id = ? AND workspace_id = ?"
+         WHERE id = ? AND workspace_id = ?",
     )
     .bind(&id)
     .bind(&workspace_id)
     .execute(&state.db_pool)
     .await
-    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" }))))?;
+    .map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": "internal error" })),
+        )
+    })?;
 
     Ok(Json(json!({ "restored": true })))
 }

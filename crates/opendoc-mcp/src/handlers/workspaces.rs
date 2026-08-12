@@ -1,13 +1,9 @@
-use std::sync::Arc;
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use crate::McpState;
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::sync::Arc;
 use uuid::Uuid;
-use crate::McpState;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,15 +25,14 @@ pub struct CreateWorkspaceReq {
 pub async fn list_workspaces_handler(
     State(state): State<Arc<McpState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let rows: Vec<(String, String, String)> = sqlx::query_as(
-        "SELECT id, name, datetime(created_at, 'localtime') FROM workspaces"
-    )
-    .fetch_all(&state.db_pool)
-    .await
-    .map_err(|e| {
-        eprintln!("💥 查詢 workspaces 失敗: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let rows: Vec<(String, String, String)> =
+        sqlx::query_as("SELECT id, name, datetime(created_at, 'localtime') FROM workspaces")
+            .fetch_all(&state.db_pool)
+            .await
+            .map_err(|e| {
+                eprintln!("💥 查詢 workspaces 失敗: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     // 取得設定檔中的預設工作空間名稱
     let config = state.config_manager.get_config().await;
@@ -65,15 +60,17 @@ pub async fn create_workspace_handler(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Node 契約：workspace id = randomUUID；name 用請求帶的 id 欄位
     let id = Uuid::new_v4().to_string();
-    sqlx::query("INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
-        .bind(&id)
-        .bind(&payload.id)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 建立工作空間失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    sqlx::query(
+        "INSERT OR IGNORE INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+    )
+    .bind(&id)
+    .bind(&payload.id)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 建立工作空間失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(json!({ "success": true })))
 }
@@ -83,7 +80,12 @@ pub async fn delete_workspace_handler(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // UUID 遷移後 default workspace 的 id 是 UUID（不再等於名稱），改查 id 或 name 比對
-    let default_workspace = state.config_manager.get_config().await.model.default_workspace;
+    let default_workspace = state
+        .config_manager
+        .get_config()
+        .await
+        .model
+        .default_workspace;
     let default_id: Option<String> = sqlx::query_scalar("SELECT id FROM workspaces WHERE name = ?")
         .bind(&default_workspace)
         .fetch_optional(&state.db_pool)

@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use crate::utils::{map_document_row, resolve_workspace_id, DocumentItem};
+use crate::McpState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -6,9 +7,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::sync::Arc;
 use uuid::Uuid;
-use crate::McpState;
-use crate::utils::{resolve_workspace_id, map_document_row, DocumentItem};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateCollectionRequest {
@@ -50,7 +50,10 @@ pub async fn create_collection_handler(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let name = payload.name.trim().to_string();
     if name.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Collection name required" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Collection name required" })),
+        ));
     }
 
     let workspace_id = resolve_workspace_id(&state, &headers)
@@ -59,17 +62,22 @@ pub async fn create_collection_handler(
     let id = Uuid::new_v4().to_string();
     let description = payload.description;
 
-    sqlx::query("INSERT INTO collections (id, workspace_id, name, description) VALUES (?, ?, ?, ?)")
-        .bind(&id)
-        .bind(&workspace_id)
-        .bind(&name)
-        .bind(&description)
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 建立 collection 失敗: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
-        })?;
+    sqlx::query(
+        "INSERT INTO collections (id, workspace_id, name, description) VALUES (?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(&workspace_id)
+    .bind(&name)
+    .bind(&description)
+    .execute(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 建立 collection 失敗: {e}");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": "internal error" })),
+        )
+    })?;
 
     Ok((
         StatusCode::CREATED,

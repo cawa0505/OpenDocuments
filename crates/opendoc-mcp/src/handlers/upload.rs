@@ -1,13 +1,9 @@
-use std::sync::Arc;
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use crate::McpState;
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use uuid::Uuid;
-use crate::McpState;
 
 #[derive(Serialize, Deserialize)]
 pub struct UploadResponse {
@@ -30,12 +26,18 @@ pub async fn upload_handler(
         .filter(|s| !s.is_empty())
     {
         Some(s) => s,
-        None => state.config_manager.get_config().await.model.default_workspace.clone(),
+        None => state
+            .config_manager
+            .get_config()
+            .await
+            .model
+            .default_workspace
+            .clone(),
     };
 
     // lenient upload: auto-create if missing
     let workspace_id: String = match sqlx::query_scalar(
-        "SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1"
+        "SELECT id FROM workspaces WHERE id = ? OR name = ? LIMIT 1",
     )
     .bind(&raw_ws)
     .bind(&raw_ws)
@@ -46,12 +48,14 @@ pub async fn upload_handler(
         Some(id) => id,
         None => {
             let new_id = Uuid::new_v4().to_string();
-            sqlx::query("INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")
-                .bind(&new_id)
-                .bind(&raw_ws)
-                .execute(&state.db_pool)
-                .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))? ;
+            sqlx::query(
+                "INSERT INTO workspaces (id, name, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+            )
+            .bind(&new_id)
+            .bind(&raw_ws)
+            .execute(&state.db_pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
             new_id
         }
     };
@@ -85,10 +89,7 @@ pub async fn upload_handler(
     }
 
     if file_bytes.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "上傳檔案內容不可為空".to_string(),
-        ));
+        return Err((StatusCode::BAD_REQUEST, "上傳檔案內容不可為空".to_string()));
     }
 
     // Calculate SHA-256 hash of file content
@@ -111,7 +112,7 @@ pub async fn upload_handler(
     // 3. 在暫存目錄中建立安全的隨機檔名暫存實體檔案
     let temp_dir = std::env::temp_dir();
     let temp_file_id = Uuid::new_v4().to_string();
-    
+
     // 從原名萃取小寫副檔名
     let ext_suffix = original_name
         .as_deref()
@@ -122,8 +123,12 @@ pub async fn upload_handler(
 
     let temp_file_path = temp_dir.join(format!("opendoc-{temp_file_id}{ext_suffix}"));
 
-    std::fs::write(&temp_file_path, &file_bytes)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("寫入暫存檔失敗: {e}")))?;
+    std::fs::write(&temp_file_path, &file_bytes).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("寫入暫存檔失敗: {e}"),
+        )
+    })?;
 
     // 4. 呼叫雙軌高彈性 Parser 進行解析，回傳 chunks 向量
     let chunks = opendoc_parser::parse_file(
@@ -144,7 +149,9 @@ pub async fn upload_handler(
     let chunks_count = chunks.len();
 
     // 6. 持久化寫入 SQLite 資料庫 documents 表
-    let file_path_str = original_name.clone().unwrap_or_else(|| format!("opendoc-{temp_file_id}"));
+    let file_path_str = original_name
+        .clone()
+        .unwrap_or_else(|| format!("opendoc-{temp_file_id}"));
 
     // 寫入 documents 資料庫
     let ext_display = ext_suffix.trim_start_matches('.').to_uppercase();
@@ -204,10 +211,13 @@ pub async fn upload_handler(
     };
 
     // 7. 索引 chunks → embedding → LanceDB（套件介面搜尋用）。best-effort：失敗不阻塞上傳。
-    if let Err(e) = state
-        .search
-        .index_chunks(&document_id, &workspace_id, Some(&collection_id), &source_path, &chunks)
-    {
+    if let Err(e) = state.search.index_chunks(
+        &document_id,
+        &workspace_id,
+        Some(&collection_id),
+        &source_path,
+        &chunks,
+    ) {
         eprintln!("⚠️ 向量索引寫入失敗（文件已入庫但搜尋暫時查不到）: {e}");
     }
 

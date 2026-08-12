@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use crate::utils::resolve_workspace_id;
+use crate::McpState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -6,9 +7,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::sync::Arc;
 use uuid::Uuid;
-use crate::McpState;
-use crate::utils::resolve_workspace_id;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -31,14 +31,16 @@ pub async fn list_tags_handler(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let workspace_id = resolve_workspace_id(&state, &headers).await?;
 
-    let rows = sqlx::query("SELECT id, workspace_id, name, color FROM tags WHERE workspace_id = ? ORDER BY name")
-        .bind(&workspace_id)
-        .fetch_all(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 查詢 tags 失敗: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let rows = sqlx::query(
+        "SELECT id, workspace_id, name, color FROM tags WHERE workspace_id = ? ORDER BY name",
+    )
+    .bind(&workspace_id)
+    .fetch_all(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 tags 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     let mut tags = Vec::new();
     for r in rows {
@@ -60,7 +62,10 @@ pub async fn create_tag_handler(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let name = payload.name.trim().to_string();
     if name.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Tag name required" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Tag name required" })),
+        ));
     }
 
     let workspace_id = resolve_workspace_id(&state, &headers)
@@ -78,7 +83,10 @@ pub async fn create_tag_handler(
         .await
         .map_err(|e| {
             eprintln!("💥 建立 tag 失敗: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal error" })),
+            )
         })?;
 
     Ok((
@@ -124,7 +132,7 @@ pub async fn tag_document_handler(
          SELECT d.id, t.id \
          FROM documents d \
          JOIN tags t ON t.id = ? \
-         WHERE d.id = ? AND d.workspace_id = ? AND t.workspace_id = ?"
+         WHERE d.id = ? AND d.workspace_id = ? AND t.workspace_id = ?",
     )
     .bind(&tag_id)
     .bind(&doc_id)
@@ -151,7 +159,7 @@ pub async fn untag_document_handler(
         "DELETE FROM document_tags \
          WHERE document_id = ? AND tag_id = ? \
          AND EXISTS (SELECT 1 FROM documents WHERE id = ? AND workspace_id = ?) \
-         AND EXISTS (SELECT 1 FROM tags WHERE id = ? AND workspace_id = ?)"
+         AND EXISTS (SELECT 1 FROM tags WHERE id = ? AND workspace_id = ?)",
     )
     .bind(&doc_id)
     .bind(&tag_id)

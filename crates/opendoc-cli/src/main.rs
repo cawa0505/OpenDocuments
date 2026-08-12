@@ -22,14 +22,6 @@ use sha2::{Digest, Sha256};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use std::collections::HashMap;
 
-struct SearchWrapper(Arc<ConfigManager>);
-
-impl SearchBackend for SearchWrapper {
-    fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
-        self.0.search_and_rerank(query, threshold)
-    }
-}
-
 #[derive(Parser)]
 #[command(name = "opendocuments-rust")]
 #[command(author = "Jimmy Yen")]
@@ -194,8 +186,7 @@ enum ConfigSubcommands {
 }
 
 /// 建立向量檢索後端：讀取 llm_providers（優先 kind='embedding' 行，否則退化為 active chat
-/// provider + embedding_provider_name 當模型名）→ ByokEmbeddingProvider → LanceDbRetriever。
-/// 失敗時呼叫端退化為 SearchWrapper（空搜），不阻塞伺服器啟動。
+/// provider + embedding_provider_name 當模型名）→ ByokEmbeddingProvider → SidecarRetriever。
 async fn build_search_backend(
     app_cfg: &AppConfig,
     pool: &sqlx::SqlitePool,
@@ -935,14 +926,9 @@ match sub {
                 }
             };
 
-            // 建立向量檢索後端（BYOK embedding + LanceDB）。失敗則退化為空搜（chat 仍可用）。
-            let search: Arc<dyn SearchBackend> = match build_search_backend(&app_cfg, &db_pool).await {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("⚠️ 向量檢索後端初始化失敗，退化為空搜（不阻塞啟動）: {e}");
-                    Arc::new(SearchWrapper(Arc::clone(&config_manager))) as Arc<dyn SearchBackend>
-                }
-            };
+            let search = build_search_backend(&app_cfg, &db_pool)
+                .await
+                .map_err(|e| format!("向量檢索後端初始化失敗: {e}"))?;
 
             if mcp_only {
                 // 進入 stdio Local MCP 專用模式，絕不混淆

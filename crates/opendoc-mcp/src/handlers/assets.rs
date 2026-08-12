@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use crate::utils::{clean_json_markdown, resolve_workspace_id};
+use crate::McpState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -6,9 +7,8 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json; // removed unused Serialize and Value
+use std::sync::Arc;
 use uuid::Uuid;
-use crate::McpState;
-use crate::utils::{resolve_workspace_id, clean_json_markdown};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -21,7 +21,10 @@ pub struct ExtractAssetRequest {
     pub prompt: Option<String>,
 }
 
-async fn get_active_llm_client(db_pool: &sqlx::SqlitePool, workspace_id: &str) -> Option<opendoc_llm::LlmClient> {
+async fn get_active_llm_client(
+    db_pool: &sqlx::SqlitePool,
+    workspace_id: &str,
+) -> Option<opendoc_llm::LlmClient> {
     let row_res = sqlx::query(
         "SELECT name, provider, base_url, model, api_key FROM llm_providers WHERE workspace_id = ? AND is_active = 1 AND kind = 'chat' LIMIT 1"
     )
@@ -37,7 +40,11 @@ async fn get_active_llm_client(db_pool: &sqlx::SqlitePool, workspace_id: &str) -
             let model: String = sqlx::Row::get(&row, 3);
             let api_key: String = sqlx::Row::get(&row, 4);
 
-            let api_key_opt = if api_key.is_empty() { None } else { Some(api_key) };
+            let api_key_opt = if api_key.is_empty() {
+                None
+            } else {
+                Some(api_key)
+            };
 
             let provider = opendoc_llm::LlmProvider {
                 name,
@@ -56,11 +63,13 @@ pub async fn extract_asset_handler(
     headers: axum::http::HeaderMap,
     Json(payload): Json<ExtractAssetRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
         .map_err(|s| (s, Json(json!({ "error": "invalid workspace" }))))?;
 
     let asset_id = Uuid::new_v4().to_string();
-    let schema_str = serde_json::to_string(&payload.schema_definition).unwrap_or_else(|_| "[]".to_string());
+    let schema_str =
+        serde_json::to_string(&payload.schema_definition).unwrap_or_else(|_| "[]".to_string());
 
     let mut final_data = payload.data_content.clone().unwrap_or(json!([]));
     let mut source_chunks = json!([]);
@@ -69,18 +78,29 @@ pub async fn extract_asset_handler(
         if let Some(llm_client) = get_active_llm_client(&state.db_pool, &workspace_id).await {
             let mut context_text = String::new();
             if let Some(ref doc_id) = payload.document_id {
-                let doc_row = sqlx::query("SELECT title, source_path FROM documents WHERE id = ? AND workspace_id = ?")
-                    .bind(doc_id)
-                    .bind(&workspace_id)
-                    .fetch_optional(&state.db_pool)
-                    .await
-                    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("database query error: {e}") }))))?;
+                let doc_row = sqlx::query(
+                    "SELECT title, source_path FROM documents WHERE id = ? AND workspace_id = ?",
+                )
+                .bind(doc_id)
+                .bind(&workspace_id)
+                .fetch_optional(&state.db_pool)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": format!("database query error: {e}") })),
+                    )
+                })?;
 
                 if let Some(r) = doc_row {
                     let doc_title = sqlx::Row::get::<String, _>(&r, 0);
                     let chunks = state.search.search_and_rerank(&doc_title, 0.0);
                     for (i, chunk) in chunks.iter().enumerate() {
-                        context_text.push_str(&format!("--- Chunk {} ---\n{}\n", i + 1, chunk.content));
+                        context_text.push_str(&format!(
+                            "--- Chunk {} ---\n{}\n",
+                            i + 1,
+                            chunk.content
+                        ));
                     }
                     source_chunks = json!([doc_id]);
                 }
@@ -92,11 +112,17 @@ pub async fn extract_asset_handler(
             }
 
             if context_text.is_empty() {
-                context_text = "No document context found. Please extract based on general knowledge.".to_string();
+                context_text =
+                    "No document context found. Please extract based on general knowledge."
+                        .to_string();
             }
 
-            let schema_hint = serde_json::to_string_pretty(&payload.schema_definition).unwrap_or_default();
-            let custom_prompt = payload.prompt.as_deref().unwrap_or("Extract key entities and relationships.");
+            let schema_hint =
+                serde_json::to_string_pretty(&payload.schema_definition).unwrap_or_default();
+            let custom_prompt = payload
+                .prompt
+                .as_deref()
+                .unwrap_or("Extract key entities and relationships.");
 
             let system_prompt = format!(
                 "You are an expert Structured Data Extraction Agent.\n\
@@ -141,7 +167,10 @@ pub async fn extract_asset_handler(
                 }
                 Err(e) => {
                     eprintln!("💥 LLM 萃取完成請求失敗: {e}");
-                    return Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": format!("LLM request failed: {e}") }))));
+                    return Err((
+                        StatusCode::BAD_GATEWAY,
+                        Json(json!({ "error": format!("LLM request failed: {e}") })),
+                    ));
                 }
             }
         } else {
@@ -150,7 +179,10 @@ pub async fn extract_asset_handler(
                 for col in arr {
                     if let Some(key) = col.get("key").and_then(|k| k.as_str()) {
                         let label = col.get("label").and_then(|l| l.as_str()).unwrap_or(key);
-                        fallback_row.insert(key.to_string(), json!(format!("[模擬資料] 關於 {label} 的萃取內容")));
+                        fallback_row.insert(
+                            key.to_string(),
+                            json!(format!("[模擬資料] 關於 {label} 的萃取內容")),
+                        );
                     }
                 }
             }
@@ -162,7 +194,8 @@ pub async fn extract_asset_handler(
     }
 
     let final_data_str = serde_json::to_string(&final_data).unwrap_or_else(|_| "[]".to_string());
-    let source_chunks_str = serde_json::to_string(&source_chunks).unwrap_or_else(|_| "[]".to_string());
+    let source_chunks_str =
+        serde_json::to_string(&source_chunks).unwrap_or_else(|_| "[]".to_string());
 
     sqlx::query(
         "INSERT INTO extracted_assets (id, workspace_id, document_id, asset_type, title, schema_definition, data_content, source_chunks) \
@@ -257,8 +290,10 @@ pub async fn get_asset_handler(
             let chunks_str = sqlx::Row::get::<String, _>(&r, 7);
 
             let schema: serde_json::Value = serde_json::from_str(&schema_str).unwrap_or(json!([]));
-            let data_content: serde_json::Value = serde_json::from_str(&data_str).unwrap_or(json!([]));
-            let source_chunks: serde_json::Value = serde_json::from_str(&chunks_str).unwrap_or(json!([]));
+            let data_content: serde_json::Value =
+                serde_json::from_str(&data_str).unwrap_or(json!([]));
+            let source_chunks: serde_json::Value =
+                serde_json::from_str(&chunks_str).unwrap_or(json!([]));
 
             Ok(Json(json!({
                 "id": sqlx::Row::get::<String, _>(&r, 0),

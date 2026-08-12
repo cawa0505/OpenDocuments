@@ -21,7 +21,7 @@ export function SourceCard({ source, onOpen, openLabel }: Props) {
       className="flex min-w-0 items-center gap-2.5 rounded-md border border-transparent p-2 text-left transition-colors hover:border-blue-100 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
       title={`${openLabel}: ${source.sourcePath}`}
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-blue-100 bg-white text-blue-600">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-blue-200 bg-white text-blue-600">
         <FileText size={17} strokeWidth={2} />
       </div>
       <div className="min-w-0 flex-1">

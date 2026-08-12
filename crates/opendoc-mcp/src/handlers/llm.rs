@@ -1,15 +1,15 @@
-use std::sync::Arc;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     Json,
 };
 use serde::Deserialize;
+use std::sync::Arc;
 // removed unused Serialize
+use crate::utils::resolve_workspace_id;
+use crate::McpState;
 use serde_json::json;
 use uuid::Uuid;
-use crate::McpState;
-use crate::utils::resolve_workspace_id;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,37 +62,60 @@ pub async fn upsert_llm_provider_handler(
     headers: axum::http::HeaderMap,
     Json(payload): Json<LlmProviderUpsertRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
         .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
 
-    let existing_row = sqlx::query("SELECT id, api_key FROM llm_providers WHERE workspace_id = ? AND name = ?")
-        .bind(&workspace_id)
-        .bind(&payload.name)
-        .fetch_optional(&state.db_pool)
-        .await
-        .map_err(|e| {
-            eprintln!("💥 查詢既有 provider 失敗: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() })))
-        })?;
+    let existing_row =
+        sqlx::query("SELECT id, api_key FROM llm_providers WHERE workspace_id = ? AND name = ?")
+            .bind(&workspace_id)
+            .bind(&payload.name)
+            .fetch_optional(&state.db_pool)
+            .await
+            .map_err(|e| {
+                eprintln!("💥 查詢既有 provider 失敗: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e.to_string() })),
+                )
+            })?;
 
     let existing = existing_row.map(|r| {
-        (sqlx::Row::get::<String, _>(&r, 0), sqlx::Row::get::<String, _>(&r, 1))
+        (
+            sqlx::Row::get::<String, _>(&r, 0),
+            sqlx::Row::get::<String, _>(&r, 1),
+        )
     });
 
-    let id = existing.as_ref().map(|(id, _)| id.clone()).unwrap_or_else(|| Uuid::new_v4().to_string());
+    let id = existing
+        .as_ref()
+        .map(|(id, _)| id.clone())
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
     let api_key = match payload.api_key {
         Some(k) if !k.trim().is_empty() => k,
-        _ => existing.as_ref().map(|(_, key)| key.clone()).unwrap_or_default(),
+        _ => existing
+            .as_ref()
+            .map(|(_, key)| key.clone())
+            .unwrap_or_default(),
     };
 
-    let is_active = if payload.is_active.unwrap_or(false) { 1 } else { 0 };
+    let is_active = if payload.is_active.unwrap_or(false) {
+        1
+    } else {
+        0
+    };
 
     if is_active == 1 {
         sqlx::query("UPDATE llm_providers SET is_active = 0 WHERE workspace_id = ?")
             .bind(&workspace_id)
             .execute(&state.db_pool)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e.to_string() })),
+                )
+            })?;
     }
 
     sqlx::query(
@@ -173,16 +196,24 @@ pub async fn test_llm_provider_handler(
     headers: axum::http::HeaderMap,
     Json(payload): Json<LlmTestRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
         .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
 
     let (base_url, model, api_key) = if let Some(pid) = payload.provider_id {
-        let row = sqlx::query("SELECT base_url, model, api_key FROM llm_providers WHERE id = ? AND workspace_id = ?")
-            .bind(&pid)
-            .bind(&workspace_id)
-            .fetch_optional(&state.db_pool)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        let row = sqlx::query(
+            "SELECT base_url, model, api_key FROM llm_providers WHERE id = ? AND workspace_id = ?",
+        )
+        .bind(&pid)
+        .bind(&workspace_id)
+        .fetch_optional(&state.db_pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+        })?;
         match row {
             Some(r) => {
                 let url: String = sqlx::Row::get(&r, 0);
@@ -190,11 +221,26 @@ pub async fn test_llm_provider_handler(
                 let key: String = sqlx::Row::get(&r, 2);
                 (url, md, Some(key))
             }
-            None => return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Provider not found" })))),
+            None => {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(json!({ "error": "Provider not found" })),
+                ))
+            }
         }
     } else {
-        let url = payload.base_url.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Missing base_url" }))))?;
-        let md = payload.model.ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Missing model" }))))?;
+        let url = payload.base_url.ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Missing base_url" })),
+            )
+        })?;
+        let md = payload.model.ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Missing model" })),
+            )
+        })?;
         let key = payload.api_key;
         (url, md, key)
     };
@@ -224,11 +270,12 @@ pub async fn test_llm_provider_handler(
                 "latencyMs": latency,
             })))
         }
-        Err(e) => {
-            Err((StatusCode::BAD_GATEWAY, Json(json!({
+        Err(e) => Err((
+            StatusCode::BAD_GATEWAY,
+            Json(json!({
                 "ok": false,
                 "error": e.to_string(),
-            }))))
-        }
+            })),
+        )),
     }
 }

@@ -60,7 +60,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
         parts.push(
           <button
             key={`citation-${index}-${match.index}`}
-            className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.25 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer border border-blue-200"
+            className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.25 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer border border-blue-100 focus-visible:ring-2 focus-visible:ring-blue-200"
             onClick={() => setSelectedSource(source)}
             title={tooltipText}
             // Enhanced accessibility attributes

@@ -1,14 +1,14 @@
-use std::sync::Arc;
+use crate::utils::resolve_workspace_id;
+use crate::McpState;
 use axum::{
-    extract::{State, Path},
+    extract::{Path, State},
     http::StatusCode,
     Json,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::sync::Arc;
 use uuid::Uuid;
-use crate::McpState;
-use crate::utils::resolve_workspace_id;
 
 #[derive(Deserialize)]
 pub struct UpdateConversationReq {
@@ -57,12 +57,13 @@ pub async fn update_conversation_handler(
     Path(id): Path<String>,
     Json(body): Json<UpdateConversationReq>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let workspace_id = resolve_workspace_id(&state, &headers).await
+    let workspace_id = resolve_workspace_id(&state, &headers)
+        .await
         .map_err(|s| (s, Json(json!({ "error": "workspace error" }))))?;
 
     let result = sqlx::query(
         "UPDATE conversations SET title = COALESCE(?, title), updated_at = CURRENT_TIMESTAMP \
-         WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL"
+         WHERE id = ? AND workspace_id = ? AND deleted_at IS NULL",
     )
     .bind(body.title.as_deref())
     .bind(&id)
@@ -71,11 +72,17 @@ pub async fn update_conversation_handler(
     .await
     .map_err(|e| {
         eprintln!("💥 update conversation 失敗: {e}");
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "internal error" })))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": "internal error" })),
+        )
     })?;
 
     if result.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Conversation not found" })),
+        ));
     }
 
     Ok(Json(json!({ "updated": true })))
@@ -147,7 +154,10 @@ pub async fn delete_conversation_handler(
     })?;
 
     if count == 0 {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+        return Ok((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Conversation not found" })),
+        ));
     }
 
     sqlx::query("UPDATE conversations SET deleted_at = datetime('now') WHERE id = ?")
@@ -182,7 +192,10 @@ pub async fn list_conversation_messages_handler(
     })?;
 
     if count == 0 {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+        return Ok((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Conversation not found" })),
+        ));
     }
 
     let messages = conversation_messages_json(&state.db_pool, &id).await?;
@@ -251,12 +264,15 @@ pub async fn share_conversation_handler(
     })?;
 
     if count == 0 {
-        return Ok((StatusCode::NOT_FOUND, Json(json!({ "error": "Conversation not found" }))));
+        return Ok((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Conversation not found" })),
+        ));
     }
 
     let token = Uuid::new_v4().simple().to_string();
     sqlx::query(
-        "UPDATE conversations SET shared = 1, share_token = ? WHERE id = ? AND workspace_id = ?"
+        "UPDATE conversations SET shared = 1, share_token = ? WHERE id = ? AND workspace_id = ?",
     )
     .bind(&token)
     .bind(&conversation_id)
@@ -268,7 +284,10 @@ pub async fn share_conversation_handler(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    Ok((StatusCode::OK, Json(json!({ "shareUrl": format!("/shared/{}", token) }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "shareUrl": format!("/shared/{}", token) })),
+    ))
 }
 
 pub async fn shared_conversation_handler(
@@ -301,5 +320,8 @@ pub async fn shared_conversation_handler(
         "created_at": sqlx::Row::get::<String, _>(&r, 5),
     });
 
-    Ok((StatusCode::OK, Json(json!({ "conversation": conversation, "messages": messages }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "conversation": conversation, "messages": messages })),
+    ))
 }
