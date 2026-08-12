@@ -20,21 +20,12 @@ interface AppState {
   toggleSidebar: () => void
 }
 
-function getEffectiveTheme(theme: Theme): 'light' | 'dark' {
-  if (theme === 'system') {
-    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return theme
-}
-
-const initialTheme = (typeof localStorage !== 'undefined' ? (localStorage.getItem('opendocuments-theme') as Theme) : 'light') || 'light'
-const initialEffective = getEffectiveTheme(initialTheme)
+// ponytail: Light Mode 固定，任何切換路徑皆無效（dark mode 未完成，hide 後不再提供）
+const initialTheme: Theme = 'light'
+const initialEffective: 'light' | 'dark' = 'light'
 
 if (typeof document !== 'undefined') {
   document.documentElement.classList.remove('dark')
-  if (initialEffective === 'dark') {
-    document.documentElement.classList.add('dark')
-  }
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -47,11 +38,11 @@ export const useAppStore = create<AppState>((set) => ({
   currentPage: 'chat',
   sidebarOpen: true,
 
-  setTheme: (theme) => {
-    localStorage.setItem('opendocuments-theme', theme)
-    const effective = getEffectiveTheme(theme)
-    document.documentElement.classList.toggle('dark', effective === 'dark')
-    set({ theme, effectiveTheme: effective })
+  setTheme: () => {
+    // ponytail: Light Mode 固定；保留簽名避免破壞呼叫端，但一律 light
+    localStorage.setItem('opendocuments-theme', 'light')
+    document.documentElement.classList.remove('dark')
+    set({ theme: 'light', effectiveTheme: 'light' })
   },
 
   setLocale: (locale) => {

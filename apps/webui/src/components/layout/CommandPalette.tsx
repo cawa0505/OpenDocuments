@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../stores/appStore'
-import type { Page, Theme } from '../../stores/appStore'
+import type { Page } from '../../stores/appStore'
 import type { RAGProfile } from '../../lib/types'
 import { translate as tr } from '../../lib/i18n'
 
 type Command =
   | { id: string; labelKey: string; shortcut?: string; action: 'setPage'; value: Page }
-  | { id: string; labelKey: string; shortcut?: string; action: 'setTheme'; value: Theme }
   | { id: string; labelKey: string; shortcut?: string; action: 'setProfile'; value: RAGProfile }
 
 const COMMANDS: Command[] = [
@@ -16,8 +15,6 @@ const COMMANDS: Command[] = [
   { id: 'connectors', labelKey: 'command.goConnections', shortcut: '⌘4', action: 'setPage' as const, value: 'connectors' },
   { id: 'activity', labelKey: 'command.goActivity', shortcut: '⌘5', action: 'setPage' as const, value: 'health' },
   { id: 'settings', labelKey: 'command.goSettings', shortcut: '⌘6', action: 'setPage' as const, value: 'settings' },
-  { id: 'theme-light', labelKey: 'command.lightTheme', action: 'setTheme' as const, value: 'light' },
-  { id: 'theme-dark', labelKey: 'command.darkTheme', action: 'setTheme' as const, value: 'dark' },
   { id: 'profile-fast', labelKey: 'command.profileFast', action: 'setProfile' as const, value: 'fast' },
   { id: 'profile-balanced', labelKey: 'command.profileBalanced', action: 'setProfile' as const, value: 'balanced' },
   { id: 'profile-precise', labelKey: 'command.profilePrecise', action: 'setProfile' as const, value: 'precise' },
@@ -27,7 +24,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const { setPage, setTheme, setProfile, locale } = useAppStore()
+  const { setPage, setProfile, locale } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
 
   useEffect(() => {
@@ -57,7 +54,6 @@ export function CommandPalette() {
 
   const execute = (cmd: Command) => {
     if (cmd.action === 'setPage') setPage(cmd.value)
-    else if (cmd.action === 'setTheme') setTheme(cmd.value)
     else setProfile(cmd.value)
     setOpen(false)
   }

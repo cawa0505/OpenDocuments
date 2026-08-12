@@ -1,24 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode, FormEvent } from 'react'
-import { CheckCircle2, Monitor, Moon, RefreshCw, Server, Sun, AlertCircle, Copy, Check, Trash2, Key, Play, Plus, Power, ToggleLeft, ToggleRight, X, Loader2 } from 'lucide-react'
-import { getHealth, getModelBenchmarks, getWorkbench, checkVersion, listLlmProviders, upsertLlmProvider, deleteLlmProvider, testLlmProvider } from '../../lib/api'
+import { RefreshCw, AlertCircle, Copy, Check, Trash2, Key, Play, Plus, Power, ToggleLeft, X, Loader2 } from 'lucide-react'
+import { getHealth, getWorkbench, checkVersion, listLlmProviders, upsertLlmProvider, deleteLlmProvider, testLlmProvider } from '../../lib/api'
 import type { VersionCheckResponse } from '../../lib/api'
 import { useAppStore } from '../../stores/appStore'
-import type { RAGProfile, WorkbenchResponse, LlmProvider, LlmTestResponse } from '../../lib/types'
+import type { RAGProfile, WorkbenchResponse, LlmProvider } from '../../lib/types'
 import { translate as tr } from '../../lib/i18n'
 
-interface BenchmarkModel {
-  name: string
-  version: string
-  capabilities: Record<string, boolean | undefined>
-  health: { healthy: boolean; message?: string } | null
-  generation: { latencyMs: number; tokensPerSec: number } | { error: string } | null
-  embedding: { latencyMs: number; textsPerSec: number } | { error: string } | null
-}
-
-function SettingCard({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function SettingCard({ title, description, children, className }: { title: string; description?: string; children: ReactNode; className?: string }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className={`rounded-lg border border-slate-200 bg-white p-5 shadow-sm ${className ?? ''}`}>
       <h3 className="text-[15px] font-semibold text-slate-950">{title}</h3>
       {description && <p className="mt-1 text-[13px] leading-5 text-slate-500">{description}</p>}
       <div className="mt-4">{children}</div>
@@ -36,13 +27,11 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
 }
 
 export function SettingsPage() {
-  const { profile, setProfile, theme, setTheme, locale, setLocale } = useAppStore()
+  const { profile, setProfile, locale, setLocale } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
   const [health, setHealth] = useState<{ status: string; version: string } | null>(null)
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null)
-  const [models, setModels] = useState<BenchmarkModel[]>([])
   const [loading, setLoading] = useState(true)
-  const [benchmarksLoading, setBenchmarksLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
   // 版本更新相關狀態
@@ -52,7 +41,6 @@ export function SettingsPage() {
 
   const refresh = async () => {
     setLoading(true)
-    setBenchmarksLoading(true)
     setError(null)
     setCheckingVersion(true)
     
@@ -71,16 +59,6 @@ export function SettingsPage() {
     } finally {
       setLoading(false)
       setCheckingVersion(false)
-    }
-
-    // 2. 異步在背景非阻塞執行耗時的大模型效能跑分（5~10秒，不卡死主頁面）
-    try {
-      const modelData = await getModelBenchmarks().catch(() => ({ benchmarks: [] as BenchmarkModel[] }))
-      setModels(modelData.benchmarks ?? [])
-    } catch (err) {
-      console.warn('Failed to load benchmarks:', err)
-    } finally {
-      setBenchmarksLoading(false)
     }
   }
 
@@ -108,8 +86,7 @@ export function SettingsPage() {
       const response = await listLlmProviders()
       setLlmProviders(response.providers)
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : (t('common.unknownError') || '')
-      setLlmError(errorMsg || null)
+      setLlmError(err instanceof Error ? err.message : t('common.unknownError'))
     } finally {
       setLlmLoading(false)
     }
@@ -217,10 +194,6 @@ export function SettingsPage() {
     }
   }
 
-  useEffect(() => {
-    void refresh()
-  }, [])
-
   return (
     <div className="min-h-full bg-slate-50 px-6 py-6 text-slate-950">
       <div className="mx-auto max-w-5xl space-y-5">
@@ -242,7 +215,9 @@ export function SettingsPage() {
         </header>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-xs text-red-800" role="alert">
+            {error}
+          </div>
         )}
 
         {loading ? (
@@ -251,29 +226,6 @@ export function SettingsPage() {
           </div>
         ) : (
           <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-            <SettingCard title={t('settings.appearance')} description={t('settings.appearanceDesc')}>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  ['system', Monitor],
-                  ['light', Sun],
-                  ['dark', Moon],
-                ] as const).map(([value, Icon]) => (
-                  <button
-                    key={value}
-                    onClick={() => setTheme(value)}
-                    className={`flex h-10 items-center justify-center gap-2 rounded-md border text-[13px] font-medium capitalize ${
-                      theme === value
-                        ? 'border-blue-200 bg-blue-50 text-blue-600'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Icon size={15} />
-                    {t(`settings.theme.${value}`)}
-                  </button>
-                ))}
-              </div>
-            </SettingCard>
-
             <SettingCard title={t('settings.language')} description={t('settings.languageDesc')}>
               <div className="grid grid-cols-3 gap-2">
                 {(['en', 'zh-TW', 'ko'] as const).map((value) => (
@@ -330,36 +282,29 @@ export function SettingsPage() {
                   <span>正在向 GitHub 檢測最新核心版本...</span>
                 </div>
               )}
-              {versionData && !checkingVersion && (
+              {versionData?.has_update && !checkingVersion && (
                 <div className="mt-4 border-t border-slate-100 pt-4">
-                  {versionData.has_update ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                        <div className="flex-1">
-                          <h4 className="text-[13px] font-semibold text-amber-900">發現新版本可用：v{versionData.latest_version}</h4>
-                          <p className="mt-1 text-xs text-amber-700 leading-relaxed">
-                            您的目前版本為 v{versionData.current_version}。請複製下方指令，在您的本機終端機中執行即可快速升級：
-                          </p>
-                          <div className="mt-3 flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900 px-3 py-1.5 font-mono text-[11px] text-slate-200">
-                            <span className="flex-1 truncate select-all">{versionData.update_command}</span>
-                            <button
-                              onClick={() => void handleCopyCommand()}
-                              className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                              title="複製升級指令"
-                            >
-                              {copied ? <Check className="h-3.5 w-3 3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <div className="flex-1">
+                        <h4 className="text-[13px] font-semibold text-amber-900">發現新版本可用：v{versionData.latest_version}</h4>
+                        <p className="mt-1 text-xs text-amber-700 leading-relaxed">
+                          您的目前版本為 v{versionData.current_version}。請複製下方指令，在您的本機終端機中執行即可快速升級：
+                        </p>
+                        <div className="mt-3 flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900 px-3 py-1.5 font-mono text-[11px] text-slate-200">
+                          <span className="flex-1 truncate select-all">{versionData.update_command}</span>
+                          <button
+                            onClick={() => void handleCopyCommand()}
+                            className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                            title="複製升級指令"
+                          >
+                            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                          </button>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      <span>已是最新版本 (v{versionData.current_version})</span>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
             </SettingCard>
@@ -373,7 +318,7 @@ export function SettingsPage() {
               </div>
             </SettingCard>
 
-            <SettingCard title="BYOK 自備金鑰 LLM 設定" description="管理您自行設定的 LLM Provider。一次只能啟用一個 Provider，啟用後其他 Provider 將自動失效。">
+            <SettingCard className="lg:col-span-2" title="BYOK 自備金鑰 LLM 設定" description="管理您自行設定的 LLM Provider。一次只能啟用一個 Provider，啟用後其他 Provider 將自動失效。">
               {llmLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
@@ -508,7 +453,7 @@ export function SettingsPage() {
                               value={formData.baseUrl}
                               onChange={(e) => setFormData({...formData, baseUrl: e.target.value})}
                               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                              placeholder="例如：https://litellm.int.fotolove.top/v1"
+                              placeholder="例如：https://api.openai.com/v1"
                             />
                           </div>
                           <div className="sm:col-span-2">
@@ -519,7 +464,7 @@ export function SettingsPage() {
                               value={formData.model}
                               onChange={(e) => setFormData({...formData, model: e.target.value})}
                               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="例如：9router/moonshotai/kimi-k3 或 gpt-4o"
+                              placeholder="例如：gpt-4o 或 claude-3-5-sonnet"
                             />
                           </div>
                           <div className="sm:col-span-2">
@@ -593,46 +538,6 @@ export function SettingsPage() {
               )}
             </SettingCard>
 
-            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-              <div className="flex items-center gap-2">
-                <Server size={17} className="text-slate-500" />
-                <h3 className="text-[15px] font-semibold text-slate-950">{t('settings.modelProviders')}</h3>
-              </div>
-              {benchmarksLoading ? (
-                <div className="mt-4 flex items-center justify-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/50 p-6 text-[13px] text-slate-500">
-                  <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
-                  <span>正在對大模型進行本地硬體跑分基準測試中，請稍候...</span>
-                </div>
-              ) : models.length === 0 ? (
-                <p className="mt-4 text-[13px] text-slate-400">{t('settings.noModels')}</p>
-              ) : (
-                <div className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
-                  {models.map((model) => (
-                    <div key={model.name} className="grid gap-3 px-4 py-3 md:grid-cols-[1fr_150px_150px]">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-[14px] font-semibold text-slate-900">{model.name}</p>
-                          <CheckCircle2 size={14} className={model.health?.healthy ? 'text-emerald-500' : 'text-slate-300'} />
-                        </div>
-                        <p className="mt-1 text-[12px] text-slate-400">v{model.version} · {model.health?.message || t('common.notRecorded')}</p>
-                      </div>
-                      <p className="text-[12px] text-slate-500">
-                        {t('settings.generation')}<br />
-                        <span className="font-medium text-slate-800">
-                          {model.generation && 'latencyMs' in model.generation ? `${model.generation.latencyMs}ms` : '-'}
-                        </span>
-                      </p>
-                      <p className="text-[12px] text-slate-500">
-                        {t('settings.embedding')}<br />
-                        <span className="font-medium text-slate-800">
-                          {model.embedding && 'latencyMs' in model.embedding ? `${model.embedding.latencyMs}ms` : '-'}
-                        </span>
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
           </div>
         )}
       </div>
