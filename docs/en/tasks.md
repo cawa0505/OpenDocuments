@@ -39,6 +39,12 @@ This document tracks execution status and concrete verification criteria across 
 - [x] **1.3.5 Activity-log workspace read audit**: stats, workbench, and query-log reads include `workspace_id` filtering.
 - [x] **1.3.6 Activity-log completeness**: fix total/pagination/DTO alignment, add workspace scoping to feedback updates, and implement delete API/UI.
 
+### 1.4 Pre-GA WebUI Cleanup
+
+- [ ] **1.4.1 Tailwind CSS v4 migration**: `tailwindcss ^4` + `@tailwindcss/vite` (in vite.config.ts), remove `postcss.config.js` / `autoprefixer`; switch to CSS-first config (`@import "tailwindcss"`, `@custom-variant dark`, `@theme`, `@plugin "@tailwindcss/typography"`). *Verification*: `npm run typecheck` zero errors, `make install`, page renders (not stub), dark mode works, no visual drift in modal/markdown.
+- [ ] **1.4.2 Fix default workspace hardcoding**: `DictionaryPage.tsx:20` and `Sidebar.tsx:192` currently use `localStorage.getItem('active-workspace') || 'default'`, which treats the literal `default` as a workspace name; the fix is for the WebUI to call `getWorkbench()` on startup to fetch the backend-resolved workspace name (active → default_workspace fallback), store it in appStore, and have Sidebar/DictionaryPage read from the store instead of guessing from localStorage. *Verification*: open a fresh browser with cleared localStorage; Sidebar shows the configured `default_workspace` name (not the literal `default`).
+- [ ] **1.4.3 Fix generic LLM answers**: `chat.rs` system prompt does not inject workspace context, so when retrieval is a fuzzy hit the LLM does not know its own workspace or document scope and replies with generic content ("since you did not provide a specific project name…"); the prompt must inject the workspace name and indexed document scope, and explicitly state when no relevant documents exist. *Verification*: ask a deployment-flow question with the fast profile; the answer must cite workspace documents directly or explicitly state "no relevant documents in this workspace" — never a generic boilerplate answer.
+
 ---
 
 ## 📋 Planned Execution Items (Phase 2 — Task Execution Layer & Native AI Engines)

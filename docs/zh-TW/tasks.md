@@ -39,6 +39,12 @@
 - [x] **1.3.5 活動日誌 workspace 讀取稽核**：統計、workbench 與 query-log 讀取都有 `workspace_id` 條件。
 - [x] **1.3.6 活動日誌完整功能**：修正總數／分頁／DTO 對齊、feedback workspace 條件，並補刪除 API 與 UI。
 
+### 1.4 GA 前 WebUI 收尾
+
+- [ ] **1.4.1 Tailwind CSS v4 遷移**：`tailwindcss ^4` + `@tailwindcss/vite`（vite.config.ts），移除 `postcss.config.js` / `autoprefixer`；設定改 CSS-first（`@import "tailwindcss"`、`@custom-variant dark`、`@theme`、`@plugin "@tailwindcss/typography"`）。*驗證方式*：`npm run typecheck` 零錯誤、`make install`、頁面正常 render（非 stub）、暗色模式正常、modal/markdown 外觀無視覺漂移。
+- [ ] **1.4.2 default workspace hardcoding 修正**：`DictionaryPage.tsx:20` 與 `Sidebar.tsx:192` 目前 `localStorage.getItem('active-workspace') || 'default'` 會把字面 `default` 當成 workspace 名稱帶入；正解是 WebUI 啟動時呼叫 `getWorkbench()` 取得後端解析的真實 workspace 名稱（active → default_workspace 回退），存入 appStore，Sidebar/DictionaryPage 從 store 讀取，不再各自猜 localStorage。*驗證方式*：清空 localStorage 開新瀏覽器，Sidebar 顯示設定中 `default_workspace` 的名稱（非字面 `default`）。
+- [ ] **1.4.3 LLM 公版回答修正**：`chat.rs` system prompt 未注入工作區資訊，檢索模糊命中時 LLM 不知自身工作區與文件範圍，回覆公版內容（「因為您沒有提供具體的專案名稱…」）；需在 prompt 注入工作區名稱與已索引文件範圍，檢索無相關時直接聲明。*驗證方式*：對部署流程類問題以 fast profile 詢問，回覆應直接引用工作區文件或明確聲明「該工作區無相關文件」，不得給出公版泛泛回答。
+
 ---
 
 ## 📋 規劃中執行任務 (Phase 2 — 任務執行層與原生 AI 引擎)
