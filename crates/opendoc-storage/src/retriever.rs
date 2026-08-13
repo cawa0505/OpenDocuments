@@ -63,7 +63,7 @@ impl SidecarRetriever {
         query: &str,
         threshold: f32,
     ) -> Vec<opendoc_types::DocumentChunk> {
-        self.search_workspace(query, threshold, &self.default_workspace)
+        self.search_workspace(query, 10, threshold, &self.default_workspace)
             .await
     }
 
@@ -71,11 +71,12 @@ impl SidecarRetriever {
     pub async fn search_workspace(
         &self,
         query: &str,
+        top_k: usize,
         threshold: f32,
         workspace_id: &str,
     ) -> Vec<opendoc_types::DocumentChunk> {
         let hits = self
-            .search(query, 10, threshold, workspace_id)
+            .search(query, top_k, threshold, workspace_id)
             .await
             .unwrap_or_default();
         hits.into_iter()
@@ -184,7 +185,10 @@ impl SidecarRetriever {
 
         // RRF：以 (document_id, chunk_idx) 為 key 融合 vector + FTS rank。
         let mut fused: HashMap<String, RankedRow> = HashMap::new();
-        for (k, rows) in [(60u32, result.vector_rows), (60u32, result.fts_rows)] {
+        for (k, rows, is_vector) in [
+            (60u32, result.vector_rows, true),
+            (60u32, result.fts_rows, false),
+        ] {
             for r in rows {
                 let (doc_path, headers, chunk_idx) = parse_metadata(&r.metadata_json, &r.document_id);
                 let key = format!("{}#{}", r.document_id, chunk_idx);
@@ -194,7 +198,7 @@ impl SidecarRetriever {
                     content: r.content.clone(),
                     doc_path,
                     headers,
-                    cosine_distance: r.cosine_distance,
+                    cosine_distance: is_vector.then_some(r.cosine_distance),
                     rrf_score: 0.0,
                 });
                 entry.rrf_score += rrf;
@@ -205,10 +209,10 @@ impl SidecarRetriever {
         hits.sort_by(|a, b| b.rrf_score.partial_cmp(&a.rrf_score).unwrap_or(std::cmp::Ordering::Equal));
         let mut out = Vec::new();
         for r in hits {
-            let cos = (1.0 - r.cosine_distance / 2.0).max(0.0).min(1.0);
-            if cos < threshold {
+            let Some(cos) = cosine_score(r.cosine_distance) else {
                 continue;
-            }
+            };
+            if cos < threshold { continue; }
             out.push(SearchHit {
                 doc_path: r.doc_path.clone(),
                 spec_id: build_spec_id(&r.doc_path, &r.headers, r.chunk_idx),
@@ -247,7 +251,7 @@ struct RankedRow {
     content: String,
     doc_path: String,
     headers: Vec<String>,
-    cosine_distance: f32,
+    cosine_distance: Option<f32>,
     rrf_score: f32,
 }
 
@@ -300,4 +304,19 @@ fn snippet(content: &str) -> String {
     }
     let s: String = chars.iter().take(240).collect();
     format!("{}…", s)
+}
+
+fn cosine_score(distance: Option<f32>) -> Option<f32> {
+    distance.map(|distance| (1.0 - distance / 2.0).clamp(0.0, 1.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cosine_score;
+
+    #[test]
+    fn fts_only_hits_have_no_cosine_score() {
+        assert_eq!(cosine_score(None), None);
+        assert_eq!(cosine_score(Some(0.0)), Some(1.0));
+    }
 }

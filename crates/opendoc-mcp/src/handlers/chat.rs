@@ -216,10 +216,10 @@ pub async fn chat_stream_handler(
         conversation_id = Some(new_id);
     }
 
-    let threshold = match profile.as_str() {
-        "fast" => 0.50,
-        "precise" => 0.70,
-        _ => 0.60,
+    let (threshold, top_k) = match profile.as_str() {
+        "fast" => (0.50, 5),
+        "precise" => (0.65, 20),
+        _ => (0.55, 10),
     };
 
     let mut expanded_query = trimmed_query.to_string();
@@ -233,15 +233,9 @@ pub async fn chat_stream_handler(
         }
     }
 
-    let top_k = match profile.as_str() {
-        "fast" => 5,
-        "precise" => 20,
-        _ => 10,
-    };
-
     let results = state
         .search
-        .search_and_rerank_workspace(&expanded_query, threshold, &workspace);
+        .search_and_rerank_workspace(&expanded_query, top_k, threshold, &workspace);
     let limited: Vec<_> = results.into_iter().take(top_k).collect();
 
     let total_score = if limited.is_empty() {
@@ -596,10 +590,10 @@ pub async fn chat_handler(
         }
     }
 
-    let threshold = match profile.as_str() {
-        "fast" => 0.50,
-        "precise" => 0.70,
-        _ => 0.60,
+    let (threshold, top_k) = match profile.as_str() {
+        "fast" => (0.50, 5),
+        "precise" => (0.65, 20),
+        _ => (0.55, 10),
     };
 
     let mut expanded_query = trimmed_query.to_string();
@@ -615,13 +609,7 @@ pub async fn chat_handler(
 
     let results = state
         .search
-        .search_and_rerank_workspace(&expanded_query, threshold, &workspace);
-
-    let top_k = match profile.as_str() {
-        "fast" => 5,
-        "precise" => 20,
-        _ => 10,
-    };
+        .search_and_rerank_workspace(&expanded_query, top_k, threshold, &workspace);
 
     let limited: Vec<_> = results.into_iter().take(top_k).collect();
 
@@ -639,15 +627,9 @@ pub async fn chat_handler(
     let mut answer = String::new();
     let mut generated_by_llm = false;
 
-    if let Some(llm_client) = get_active_llm_client(&state.db_pool, &workspace).await {
-        let context_str = if limited.is_empty() {
-            match locale_str {
-                "en" => "No relevant local documents found. Please answer directly or explain that there is no context.".to_string(),
-                "ko" => "관련된 현지 문서를 찾을 수 없습니다. 직접 답변하거나 관련 문서가 없음을 설명하십시오.".to_string(),
-                _ => "未找到相關本地文獻。請直接回答使用者的問題，或說明沒有相關文獻。".to_string(),
-            }
-        } else {
-            limited
+    if !limited.is_empty() {
+        if let Some(llm_client) = get_active_llm_client(&state.db_pool, &workspace).await {
+            let context_str = limited
                 .iter()
                 .enumerate()
                 .map(|(i, r)| {
@@ -659,11 +641,10 @@ pub async fn chat_handler(
                     )
                 })
                 .collect::<Vec<_>>()
-                .join("\n\n")
-        };
+                .join("\n\n");
 
-        let system_prompt = format!(
-            "You are a professional local knowledge base assistant. Answer the user's question based ONLY on the provided [Local Documents] below.\n\
+            let system_prompt = format!(
+                "You are a professional local knowledge base assistant. Answer the user's question based ONLY on the provided [Local Documents] below.\n\
              You MUST follow these rules:\n\
              1. Answer in the requested language: {}.\n\
              2. Keep the answer concise and lead with the direct answer (2-3 sentences or a short list).\n\
@@ -672,30 +653,31 @@ pub async fn chat_handler(
              5. Do NOT mention, reference, or link to any external URLs, domains, or sources not present in the [Local Documents] above.\n\
              6. Do NOT expand product names or concepts beyond what is explicitly stated in the provided documents.\n\n\
              [Local Documents]\n{}",
-            language_instruction,
-            context_str
-        );
+                language_instruction,
+                context_str
+            );
 
-        let mut messages = if let Some(cid) = &conversation_id {
-            get_history_messages(&state.db_pool, cid).await
-        } else {
-            Vec::new()
-        };
-        messages.push(opendoc_llm::ChatMessage::user(&req.query));
+            let mut messages = if let Some(cid) = &conversation_id {
+                get_history_messages(&state.db_pool, cid).await
+            } else {
+                Vec::new()
+            };
+            messages.push(opendoc_llm::ChatMessage::user(&req.query));
 
-        let opts = opendoc_llm::CompletionOptions {
-            temperature: Some(0.3),
-            max_tokens: None,
-            system_prompt: Some(system_prompt),
-        };
+            let opts = opendoc_llm::CompletionOptions {
+                temperature: Some(0.3),
+                max_tokens: None,
+                system_prompt: Some(system_prompt),
+            };
 
-        match llm_client.complete(messages, &opts).await {
-            Ok(generated) => {
-                answer = generated;
-                generated_by_llm = true;
-            }
-            Err(e) => {
-                eprintln!("💥 LLM 生成失敗，自動 Fallback 至 Echo 模式: {e}");
+            match llm_client.complete(messages, &opts).await {
+                Ok(generated) => {
+                    answer = generated;
+                    generated_by_llm = true;
+                }
+                Err(e) => {
+                    eprintln!("💥 LLM 生成失敗，自動 Fallback 至 Echo 模式: {e}");
+                }
             }
         }
     }

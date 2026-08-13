@@ -73,6 +73,7 @@ pub trait SearchBackend: Send + Sync {
     fn search_and_rerank_workspace(
         &self,
         query: &str,
+        top_k: usize,
         threshold: f32,
         workspace_id: &str,
     ) -> Vec<opendoc_types::DocumentChunk>;
@@ -130,12 +131,13 @@ impl SearchBackend for opendoc_storage::retriever::SidecarRetriever {
     fn search_and_rerank_workspace(
         &self,
         query: &str,
+        top_k: usize,
         threshold: f32,
         workspace_id: &str,
     ) -> Vec<opendoc_types::DocumentChunk> {
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current()
-                .block_on(async { self.search_workspace(query, threshold, workspace_id).await })
+                .block_on(async { self.search_workspace(query, top_k, threshold, workspace_id).await })
         })
     }
 
@@ -853,9 +855,17 @@ mod tests {
     use crate::handlers::upload::UploadResponse;
     use crate::handlers::chat::get_history_context;
     use axum::http::{Request, StatusCode};
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Mutex,
+    };
     use tower::ServiceExt;
 
     async fn build_test_state() -> Arc<McpState> {
+        build_test_state_with_search(Arc::new(MockSearch)).await
+    }
+
+    async fn build_test_state_with_search(search: Arc<dyn SearchBackend>) -> Arc<McpState> {
         let db_pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
 
         // 建立所有需要的資料表（對齊 init_db_pool 的 schema）
@@ -959,7 +969,7 @@ mod tests {
 
         Arc::new(McpState {
             sessions: Arc::new(RwLock::new(HashMap::new())),
-            search: Arc::new(MockSearch),
+            search,
             config_manager: Arc::new(opendoc_storage::ConfigManager::load_or_init().unwrap()),
             db_pool,
         })
@@ -1140,10 +1150,43 @@ mod tests {
         fn search_and_rerank_workspace(
             &self,
             _query: &str,
+            _top_k: usize,
             _threshold: f32,
             _workspace_id: &str,
         ) -> Vec<opendoc_types::DocumentChunk> {
             vec![]
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct SearchCall {
+        top_k: usize,
+        threshold: f32,
+        workspace_id: String,
+    }
+
+    struct RecordingSearch {
+        calls: Arc<Mutex<Vec<SearchCall>>>,
+    }
+
+    impl SearchBackend for RecordingSearch {
+        fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+            Vec::new()
+        }
+
+        fn search_and_rerank_workspace(
+            &self,
+            _query: &str,
+            top_k: usize,
+            threshold: f32,
+            workspace_id: &str,
+        ) -> Vec<opendoc_types::DocumentChunk> {
+            self.calls.lock().unwrap().push(SearchCall {
+                top_k,
+                threshold,
+                workspace_id: workspace_id.to_string(),
+            });
+            Vec::new()
         }
     }
 
@@ -2407,6 +2450,166 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         .await
         .unwrap();
         assert_eq!(query_log_count, 1, "Should log query to query_logs");
+    }
+
+    #[tokio::test]
+    async fn test_chat_empty_sources_returns_no_llm_call() {
+        let state = build_test_state_with_search(Arc::new(MockSearch)).await;
+        let workspace_id = seed_workspace_id(&state.db_pool).await;
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base_url = format!("http://{}", listener.local_addr().unwrap());
+        let llm_calls = Arc::new(AtomicUsize::new(0));
+        let observed_calls = llm_calls.clone();
+        let observer = tokio::spawn(async move {
+            while let Ok((_socket, _)) = listener.accept().await {
+                observed_calls.fetch_add(1, Ordering::SeqCst);
+            }
+        });
+
+        sqlx::query(
+            "INSERT INTO llm_providers (id, workspace_id, name, provider, base_url, model, api_key, is_active, kind) VALUES ('empty-source-guard', ?, 'observer', 'openai', ?, 'test', '', 1, 'chat')",
+        )
+        .bind(&workspace_id)
+        .bind(&base_url)
+        .execute(&state.db_pool)
+        .await
+        .unwrap();
+
+        for profile in ["fast", "balanced", "precise"] {
+            let response = build_router(state.clone())
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/chat")
+                        .header("X-Workspace", "homelab")
+                        .header("Content-Type", "application/json")
+                        .body(axum::body::Body::from(
+                            serde_json::to_vec(&serde_json::json!({
+                                "query": "empty query",
+                                "profile": profile
+                            }))
+                            .unwrap(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(json["answer"], "在現有文獻中未找到相關內容。");
+            assert_eq!(json["sources"], serde_json::json!([]));
+        }
+
+        tokio::task::yield_now().await;
+        assert_eq!(llm_calls.load(Ordering::SeqCst), 0, "空檢索不得呼叫 LLM");
+        observer.abort();
+    }
+
+    #[tokio::test]
+    async fn test_chat_query_profiles_control_retrieval_parameters() {
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let state = build_test_state_with_search(Arc::new(RecordingSearch {
+            calls: calls.clone(),
+        }))
+        .await;
+        let workspace_id = seed_workspace_id(&state.db_pool).await;
+
+        for (profile, top_k, threshold) in [
+            (Some("fast"), 5, 0.50),
+            (Some("balanced"), 10, 0.55),
+            (Some("precise"), 20, 0.65),
+            (None, 10, 0.55),
+        ] {
+            let mut body = serde_json::json!({ "query": "profile contract" });
+            if let Some(profile) = profile {
+                body["profile"] = serde_json::json!(profile);
+            }
+            let response = build_router(state.clone())
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/chat")
+                        .header("X-Workspace", "homelab")
+                        .header("Content-Type", "application/json")
+                        .body(axum::body::Body::from(serde_json::to_vec(&body).unwrap()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let call = calls.lock().unwrap().last().cloned().unwrap();
+            assert_eq!(call.top_k, top_k);
+            assert!((call.threshold - threshold).abs() < f32::EPSILON);
+            assert_eq!(call.workspace_id, workspace_id);
+        }
+
+        let call_count = calls.lock().unwrap().len();
+        let response = build_router(state)
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/chat")
+                    .header("X-Workspace", "homelab")
+                    .header("Content-Type", "application/json")
+                    .body(axum::body::Body::from(
+                        serde_json::to_vec(&serde_json::json!({
+                            "query": "invalid profile",
+                            "profile": "unknown"
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(calls.lock().unwrap().len(), call_count, "非法 profile 不得觸發檢索");
+    }
+
+    #[tokio::test]
+    async fn test_chat_stream_query_profiles_control_retrieval_parameters() {
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let state = build_test_state_with_search(Arc::new(RecordingSearch {
+            calls: calls.clone(),
+        }))
+        .await;
+        let workspace_id = seed_workspace_id(&state.db_pool).await;
+
+        for (profile, top_k, threshold) in [
+            ("fast", 5, 0.50),
+            ("balanced", 10, 0.55),
+            ("precise", 20, 0.65),
+        ] {
+            let response = build_router(state.clone())
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/chat/stream")
+                        .header("X-Workspace", "homelab")
+                        .header("Content-Type", "application/json")
+                        .body(axum::body::Body::from(
+                            serde_json::to_vec(&serde_json::json!({
+                                "query": "stream profile contract",
+                                "profile": profile
+                            }))
+                            .unwrap(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let call = calls.lock().unwrap().last().cloned().unwrap();
+            assert_eq!(call.top_k, top_k);
+            assert!((call.threshold - threshold).abs() < f32::EPSILON);
+            assert_eq!(call.workspace_id, workspace_id);
+        }
     }
 
     #[tokio::test]
