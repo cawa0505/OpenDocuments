@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownUp, FileText, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowDownUp, FileText, RefreshCw, Search, Trash2, X } from 'lucide-react'
 import { deleteDocument, listDocuments } from '../../lib/api'
 import { UploadZone } from './UploadZone'
 import { DocumentDetail } from './DocumentDetail'
 import type { Document } from '../../lib/types'
 import { useAppStore } from '../../stores/appStore'
 import { translate as tr, type Locale } from '../../lib/i18n'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 type SortKey = 'updated' | 'title' | 'chunks'
 
@@ -37,6 +38,12 @@ export function DocumentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<
+    { kind: 'single'; doc: Document } | { kind: 'batch'; ids: string[] } | null
+  >(null)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
@@ -92,14 +99,65 @@ export function DocumentsPage() {
   const errorCount = docs.filter((doc) => doc.status === 'error').length
   const chunkCount = docs.reduce((sum, doc) => sum + doc.chunk_count, 0)
 
-  const handleDelete = async (doc: Document) => {
-    if (!confirm(t('documents.deleteConfirm', { title: doc.title }))) return
+  const visibleIds = useMemo(() => filteredDocs.map((doc) => doc.id), [filteredDocs])
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id))
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someVisibleSelected && !allVisibleSelected
+    }
+  }, [someVisibleSelected, allVisibleSelected])
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        visibleIds.forEach((id) => next.delete(id))
+      } else {
+        visibleIds.forEach((id) => next.add(id))
+      }
+      return next
+    })
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleDelete = (doc: Document) => {
+    setDeleteTarget({ kind: 'single', doc })
+  }
+
+  const handleBatchDelete = () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setDeleteTarget({ kind: 'batch', ids })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setError(null)
     try {
-      await deleteDocument(doc.id)
-      if (selectedDocId === doc.id) setSelectedDocId(null)
+      if (deleteTarget.kind === 'single') {
+        await deleteDocument(deleteTarget.doc.id)
+        if (selectedDocId === deleteTarget.doc.id) setSelectedDocId(null)
+      } else {
+        await Promise.all(deleteTarget.ids.map((id) => deleteDocument(id)))
+        setSelectedIds(new Set())
+      }
+      setDeleteTarget(null)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('documents.deleteError'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -189,7 +247,40 @@ export function DocumentsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_120px_110px_150px_70px] items-center gap-4 border-b border-slate-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50 px-4 py-2.5">
+              <p className="text-[13px] font-medium text-blue-700">
+                {t('documents.selectedCount', { count: selectedIds.size })}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => void handleBatchDelete()}
+                  disabled={deleting}
+                  className="flex h-8 items-center gap-1.5 rounded-md bg-red-600 px-3 text-[13px] font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                  {deleting ? t('common.deleting') : t('documents.deleteSelected')}
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600 shadow-sm hover:bg-slate-50"
+                >
+                  <X size={14} />
+                  {t('documents.clearSelection')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-[32px_1fr_120px_110px_150px_70px] items-center gap-4 border-b border-slate-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={toggleSelectAll}
+              aria-label={t('documents.selectAll')}
+              className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-blue-600"
+            />
             <span>{t('common.document')}</span>
             <span>{t('common.source')}</span>
             <span>{t('common.status')}</span>
@@ -208,7 +299,14 @@ export function DocumentsPage() {
           ) : (
             <div className="divide-y divide-slate-100">
               {filteredDocs.map((doc) => (
-                <div key={doc.id} className="grid grid-cols-[1fr_120px_110px_150px_70px] items-center gap-4 px-4 py-3 hover:bg-slate-50">
+                <div key={doc.id} className="grid grid-cols-[32px_1fr_120px_110px_150px_70px] items-center gap-4 px-4 py-3 hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(doc.id)}
+                    onChange={() => toggleSelect(doc.id)}
+                    aria-label={t('documents.selectDocument', { title: doc.title })}
+                    className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-blue-600"
+                  />
                   <button className="min-w-0 text-left" onClick={() => setSelectedDocId(doc.id)}>
                     <p className="truncate text-[14px] font-semibold text-slate-900 hover:text-blue-600">{doc.title}</p>
                     <p className="mt-1 truncate text-[12px] text-slate-400">{doc.source_path}</p>
@@ -236,6 +334,24 @@ export function DocumentsPage() {
           )}
         </section>
       </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={t('common.delete')}
+        description={
+          deleteTarget
+            ? deleteTarget.kind === 'single'
+              ? t('documents.deleteConfirm', { title: deleteTarget.doc.title })
+              : t('documents.batchDeleteConfirm', { count: deleteTarget.ids.length })
+            : undefined
+        }
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        busyLabel={t('common.deleting')}
+        busy={deleting}
+        danger
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import {
   deleteDictionaryEntry, 
   importDictionarySeed 
 } from '../../lib/api.js'
+import { ConfirmDialog } from '../ui/ConfirmDialog.js'
 
 interface DictionaryEntry {
   id: string
@@ -24,6 +25,8 @@ export default function DictionaryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [seedConfirm, setSeedConfirm] = useState(false)
 
   // 局部高雅多語系包裝函數
   const tr = (k: string, values?: Record<string, string | number>) => translate(locale, k, values)
@@ -66,21 +69,28 @@ export default function DictionaryPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm(tr('settings.glossary.deleteConfirm'))) return
-    
+  const handleDelete = (id: string) => {
+    setDeleteTarget(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     setError(null)
     try {
-      await deleteDictionaryEntry(id)
-      setEntries(entries.filter(e => e.id !== id))
+      await deleteDictionaryEntry(deleteTarget)
+      setEntries(entries.filter(e => e.id !== deleteTarget))
+      setDeleteTarget(null)
     } catch (err: any) {
       setError(err.message || 'Failed to delete entry')
     }
   }
 
-  const handleImportSeed = async () => {
-    if (!window.confirm(tr('settings.glossary.seedConfirm'))) return
-    
+  const handleImportSeed = () => {
+    setSeedConfirm(true)
+  }
+
+  const confirmImportSeed = async () => {
+    setSeedConfirm(false)
     setIsImporting(true)
     setError(null)
     try {
@@ -94,7 +104,8 @@ export default function DictionaryPage() {
   }
 
   return (
-    <div className="min-h-full bg-slate-50 px-6 py-6 text-slate-950">
+    <>
+      <div className="min-h-full bg-slate-50 px-6 py-6 text-slate-950">
       <div className="mx-auto max-w-6xl space-y-5">
         {/* 標題大盤區 */}
         <header className="flex items-start justify-between gap-4">
@@ -258,5 +269,27 @@ export default function DictionaryPage() {
       </div>
     </div>
   </div>
+  <ConfirmDialog
+    open={deleteTarget !== null}
+    title={tr('common.delete')}
+    description={tr('settings.glossary.deleteConfirm')}
+    confirmLabel={tr('common.delete')}
+    cancelLabel={tr('common.cancel')}
+    danger
+    onConfirm={() => void confirmDelete()}
+    onCancel={() => setDeleteTarget(null)}
+  />
+  <ConfirmDialog
+    open={seedConfirm}
+    title={tr('settings.glossary.seedBtn')}
+    description={tr('settings.glossary.seedConfirm')}
+    confirmLabel={tr('settings.glossary.seedBtn')}
+    cancelLabel={tr('common.cancel')}
+    busy={isImporting}
+    busyLabel={tr('settings.glossary.importing')}
+    onConfirm={() => void confirmImportSeed()}
+    onCancel={() => setSeedConfirm(false)}
+  />
+  </>
   )
 }

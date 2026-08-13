@@ -4,6 +4,7 @@ import { getWorkbench, listWorkspaces, deleteWorkspace } from "../../lib/api";
 import type { WorkbenchResponse, Workspace } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import { translate as tr, type Locale } from "../../lib/i18n";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 function formatDate(value: string | null | undefined, locale: Locale) {
   if (!value) return tr(locale, "common.notRecorded");
@@ -24,6 +25,8 @@ export function WorkspacesPage() {
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Workspace | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -45,18 +48,19 @@ export function WorkspacesPage() {
   const handleDelete = async (e: React.MouseEvent, workspace: Workspace) => {
     e.stopPropagation();
     if (workspace.isDefault) return;
-    const confirmed = window.confirm(
-      t("workspaces.deleteConfirm", { name: workspace.name }),
-    );
-    if (!confirmed) return;
+    setDeleteTarget(workspace);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteWorkspace(workspace.id);
+      await deleteWorkspace(deleteTarget.id);
 
       // 如果刪除的是當前正處於啟用 (Active) 狀態的工作空間，我們必須重置/切回 default
       const isActive =
-        workspace.name === activeWorkspaceName ||
-        workspace.id === activeWorkspaceName;
+        deleteTarget.name === activeWorkspaceName ||
+        deleteTarget.id === activeWorkspaceName;
       if (isActive) {
         const defaultWs = workspaces.find((w) => w.isDefault);
         localStorage.setItem("active-workspace", defaultWs?.name ?? "");
@@ -64,8 +68,12 @@ export function WorkspacesPage() {
       } else {
         await refresh();
       }
+      setDeleteTarget(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Delete failed");
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -284,6 +292,18 @@ export function WorkspacesPage() {
           </>
         )}
       </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={t("common.delete")}
+        description={deleteTarget ? t("workspaces.deleteConfirm", { name: deleteTarget.name }) : undefined}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
+        busyLabel={t("common.deleting")}
+        busy={deleting}
+        danger
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

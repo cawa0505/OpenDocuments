@@ -12,6 +12,7 @@ import {
 import type { Collection, Document } from '../../lib/types'
 import { useAppStore } from '../../stores/appStore'
 import { translate as tr, type Locale } from '../../lib/i18n'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 function formatDate(value: string | null | undefined, locale: Locale) {
   if (!value) return tr(locale, 'common.notRecorded')
@@ -42,6 +43,7 @@ export function CollectionsPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Collection | null>(null)
 
   const selectedCollection = collections.find((collection) => collection.id === selectedId) || null
   const filteredCollections = useMemo(() => {
@@ -110,13 +112,18 @@ export function CollectionsPage() {
     }
   }
 
-  const handleDelete = async (collection: Collection) => {
-    if (!confirm(t('collections.deleteConfirm', { name: collection.name }))) return
+  const handleDelete = (collection: Collection) => {
+    setDeleteTarget(collection)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     setBusy(true)
     setError(null)
     try {
-      await deleteCollection(collection.id)
+      await deleteCollection(deleteTarget.id)
       await refresh(null)
+      setDeleteTarget(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('collections.deleteError'))
     } finally {
@@ -330,6 +337,18 @@ export function CollectionsPage() {
           </section>
         </div>
       </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={t('common.delete')}
+        description={deleteTarget ? t('collections.deleteConfirm', { name: deleteTarget.name }) : undefined}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        busyLabel={t('common.deleting')}
+        busy={busy}
+        danger
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

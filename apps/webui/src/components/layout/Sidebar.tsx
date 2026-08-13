@@ -19,6 +19,7 @@ import {
   BookOpen,
 } from 'lucide-react'
 import { translate as tr, type Locale } from '../../lib/i18n'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 type PageId = 'chat' | 'documents' | 'collections' | 'connectors' | 'health' | 'settings' | 'workspaces' | 'dictionary'
 
@@ -111,6 +112,7 @@ export function Sidebar() {
   } = useChatStore()
   const [loadingConversationId, setLoadingConversationId] = useState<string | null>(null)
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
 
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
@@ -157,14 +159,19 @@ export function Sidebar() {
     }
   }
 
-  const handleDeleteConversation = async (conversation: Conversation) => {
-    if (!confirm(`${t('common.delete')} "${conversation.title || t('chat.untitled')}"?`)) return
-    setDeletingConversationId(conversation.id)
+  const handleDeleteConversation = (conversation: Conversation) => {
+    setDeleteTarget(conversation)
+  }
+
+  const confirmDeleteConversation = async () => {
+    if (!deleteTarget) return
+    setDeletingConversationId(deleteTarget.id)
     setActiveError(null)
     try {
-      await deleteConversation(conversation.id)
-      if (conversationId === conversation.id) clearMessages()
+      await deleteConversation(deleteTarget.id)
+      if (conversationId === deleteTarget.id) clearMessages()
       await refreshConversations()
+      setDeleteTarget(null)
     } catch (error) {
       setActiveError(error instanceof Error ? error.message : t('chat.errorSessions'))
     } finally {
@@ -297,6 +304,18 @@ export function Sidebar() {
           {t('nav.settings')}
         </button>
       </div>
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={t('common.delete')}
+        description={deleteTarget ? `${t('common.delete')} "${deleteTarget.title || t('chat.untitled')}"?` : undefined}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        busyLabel={t('common.deleting')}
+        busy={deletingConversationId !== null}
+        danger
+        onConfirm={() => void confirmDeleteConversation()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </aside>
   )
 }

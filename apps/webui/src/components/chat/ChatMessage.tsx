@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
 import { SourceCard } from './SourceCard'
+import { Markdown } from '../ui/Markdown'
 import type { ChatMessage as ChatMessageType, SearchResult } from '../../lib/types'
 import { Info, X } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
@@ -120,7 +120,8 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
     const processed = processContent(message.content)
     return processed.map((part, index) => {
       if (typeof part === 'string') {
-        return <span key={`text-${index}`}>{part}</span>
+        // 文字片段走 Markdown 渲染，citation 與 markdown 結構共存
+        return <Markdown key={`text-${index}`} content={part} />
       }
       return part
     })
@@ -233,7 +234,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                 </div>
                 <p className="mb-2 text-[12px] font-semibold text-slate-500">{t('chat.chunkContent')}</p>
                 <div className="prose prose-sm max-w-none rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] leading-6 text-slate-800">
-                  <ReactMarkdown>{selectedSource.content}</ReactMarkdown>
+                  <Markdown content={selectedSource.content} />
                 </div>
               </div>
             </div>

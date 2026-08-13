@@ -5,6 +5,7 @@ import { addDocumentToCollection, deleteDocument, getDocument, listCollections }
 import type { Collection, Document } from '../../lib/types'
 import { useAppStore } from '../../stores/appStore'
 import { translate as tr, type Locale } from '../../lib/i18n'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 interface Props {
   documentId: string
@@ -49,6 +50,7 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const refresh = async () => {
     setLoading(true)
@@ -75,8 +77,13 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
     return t('docDetail.ready')
   }, [document, locale])
 
-  const handleDelete = async () => {
-    if (!document || !confirm(t('documents.deleteConfirm', { title: document.title }))) return
+  const handleDelete = () => {
+    if (!document) return
+    setConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!document) return
     setBusy(true)
     setError(null)
     try {
@@ -84,6 +91,7 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
       onDeleted()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('documents.deleteError'))
+      setConfirmOpen(false)
     } finally {
       setBusy(false)
     }
@@ -233,6 +241,18 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
           </section>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title={t('common.delete')}
+        description={document ? t('documents.deleteConfirm', { title: document.title }) : undefined}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        busyLabel={t('common.deleting')}
+        busy={busy}
+        danger
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import type { PluginHealthResponse } from '../../lib/types'
 import { PluginMarketplace } from './PluginMarketplace'
 import { useAppStore } from '../../stores/appStore'
 import { translate as tr } from '../../lib/i18n'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 type Tab = 'installed' | 'marketplace'
 type HealthFilter = 'all' | 'healthy' | 'unhealthy'
@@ -25,6 +26,7 @@ export function PluginsPage() {
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all')
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -63,14 +65,19 @@ export function PluginsPage() {
 
   const healthyCount = plugins.filter((plugin) => plugin.health.healthy).length
 
-  const handleRemove = async (name: string) => {
-    if (!confirm(t('plugins.removeConfirm', { name }))) return
-    setRemoving(name)
+  const handleRemove = (name: string) => {
+    setRemoveTarget(name)
+  }
+
+  const confirmRemove = async () => {
+    if (!removeTarget) return
+    setRemoving(removeTarget)
     setError(null)
     setMessage(null)
     try {
-      await removePlugin(name)
-      setMessage(t('plugins.removed', { name }))
+      await removePlugin(removeTarget)
+      setMessage(t('plugins.removed', { name: removeTarget }))
+      setRemoveTarget(null)
       await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('plugins.removeError'))
@@ -205,6 +212,18 @@ export function PluginsPage() {
           </>
         )}
       </div>
+      <ConfirmDialog
+        open={removeTarget !== null}
+        title={t('common.delete')}
+        description={removeTarget ? t('plugins.removeConfirm', { name: removeTarget }) : undefined}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        busyLabel={t('common.deleting')}
+        busy={removing !== null}
+        danger
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </div>
   )
 }
