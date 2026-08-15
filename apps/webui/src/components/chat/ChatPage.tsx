@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { useChatStore } from '../../stores/chatStore'
 import { useAppStore } from '../../stores/appStore'
 import { ChatInput } from './ChatInput'
@@ -26,6 +27,10 @@ export function ChatPage() {
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null)
   const [workbenchError, setWorkbenchError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
 
   const healthStatus = workbenchError ? 'offline' : 'ready'
   const showPreview = messages.length === 0 && !isStreaming
@@ -34,8 +39,10 @@ export function ChatPage() {
   const activeConversationTitle = activeConversation?.title || (conversationId ? t('chat.untitled') : t('chat.newChat'))
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, currentStreamText])
+    if (bottomRef.current && (!showPreview || messages.length > 0)) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, currentStreamText, showPreview, bottomRef]);
 
   const refreshWorkbench = async () => {
     try {
@@ -122,17 +129,110 @@ export function ChatPage() {
     }
   }
 
+  const handleSaveTitle = async () => {
+    if (!conversationId) return
+
+    const title = editTitle.trim()
+    if (!title) {
+      setError(t('chat.errorEmptyTitle'))
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      await updateConversation(conversationId, { title })
+      setEditingTitle(false)
+      void refreshConversations()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditTitle(activeConversationTitle)
+    setEditingTitle(false)
+    setError(null)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSaveTitle()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      handleCancelEdit()
+    }
+  }
+
   return (
-    <div className="min-h-full bg-white text-slate-950">
+    <div className="flex h-full min-h-0 flex-col gap-y-3 overflow-hidden bg-white px-4 pb-6 pt-3 text-slate-950">
       {(activeError || workbenchError) && (
-        <div className="mx-auto mt-5 max-w-[860px] rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mx-auto max-w-[860px] rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {activeError || workbenchError}
         </div>
       )}
 
-      <section className={`${showPreview ? 'pt-14' : 'pt-7'} pb-10`}>
-        <div className="mx-auto max-w-[860px] px-5">
-          {showPreview && (
+      <div className="mx-auto flex min-h-0 w-full max-w-[860px] flex-1 flex-col">
+        {/* Title header */}
+        {!showPreview && (
+          <div className="mb-4 flex shrink-0 items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="min-w-0">
+              {editingTitle ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    autoFocus
+                    className="min-w-0 flex-1 rounded border border-slate-200 px-3 py-2 text-[14px] font-semibold text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={t('chat.untitled')}
+                  />
+                  {error && (
+                    <span className="text-[12px] text-red-500">{error}</span>
+                  )}
+                  <button
+                    onClick={handleSaveTitle}
+                    disabled={saving}
+                    className={`ml-2 h-8 shrink-0 rounded-md border border-slate-200 px-3 text-[12px] font-medium text-slate-600 ${saving ? 'bg-slate-50' : 'hover:bg-slate-50'} disabled:opacity-50`}
+                  >
+                    {saving ? t('common.saving') : t('common.save')}
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="ml-2 h-8 shrink-0 rounded-md border border-slate-200 px-3 text-[12px] font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              ) : (
+                <p className="truncate text-[14px] font-semibold text-slate-950 whitespace-nowrap cursor-pointer hover:underline" onClick={() => {
+                  setEditTitle(activeConversationTitle)
+                  setEditingTitle(true)
+                  setError(null)
+                }}>
+                  {activeConversationTitle}
+                </p>
+              )}
+              <p className="mt-0.5 text-[12px] text-slate-400">
+                {conversationId ? t('chat.savedConversation') : t('chat.draftConversation')} · {t('chat.messages', { count: messages.length })}
+              </p>
+            </div>
+            <button
+              onClick={handleNewChat}
+              className="h-8 shrink-0 rounded-md border border-slate-200 px-3 text-[12px] font-medium text-slate-600 hover:bg-slate-50"
+            >
+              {t('chat.newChat')}
+            </button>
+          </div>
+        )}
+
+        {showPreview ? (
+          <div className="flex flex-col items-center justify-center pt-14">
             <div className="mb-8 text-center">
               <h1 className="text-[34px] font-medium leading-tight tracking-[-0.015em] text-slate-950">
                 {t('chat.title')}
@@ -141,86 +241,85 @@ export function ChatPage() {
                 {t('chat.subtitle')}
               </p>
             </div>
-          )}
 
-          {!showPreview && (
-            <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <div className="min-w-0">
-                <p className="truncate text-[14px] font-semibold text-slate-950">{activeConversationTitle}</p>
-                <p className="mt-0.5 text-[12px] text-slate-400">
-                  {conversationId ? t('chat.savedConversation') : t('chat.draftConversation')} · {t('chat.messages', { count: messages.length })}
-                </p>
+            <ChatInput
+              onSend={handleSend}
+              onAttach={handleAttach}
+              disabled={isStreaming || healthStatus === 'offline'}
+              uploading={uploading}
+            />
+
+            {suggestedQuestions.length > 0 && (
+              <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+                {suggestedQuestions.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => handleSend(prompt)}
+                    className="h-9 shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-4 text-[13px] font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50"
+                  >
+                    {prompt}
+                  </button>
+                ))}
               </div>
-              <button
-                onClick={handleNewChat}
-                className="h-8 shrink-0 rounded-md border border-slate-200 px-3 text-[12px] font-medium text-slate-600 hover:bg-slate-50"
-              >
-                {t('chat.newChat')}
-              </button>
+            )}
+
+            {workbench && workbench.corpus.documents > 0 && (
+              <p className="mt-5 text-center text-xs text-slate-400">
+                {t('chat.indexSummary', {
+                  documents: workbench.corpus.documents,
+                  active: workbench.connectors.active,
+                  total: workbench.connectors.total,
+                })}
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-5">
+                {messages.map((msg) => (
+                  <ChatMessage
+                    key={msg.id}
+                    message={msg}
+                    onFeedback={msg.queryId ? ((type) => {
+                      submitFeedback(msg.queryId as string, type).catch(() => {})
+                    }) : undefined}
+                  />
+                ))}
+                {isStreaming && currentStreamText && (
+                  <ChatMessage
+                    message={{
+                      id: 'streaming',
+                      role: 'assistant',
+                      content: currentStreamText,
+                      sources: currentSources.length > 0 ? currentSources : undefined,
+                      confidence: currentConfidence || undefined,
+                      timestamp: Date.now(),
+                    }}
+                    isStreaming
+                  />
+                )}
+                {isStreaming && !currentStreamText && (
+                  <div role="status" aria-live="polite" className="flex items-center gap-3 text-slate-500">
+                    <LoaderCircle className="h-5 w-5 animate-spin text-slate-400" />
+                    <span className="text-[14px]">{t('chat.thinking')}</span>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
             </div>
-          )}
 
-          <ChatInput
-            onSend={handleSend}
-            onAttach={handleAttach}
-            disabled={isStreaming || healthStatus === 'offline'}
-            uploading={uploading}
-            className={showPreview ? '' : 'mb-7'}
-          />
-
-          {showPreview && suggestedQuestions.length > 0 && (
-            <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-              {suggestedQuestions.map((prompt) => (
-                <button
-                  key={prompt}
-                  onClick={() => handleSend(prompt)}
-                  className="h-9 rounded-full border border-slate-200 bg-white px-4 text-[13px] font-medium text-blue-600 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50"
-                >
-                  {prompt}
-                </button>
-              ))}
+            <div className="shrink-0">
+              <ChatInput
+                onSend={handleSend}
+                onAttach={handleAttach}
+                disabled={isStreaming || healthStatus === 'offline'}
+                uploading={uploading}
+              />
             </div>
-          )}
-
-          {!showPreview && (
-            <div className="space-y-5">
-              {messages.map((msg) => (
-                <ChatMessage
-                  key={msg.id}
-                  message={msg}
-                  onFeedback={msg.queryId ? ((type) => {
-                    submitFeedback(msg.queryId as string, type).catch(() => {})
-                  }) : undefined}
-                />
-              ))}
-              {isStreaming && currentStreamText && (
-                <ChatMessage
-                  message={{
-                    id: 'streaming',
-                    role: 'assistant',
-                    content: currentStreamText,
-                    sources: currentSources.length > 0 ? currentSources : undefined,
-                    confidence: currentConfidence || undefined,
-                    timestamp: Date.now(),
-                  }}
-                  isStreaming
-                />
-              )}
-              <div ref={bottomRef} />
-            </div>
-          )}
-
-          {workbench && workbench.corpus.documents > 0 && showPreview && (
-            <p className="mt-5 text-center text-xs text-slate-400">
-              {t('chat.indexSummary', {
-                documents: workbench.corpus.documents,
-                active: workbench.connectors.active,
-                total: workbench.connectors.total,
-              })}
-            </p>
-          )}
-        </div>
-      </section>
+          </>
+        )}
+      </div>
     </div>
   )
 }

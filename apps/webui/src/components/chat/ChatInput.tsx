@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Paperclip, Send } from 'lucide-react'
 import { useAppStore } from '../../stores/appStore'
 import { translate as tr } from '../../lib/i18n'
+import type { RAGProfile } from '../../lib/types'
 
 interface Props {
   onSend: (query: string) => void
@@ -12,7 +13,7 @@ interface Props {
 }
 
 export function ChatInput({ onSend, onAttach, disabled, uploading, className = '' }: Props) {
-  const { locale } = useAppStore()
+  const { locale, profile, setProfile } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -46,7 +47,7 @@ export function ChatInput({ onSend, onAttach, disabled, uploading, className = '
   }
 
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.09)] ${className}`}>
+    <div className={`w-full rounded-lg border border-slate-200 bg-white shadow-[0_6px_18px_rgba(15,23,42,0.09)] ${className}`}>
       <div className="flex min-h-[116px] flex-col px-6 py-5">
         <textarea
           ref={textareaRef}
@@ -65,7 +66,7 @@ export function ChatInput({ onSend, onAttach, disabled, uploading, className = '
           }}
         />
         <div className="mt-4 flex items-end justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -82,6 +83,24 @@ export function ChatInput({ onSend, onAttach, disabled, uploading, className = '
             >
               <Paperclip size={19} strokeWidth={2} />
             </button>
+            <div className="flex h-8 items-center gap-0.5 rounded-md border border-slate-200 bg-slate-50 px-1">
+              {(['fast', 'balanced', 'precise'] as RAGProfile[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setProfile(value)}
+                  disabled={disabled}
+                  title={t(`settings.profile.${value}Desc`)}
+                  className={`h-6 rounded px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    profile === value
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {t(`chat.profile.${value}`)}
+                </button>
+              ))}
+            </div>
           </div>
           <button
             onClick={handleSubmit}
