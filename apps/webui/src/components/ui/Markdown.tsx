@@ -39,7 +39,7 @@ function CodeBlock({ children }: { children: ReactNode }) {
 
   return (
     <div className="group relative">
-      <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-3 text-[13px] leading-6 text-slate-100 dark:border-gray-700">
+      <pre className="overflow-x-auto rounded-md bg-slate-950 p-3 text-[13px] leading-6 text-slate-100">
         {children}
       </pre>
       <button
