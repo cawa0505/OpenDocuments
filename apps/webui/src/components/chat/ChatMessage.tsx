@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SourceCard } from './SourceCard'
 import { Markdown } from '../ui/Markdown'
 import type { ChatMessage as ChatMessageType, SearchResult } from '../../lib/types'
@@ -16,6 +16,15 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
   const { locale } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
   const [selectedSource, setSelectedSource] = useState<SearchResult | null>(null)
+
+  useEffect(() => {
+    if (!selectedSource) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedSource(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedSource])
   const isUser = message.role === 'user'
   const visibleSources = message.sources?.slice(0, 4) || []
   
@@ -202,8 +211,9 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
         )}
 
         {selectedSource && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-6">
-            <div className="max-h-[86vh] w-full max-w-3xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+          <div role="dialog" aria-modal="true" aria-label={t('chat.sourcePreview')} className="fixed inset-0 z-50 pt-24">
+            <div className="absolute inset-0 bg-slate-950/50" onClick={() => setSelectedSource(null)} />
+            <div className="relative mx-auto max-w-[400px] max-h-[86vh] overflow-auto rounded-lg border border-slate-200 bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
                 <div className="min-w-0">
                   <p className="text-[12px] font-semibold text-blue-600">{t('chat.sourcePreview')}</p>
@@ -240,7 +250,6 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
             </div>
           </div>
         )}
-
         {isStreaming && !isUser && (
           <span className="ml-1 mt-2 inline-block h-4 w-1 animate-pulse bg-blue-500" />
         )}

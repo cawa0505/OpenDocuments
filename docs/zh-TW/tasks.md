@@ -20,9 +20,9 @@
   - [ ] 動態解析 SSE 串流內文中的 `[1]`、`[2]` 出處標記。
   - [ ] 將靜態文字標籤轉換為可點擊的超連結按鈕，點擊時會將對應的來源文獻卡片平滑滾動（smooth-scroll）至畫面中，並套用高亮外框。
   - *驗證方式*：執行多 chunk 檢索問答；點擊 LLM 回覆中的 `[1]` 標記；確認右側來源卡片被高亮顯示並自動滾動到可視區域。
-- [ ] **1.1.5 RAG 檢索偏好 (Query Profiles)**：
-  - [ ] 在 Chat 聊天介面中新增檢索偏好選擇器（`Fast`、`Balanced`、`Precise`）。
-  - [ ] 實作後端路由邏輯：`Fast` (FTS5 Top-5)、`Balanced` (LanceDB Top-10)、`Precise` (混合 + 重度 Reranker Top-15)。
+- [x] **1.1.5 RAG 檢索偏好 (Query Profiles)**：
+  - [x] 在 Chat 聊天介面中新增檢索偏好選擇器（`Fast`、`Balanced`、`Precise`）。
+  - [x] 實作後端路由邏輯：`Fast` (FTS5 Top-5)、`Balanced` (LanceDB Top-10)、`Precise` (混合 + 重度 Reranker Top-15)。
   - *驗證方式*：驗證前端發送的 REST 請求帶有對應的 Profile 標頭，且後端日誌中顯示正確的檢索策略與 Chunk 數量。
 
 ### 1.2 CLI 優化
@@ -43,7 +43,14 @@
 
 - [ ] **1.4.1 Tailwind CSS v4 遷移**：`tailwindcss ^4` + `@tailwindcss/vite`（vite.config.ts），移除 `postcss.config.js` / `autoprefixer`；設定改 CSS-first（`@import "tailwindcss"`、`@custom-variant dark`、`@theme`、`@plugin "@tailwindcss/typography"`）。*驗證方式*：`npm run typecheck` 零錯誤、`make install`、頁面正常 render（非 stub）、暗色模式正常、modal/markdown 外觀無視覺漂移。
 - [ ] **1.4.2 default workspace hardcoding 修正**：`DictionaryPage.tsx:20` 與 `Sidebar.tsx:192` 目前 `localStorage.getItem('active-workspace') || 'default'` 會把字面 `default` 當成 workspace 名稱帶入；正解是 WebUI 啟動時呼叫 `getWorkbench()` 取得後端解析的真實 workspace 名稱（active → default_workspace 回退），存入 appStore，Sidebar/DictionaryPage 從 store 讀取，不再各自猜 localStorage。*驗證方式*：清空 localStorage 開新瀏覽器，Sidebar 顯示設定中 `default_workspace` 的名稱（非字面 `default`）。
-- [ ] **1.4.3 LLM 公版回答修正**：`chat.rs` system prompt 未注入工作區資訊，檢索模糊命中時 LLM 不知自身工作區與文件範圍，回覆公版內容（「因為您沒有提供具體的專案名稱…」）；需在 prompt 注入工作區名稱與已索引文件範圍，檢索無相關時直接聲明。*驗證方式*：對部署流程類問題以 fast profile 詢問，回覆應直接引用工作區文件或明確聲明「該工作區無相關文件」，不得給出公版泛泛回答。
+- [x] **1.4.3 LLM 公版回答修正**：`chat.rs` system prompt 未注入工作區資訊，檢索模糊命中時 LLM 不知自身工作區與文件範圍，回覆公版內容（「因為您沒有提供具體的專案名稱…」）；需在 prompt 注入工作區名稱與已索引文件範圍，檢索無相關時直接聲明。*驗證方式*：對部署流程類問題以 fast profile 詢問，回覆應直接引用工作區文件或明確聲明「該工作區無相關文件」，不得給出公版泛泛回答。
+- [x] **1.4.4 Chat 版面重構（底部輸入框 + 處理中狀態）**：現行 ChatPage 輸入框在上、訊息往下長，不符合主流 chat UI（Open WebUI 風格：訊息區在上可捲動、輸入框釘在底部）；且送出後到第一個 SSE chunk 之間無任何後端處理中回饋。需改為 flex column 版面（訊息區 `flex-1 overflow-y-auto`、輸入框釘底），並在 `isStreaming && !currentStreamText` 時顯示思考指示器（lazy-load 狀態）。*驗證方式*：瀏覽器送出問題後立即看到思考指示器；訊息區獨立捲動、輸入框固定底部；新訊息自動滾到底。
+- [x] **1.4.5 工作區內容與 LLM 上下文／受控工具調研**：確認 chat 檢索到的文件內容、來源與工作區範圍是否完整傳入 LLM；若仍不足，設計只允許讀取目前 workspace、透過既有後端資料層執行的文件清單／內容工具，再評估是否需要 tool calling。不得讓 LLM 直接讀取任意實體路徑，也不得繞過 workspace 隔離。*驗證方式*：以真實工作區文件提問，檢查 outbound LLM request 的上下文與回答引用；無相關內容時仍明確拒答，不使用通用知識補答。*結論*：1.4.3 修正後檢索內容已完整進入 LLM 上下文（system prompt 注入工作區文件數與範圍），GA 維持 Chat-centric RAG，受控文件工具延後至 post-GA。
+- [x] **1.4.6 會話標題重新命名**：在既有 conversation update API 上補 WebUI 的重新命名互動，標題更新必須維持 workspace scope、輸入驗證與錯誤回饋，不新增第二套 conversation 狀態。*驗證方式*：瀏覽器重新命名後重新整理，側邊欄與會話標題一致；跨 workspace 不得更新其他 workspace 的會話。
+- [x] **1.4.7 文件 Detail 資訊框寬度溢出修正**：文件 detail 中「資料無損與完整性校驗」資訊框會被長文字撐寬，破壞原有欄寬並可能產生橫向捲軸；依 `AGENTS.md` §9.4 修正承載文字的 flex/grid child 與斷行規則，不得以縮小整體字級掩蓋問題。*驗證方式*：以「資料無損與完整性校驗」、長英文單字、URL 與窄 viewport 測試；資訊框維持原欄寬、文字正常換行，頁面無非預期橫向捲軸。
+- [x] **1.4.8 WebUI `font-semibold` 字重調整**：從 Tailwind 共用字重 token 的單一來源將 `font-semibold` 由 600 調為 500，未逐頁散落覆寫。此變更影響所有使用 `font-semibold` 的段落、標題、按鈕與標籤，保留可辨識的資訊階層。*驗證方式*：`npm run typecheck` 通過；以繁中段落、`h3`～`h5`、按鈕及狀態標籤檢查，並比對英文與韓文介面。
+- [x] **1.4.9 Modal 支援 Escape 關閉**：盤點所有 WebUI modal／dialog／overlay，讓可關閉的 modal 支援按 `Escape` 關閉，並維持 `role="dialog"`、`aria-modal="true"`、焦點與 busy 狀態契約；執行危險動作期間不得因 Escape 中斷。*驗證方式*：逐一開啟各 modal，按 `Escape` 可關閉且焦點回到觸發元件；busy 時 Escape 不關閉；背景頁面不誤觸發快捷鍵。
+- [x] **1.4.10 BYOK 編輯按鈕改用明確編輯圖示**：BYOK Provider 列表的「編輯」按鈕原以 `+` 圖示呈現，與「新增 Provider」混淆；改用鉛筆圖示（`Pencil`）明確表達編輯語意，維持既有按鈕尺寸與 i18n 標籤。*驗證方式*：設定頁 BYOK 區塊「編輯 Provider」按鈕顯示鉛筆圖示（非 `+`），typecheck 通過。
 
 ---
 

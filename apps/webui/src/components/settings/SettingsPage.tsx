@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode, FormEvent } from 'react'
-import { RefreshCw, AlertCircle, Copy, Check, Trash2, Key, Play, Plus, Power, ToggleLeft, X, Loader2 } from 'lucide-react'
+import { RefreshCw, AlertCircle, Copy, Check, Trash2, Key, Play, Pencil, Plus, Power, ToggleLeft, X, Loader2 } from 'lucide-react'
 import { getHealth, getWorkbench, checkVersion, listLlmProviders, upsertLlmProvider, deleteLlmProvider, testLlmProvider } from '../../lib/api'
 import type { VersionCheckResponse } from '../../lib/api'
 import { useAppStore } from '../../stores/appStore'
@@ -377,7 +377,7 @@ export function SettingsPage() {
                                 className="p-2 rounded-md bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
                                 title="編輯 Provider"
                               >
-                                <Plus size={16} />
+                                <Pencil size={16} />
                               </button>
                               <button
                                 onClick={() => handleTestProvider(provider)}

@@ -35,7 +35,7 @@ function Field({ label, value, mono }: { label: string; value: ReactNode; mono?:
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <div className={`mt-1 min-w-0 break-words text-[13px] text-slate-800 ${mono ? 'font-mono' : ''}`}>{value}</div>
+      <div className={`mt-1 min-w-0 max-w-full break-words [overflow-wrap:anywhere] text-[13px] text-slate-800 ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
   )
 }
