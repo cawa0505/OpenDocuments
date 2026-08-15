@@ -19,3 +19,6 @@ AGENTS.md
 .slim/deepwork/
 .ignore
 docs/local/
+
+# TypeScript build info (build artifact)
+*.tsbuildinfo
