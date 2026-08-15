@@ -31,10 +31,24 @@ function CodeBlock({ children }: { children: ReactNode }) {
   const code = extractText(children)
 
   const handleCopy = useCallback(() => {
-    void navigator.clipboard.writeText(code).then(() => {
+    const done = () => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    }
+    // secure context 才有 navigator.clipboard；http 部署（本機）需 execCommand fallback
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(code).then(done)
+      return
+    }
+    const ta = document.createElement('textarea')
+    ta.value = code
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    done()
   }, [code])
 
   return (

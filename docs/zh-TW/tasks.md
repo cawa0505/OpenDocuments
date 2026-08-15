@@ -10,9 +10,9 @@
 
 - [x] **1.1.1 BYOK 設定介面**：完成 `SettingsPage.tsx` 供應商管理介面與連線測試功能。
 - [x] **1.1.2 預設 Light Mode**：鎖定高質感明亮模式，並清潔 DOM 主題初始化邏輯。
-- [ ] **1.1.3 Markdown 代碼高亮與 Copy 按鈕**：
-  - [ ] 整合輕量級 Markdown 解析器，支援程式碼區塊語法高亮。
-  - [ ] 於每個程式碼區塊右上角新增浮動「複製 (Copy)」按鈕。
+- [x] **1.1.3 Markdown 代碼高亮與 Copy 按鈕**：
+  - [x] 整合輕量級 Markdown 解析器，支援程式碼區塊語法高亮。
+  - [x] 於每個程式碼區塊右上角新增浮動「複製 (Copy)」按鈕。
   - *驗證方式*：確認 `rust`、`json`、`javascript` 程式碼有正確渲染語法色彩；點擊「複製」按鈕後，剪貼簿內容與原始代碼完全一致。
 - [ ] **1.1.4 互動式 Citation 連結**：
   - [ ] 動態解析 SSE 串流內文中的 `[1]`、`[2]` 出處標記。
@@ -40,7 +40,7 @@
 ### 1.4 GA 前 WebUI 收尾
 
 - [ ] **1.4.1 Tailwind CSS v4 遷移**：`tailwindcss ^4` + `@tailwindcss/vite`（vite.config.ts），移除 `postcss.config.js` / `autoprefixer`；設定改 CSS-first（`@import "tailwindcss"`、`@custom-variant dark`、`@theme`、`@plugin "@tailwindcss/typography"`）。*驗證方式*：`npm run typecheck` 零錯誤、`make install`、頁面正常 render（非 stub）、暗色模式正常、modal/markdown 外觀無視覺漂移。
-- [ ] **1.4.2 default workspace hardcoding 修正**：`DictionaryPage.tsx:20` 與 `Sidebar.tsx:192` 目前 `localStorage.getItem('active-workspace') || 'default'` 會把字面 `default` 當成 workspace 名稱帶入；正解是 WebUI 啟動時呼叫 `getWorkbench()` 取得後端解析的真實 workspace 名稱（active → default_workspace 回退），存入 appStore，Sidebar/DictionaryPage 從 store 讀取，不再各自猜 localStorage。*驗證方式*：清空 localStorage 開新瀏覽器，Sidebar 顯示設定中 `default_workspace` 的名稱（非字面 `default`）。
+- [x] **1.4.2 default workspace hardcoding 修正**：`DictionaryPage.tsx:20` 與 `Sidebar.tsx:192` 目前 `localStorage.getItem('active-workspace') || 'default'` 會把字面 `default` 當成 workspace 名稱帶入；正解是 WebUI 啟動時呼叫 `getWorkbench()` 取得後端解析的真實 workspace 名稱（active → default_workspace 回退），存入 appStore，Sidebar/DictionaryPage 從 store 讀取，不再各自猜 localStorage。*驗證方式*：清空 localStorage 開新瀏覽器，Sidebar 顯示設定中 `default_workspace` 的名稱（非字面 `default`）。
 - [x] **1.4.3 LLM 公版回答修正**：`chat.rs` system prompt 未注入工作區資訊，檢索模糊命中時 LLM 不知自身工作區與文件範圍，回覆公版內容（「因為您沒有提供具體的專案名稱…」）；需在 prompt 注入工作區名稱與已索引文件範圍，檢索無相關時直接聲明。*驗證方式*：對部署流程類問題以 fast profile 詢問，回覆應直接引用工作區文件或明確聲明「該工作區無相關文件」，不得給出公版泛泛回答。
 - [x] **1.4.4 Chat 版面重構（底部輸入框 + 處理中狀態）**：現行 ChatPage 輸入框在上、訊息往下長，不符合主流 chat UI（Open WebUI 風格：訊息區在上可捲動、輸入框釘在底部）；且送出後到第一個 SSE chunk 之間無任何後端處理中回饋。需改為 flex column 版面（訊息區 `flex-1 overflow-y-auto`、輸入框釘底），並在 `isStreaming && !currentStreamText` 時顯示思考指示器（lazy-load 狀態）。*驗證方式*：瀏覽器送出問題後立即看到思考指示器；訊息區獨立捲動、輸入框固定底部；新訊息自動滾到底。
 - [x] **1.4.5 工作區內容與 LLM 上下文／受控工具調研**：確認 chat 檢索到的文件內容、來源與工作區範圍是否完整傳入 LLM；若仍不足，設計只允許讀取目前 workspace、透過既有後端資料層執行的文件清單／內容工具，再評估是否需要 tool calling。不得讓 LLM 直接讀取任意實體路徑，也不得繞過 workspace 隔離。*驗證方式*：以真實工作區文件提問，檢查 outbound LLM request 的上下文與回答引用；無相關內容時仍明確拒答，不使用通用知識補答。*結論*：1.4.3 修正後檢索內容已完整進入 LLM 上下文（system prompt 注入工作區文件數與範圍），GA 維持 Chat-centric RAG，受控文件工具延後至 post-GA。
