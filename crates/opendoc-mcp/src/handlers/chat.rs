@@ -69,6 +69,27 @@ pub(crate) async fn get_history_context(
 }
 
 // ── BYOK LLM Helpers ──
+/// 解析工作區顯示名稱與已索引文件數，注入 system prompt 讓 LLM 不越權回答
+async fn get_workspace_scope(
+    db_pool: &sqlx::SqlitePool,
+    workspace_id: &str,
+) -> (String, i64) {
+    let name: String = sqlx::query_scalar("SELECT name FROM workspaces WHERE id = ? LIMIT 1")
+        .bind(workspace_id)
+        .fetch_optional(db_pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| workspace_id.to_string());
+    let doc_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND deleted_at IS NULL")
+            .bind(workspace_id)
+            .fetch_one(db_pool)
+            .await
+            .unwrap_or(0);
+    (name, doc_count)
+}
+
 async fn get_active_llm_client(
     db_pool: &sqlx::SqlitePool,
     workspace_id: &str,
@@ -297,6 +318,12 @@ pub async fn chat_stream_handler(
                 "ko" => "Korean (한국어)",
                 _ => "Traditional Chinese (繁體中文)",
             };
+            let (ws_name, ws_doc_count) = get_workspace_scope(&state.db_pool, &workspace).await;
+            let scope_instruction = format!(
+                "You are operating inside the workspace \"{}\", which currently contains {} indexed document(s).\n\
+                 Answer ONLY from the [Local Documents] below. If the documents do not contain the answer, state clearly that this workspace has no relevant content — do not answer from general knowledge.",
+                ws_name, ws_doc_count
+            );
             let context = limited
                 .iter()
                 .enumerate()
@@ -329,9 +356,10 @@ let opts = opendoc_llm::CompletionOptions {
                       3. Cite document-derived statements with the matching tag, such as `[1]` or `[2]`. Never invent citation numbers.\n\
                       4. If the documents do not support a claim, say so instead of making it up.\n\
                       5. Do NOT mention, reference, or link to any external URLs, domains, or sources not present in the [Local Documents] above.\n\
-                      6. Do NOT expand product names or concepts beyond what is explicitly stated in the provided documents.\n\n\
+                      6. Do NOT expand product names or concepts beyond what is explicitly stated in the provided documents.\n\
+                      7. {}\n\n\
                       [Local Documents]\n{}",
-                    language_instruction, context
+                    language_instruction, scope_instruction, context
                 )),
             };
 
@@ -629,6 +657,12 @@ pub async fn chat_handler(
 
     if !limited.is_empty() {
         if let Some(llm_client) = get_active_llm_client(&state.db_pool, &workspace).await {
+            let (ws_name, ws_doc_count) = get_workspace_scope(&state.db_pool, &workspace).await;
+            let scope_instruction = format!(
+                "You are operating inside the workspace \"{}\", which currently contains {} indexed document(s).\n\
+                 Answer ONLY from the [Local Documents] below. If the documents do not contain the answer, state clearly that this workspace has no relevant content — do not answer from general knowledge.",
+                ws_name, ws_doc_count
+            );
             let context_str = limited
                 .iter()
                 .enumerate()
@@ -651,9 +685,11 @@ pub async fn chat_handler(
              3. When your answer is derived from or references a specific [Local Document] chunk, you MUST precisely append its corresponding citation tag at the end of the sentence, such as `[1]` or `[2]` (using single-byte square brackets and numbers). Never invent non-existent citation numbers.\n\
              4. If the documents do not contain relevant information, honestly state that the documents do not mention it, do not make up facts.\n\
              5. Do NOT mention, reference, or link to any external URLs, domains, or sources not present in the [Local Documents] above.\n\
-             6. Do NOT expand product names or concepts beyond what is explicitly stated in the provided documents.\n\n\
+             6. Do NOT expand product names or concepts beyond what is explicitly stated in the provided documents.\n\
+             7. {}.\n\n\
              [Local Documents]\n{}",
                 language_instruction,
+                scope_instruction,
                 context_str
             );
 

@@ -7,7 +7,7 @@ import type { WorkbenchResponse } from '../../lib/types'
 import { translate as tr } from '../../lib/i18n'
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { locale, setLocale } = useAppStore()
+  const { locale, setLocale, setWorkspaceName } = useAppStore()
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null)
   const [reachable, setReachable] = useState(true)
 
@@ -17,6 +17,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       .then((result) => {
         if (!cancelled) {
           setWorkbench(result)
+          setWorkspaceName(result.workspace?.name || '')
           setReachable(true)
         }
       })

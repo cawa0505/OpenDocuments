@@ -25,6 +25,16 @@ pub async fn workbench_handler(
         .await
         .map_err(|status| (status, "Workspace not found".to_string()))?;
 
+    // 0. 解析真實 workspace 名稱（id → name；查無則回退 id 本身）
+    let workspace_name: String = sqlx::query_scalar(
+        "SELECT name FROM workspaces WHERE id = ? LIMIT 1",
+    )
+    .bind(&workspace_id)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .unwrap_or_else(|| workspace_id.clone());
+
     // 1. 讀取 documents 總量與 chunks
     let corpus_counts = sqlx::query(
         "SELECT COUNT(*) as doc_count, COALESCE(SUM(chunk_count), 0) as chunk_count FROM documents WHERE deleted_at IS NULL AND workspace_id = ?"
@@ -189,7 +199,7 @@ pub async fn workbench_handler(
             }
         },
         "connectors": { "total": 0, "active": 0, "recent": [] },
-        "workspace": { "name": workspace_id, "mode": "single" },
+        "workspace": { "name": workspace_name, "mode": "single" },
         "recentQueries": recent_queries,
         "suggestedQuestions": suggested_questions,
     })))

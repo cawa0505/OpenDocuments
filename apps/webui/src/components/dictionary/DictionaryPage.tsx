@@ -16,8 +16,8 @@ interface DictionaryEntry {
 }
 
 export default function DictionaryPage() {
-  const { locale } = useAppStore()
-  const activeWorkspace = localStorage.getItem('active-workspace') || 'default'
+  const { locale, workspaceName } = useAppStore()
+  const activeWorkspace = workspaceName || ''
   const [entries, setEntries] = useState<DictionaryEntry[]>([])
   const [key, setKey] = useState('')
   const [value, setValue] = useState('')

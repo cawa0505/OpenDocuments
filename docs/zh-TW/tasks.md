@@ -51,6 +51,7 @@
 - [x] **1.4.8 WebUI `font-semibold` 字重調整**：從 Tailwind 共用字重 token 的單一來源將 `font-semibold` 由 600 調為 500，未逐頁散落覆寫。此變更影響所有使用 `font-semibold` 的段落、標題、按鈕與標籤，保留可辨識的資訊階層。*驗證方式*：`npm run typecheck` 通過；以繁中段落、`h3`～`h5`、按鈕及狀態標籤檢查，並比對英文與韓文介面。
 - [x] **1.4.9 Modal 支援 Escape 關閉**：盤點所有 WebUI modal／dialog／overlay，讓可關閉的 modal 支援按 `Escape` 關閉，並維持 `role="dialog"`、`aria-modal="true"`、焦點與 busy 狀態契約；執行危險動作期間不得因 Escape 中斷。*驗證方式*：逐一開啟各 modal，按 `Escape` 可關閉且焦點回到觸發元件；busy 時 Escape 不關閉；背景頁面不誤觸發快捷鍵。
 - [x] **1.4.10 BYOK 編輯按鈕改用明確編輯圖示**：BYOK Provider 列表的「編輯」按鈕原以 `+` 圖示呈現，與「新增 Provider」混淆；改用鉛筆圖示（`Pencil`）明確表達編輯語意，維持既有按鈕尺寸與 i18n 標籤。*驗證方式*：設定頁 BYOK 區塊「編輯 Provider」按鈕顯示鉛筆圖示（非 `+`），typecheck 通過。
+- [ ] **1.4.11 Chat 文件來源預覽 Modal 內 Markdown 樣式一致性**：Chat 文件來源預覽 modal 內的 Markdown／程式碼區塊目前有些黑底內容會被白色框線包住、有些不會，需統一相同內容層級的背景、邊框與內距規則；不得順帶修改 modal 寬度、外部文件卡或其他未指定的版面樣式。*驗證方式*：開啟含一般 Markdown、程式碼區塊與長文字的真實文件來源預覽 modal，確認所有同類區塊的黑底與白框呈現一致，且三語介面與窄 viewport 不產生非預期橫向捲軸。
 
 ---
 

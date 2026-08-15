@@ -95,7 +95,7 @@ function toChatMessage(message: ConversationMessage): ChatMessage {
 }
 
 export function Sidebar() {
-  const { currentPage, setPage, locale } = useAppStore()
+  const { currentPage, setPage, locale, workspaceName } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
   const {
     conversations,
@@ -189,7 +189,7 @@ export function Sidebar() {
         <div className="mt-2 flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11.5px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-700/10">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-            Workspace: {localStorage.getItem('active-workspace') || 'default'}
+            Workspace: {workspaceName || t('workspaces.title')}
           </span>
         </div>
       </div>

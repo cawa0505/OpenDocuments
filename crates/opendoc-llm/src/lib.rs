@@ -74,7 +74,16 @@ impl LlmClient {
         format!("{base}/chat/completions")
     }
 
-    fn build_body(&self, messages: Vec<ChatMessage>, opts: &CompletionOptions, stream: bool) -> serde_json::Value {
+    fn build_body(&self, mut messages: Vec<ChatMessage>, opts: &CompletionOptions, stream: bool) -> serde_json::Value {
+        if let Some(system_prompt) = opts.system_prompt.as_deref() {
+            let already_present = messages
+                .iter()
+                .any(|message| message.role == "system" && message.content == system_prompt);
+            if !already_present {
+                messages.insert(0, ChatMessage::system(system_prompt));
+            }
+        }
+
         let mut body = serde_json::json!({
             "model": self.provider.model,
             "messages": messages,
@@ -163,5 +172,36 @@ impl LlmClient {
             },
         );
         Ok(Box::pin(stream))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_body_prepends_system_prompt_once() {
+        let client = LlmClient::new(LlmProvider {
+            name: "test".into(),
+            base_url: "http://localhost".into(),
+            model: "test".into(),
+            api_key: None,
+        });
+        let opts = CompletionOptions {
+            system_prompt: Some("workspace context".into()),
+            ..Default::default()
+        };
+
+        let body = client.build_body(vec![ChatMessage::user("question")], &opts, false);
+        let messages = body["messages"].as_array().unwrap();
+        assert_eq!(messages[0], serde_json::json!({"role": "system", "content": "workspace context"}));
+        assert_eq!(messages[1], serde_json::json!({"role": "user", "content": "question"}));
+
+        let body = client.build_body(
+            vec![ChatMessage::system("workspace context"), ChatMessage::user("question")],
+            &opts,
+            false,
+        );
+        assert_eq!(body["messages"].as_array().unwrap().len(), 2);
     }
 }

@@ -1,13 +1,58 @@
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
-import { memo } from 'react'
+import { memo, useState, useCallback, type ReactNode } from 'react'
+import { Check, Copy } from 'lucide-react'
 import type { Components } from 'react-markdown'
+import { translate as tr } from '../../lib/i18n'
+import { useAppStore } from '../../stores/appStore'
 
 interface MarkdownProps {
   content: string
   className?: string
   /** 自訂節點渲染器（例如 citation 互動標籤） */
   components?: Components
+}
+
+/** 從 react-markdown 的 children 遞迴萃取純文字（code 內容為字串陣列） */
+function extractText(node: ReactNode): string {
+  if (node == null) return ''
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(extractText).join('')
+  if (typeof node === 'object' && 'props' in node) {
+    return extractText((node as { props: { children?: ReactNode } }).props.children)
+  }
+  return ''
+}
+
+/** 程式碼區塊：語法高亮 + 右上角浮動 Copy 按鈕 */
+function CodeBlock({ children }: { children: ReactNode }) {
+  const [copied, setCopied] = useState(false)
+  const locale = useAppStore((s) => s.locale)
+  const code = extractText(children)
+
+  const handleCopy = useCallback(() => {
+    void navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [code])
+
+  return (
+    <div className="group relative">
+      <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-3 text-[13px] leading-6 text-slate-100 dark:border-gray-700">
+        {children}
+      </pre>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={tr(locale, 'chat.copyCode')}
+        title={tr(locale, 'chat.copyCode')}
+        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-slate-800/80 text-slate-300 opacity-0 transition-opacity hover:bg-slate-700 hover:text-white focus:opacity-100 group-hover:opacity-100"
+      >
+        {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+      </button>
+    </div>
+  )
 }
 
 /**
@@ -43,11 +88,7 @@ export const Markdown = memo(function Markdown({ content, className, components 
             )
           },
           pre({ children }) {
-            return (
-              <pre className="overflow-x-auto rounded-md border border-slate-200 bg-slate-950 p-3 text-[13px] leading-6 text-slate-100 dark:border-gray-700">
-                {children}
-              </pre>
-            )
+            return <CodeBlock>{children}</CodeBlock>
           },
           table({ children }) {
             return (

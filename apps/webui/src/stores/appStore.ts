@@ -12,12 +12,14 @@ interface AppState {
   profile: RAGProfile
   currentPage: Page
   sidebarOpen: boolean
+  workspaceName: string
 
   setTheme: (theme: Theme) => void
   setLocale: (locale: Locale) => void
   setProfile: (profile: RAGProfile) => void
   setPage: (page: Page) => void
   toggleSidebar: () => void
+  setWorkspaceName: (name: string) => void
 }
 
 // ponytail: Light Mode 固定，任何切換路徑皆無效（dark mode 未完成，hide 後不再提供）
@@ -37,6 +39,7 @@ export const useAppStore = create<AppState>((set) => ({
   profile: ((typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-profile') as RAGProfile : 'fast') || 'fast'),
   currentPage: 'chat',
   sidebarOpen: true,
+  workspaceName: '',
 
   setTheme: () => {
     // ponytail: Light Mode 固定；保留簽名避免破壞呼叫端，但一律 light
@@ -58,4 +61,5 @@ export const useAppStore = create<AppState>((set) => ({
 
   setPage: (page) => set({ currentPage: page }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  setWorkspaceName: (name) => set({ workspaceName: name }),
 }))
