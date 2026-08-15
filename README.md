@@ -84,11 +84,10 @@ Open `http://localhost:3000`, index your documents, and ask questions with sourc
 
 ## 📚 Documentation & Architecture Index
 
-All technical specifications, architecture maps, and task tracking documents are located in [`docs/en/`](docs/en/) and [`openspec/`](openspec/):
+All technical specifications and architecture maps are located in [`docs/en/`](docs/en/) and [`openspec/`](openspec/):
 
 - 🗂️ **[System Architecture & Directory Map](docs/en/structure.md)**: Single-binary Rust workspace layout, BYOK secret boundaries, and dual-retrieval data flow.
 - 🗺️ **[R&D Roadmap & Milestones](docs/en/roadmap.md)**: Multi-phase engineering roadmap from single-binary MVP to Tauri 2.0 control cabin and MCP publisher.
-- 📋 **[Task Backlog & Status Tracker](docs/en/tasks.md)**: Active Phase 1 tasks, CLI enhancements, and upcoming work packages.
 - ⚡ **[Open Source RAG Engine Spec](docs/en/open-source-rag-engine.md)**: Complete Data Plane technical documentation for LanceDB integration and SQL-like pre-filtering.
 - 📐 **[OpenSpec Specifications](openspec/specs/)**: Formal system behavior contracts (Tags, BYOK, Workspace resolution).
 - 📖 **[Official Documentation Site](https://cawa0505.github.io/OpenDocuments/)**: Hosted guides, API references, and deployment tutorials.
