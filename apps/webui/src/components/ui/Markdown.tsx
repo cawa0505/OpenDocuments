@@ -64,25 +64,16 @@ function CodeBlock({ children }: { children: ReactNode }) {
  */
 export const Markdown = memo(function Markdown({ content, className, components }: MarkdownProps) {
   return (
-    <div className={className}>
+    <div className={`opendoc-markdown ${className ?? ''}`.trim()}>
       <ReactMarkdown
         rehypePlugins={[rehypeHighlight]}
         components={{
-          // 行內 code vs 區塊 code
-          code({ className: cls, children, ...props }) {
-            const isBlock = /language-/.test(cls || '')
-            if (isBlock) {
-              return (
-                <code className={cls} {...props}>
-                  {children}
-                </code>
-              )
-            }
+          // code：一律輸出純 code（有 language- class 由 hljs 高亮）；
+          // 行內 vs 區塊由 CSS `.opendoc-markdown :not(pre) > code` 依 DOM 結構決定，
+          // 避免無語言標記的 fenced block 被誤判為行內 code（黑底白框 bug）
+          code({ className: cls, children, node: _node, ...props }) {
             return (
-              <code
-                className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-blue-700 dark:bg-gray-800 dark:text-blue-300"
-                {...props}
-              >
+              <code className={cls} {...props}>
                 {children}
               </code>
             )

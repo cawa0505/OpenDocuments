@@ -25,6 +25,11 @@
 }
 
 @layer utilities {
+  /* Markdown 行內 code（僅非 pre 直接子節點才命中，block code 不受影響） */
+  .opendoc-markdown :not(pre) > code {
+    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-blue-700 dark:bg-gray-800 dark:text-blue-300;
+  }
+
   /* 全域極簡暗色模式覆蓋 - 0改動 React 元件 */
   .dark body {
     background-color: #0b0f19 !important;
