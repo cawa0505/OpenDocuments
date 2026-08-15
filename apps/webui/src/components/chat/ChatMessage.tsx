@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { SourceCard } from './SourceCard'
 import { Markdown } from '../ui/Markdown'
 import type { ChatMessage as ChatMessageType, SearchResult } from '../../lib/types'
@@ -16,6 +16,56 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
   const { locale } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
   const [selectedSource, setSelectedSource] = useState<SearchResult | null>(null)
+  // 1.1.4: citation 點擊後高亮的來源卡 index（幾秒後自動清除）
+  const [highlightedSource, setHighlightedSource] = useState<number | null>(null)
+  const rawSources = useMemo(() => message.sources || [], [message.sources])
+
+  // 去重：同一文件僅顯示一張卡（LLM 依 chunk 編號，但前端以文件為單位呈現）。
+  // 不先 slice，讓 [N] 都能對應到原始 raw 清單。
+  const dedupedSources = useMemo<SearchResult[]>(() => {
+    const result: SearchResult[] = []
+    const seenDocs = new Set<string>()
+    for (const src of rawSources) {
+      const docKey = src.documentId || src.sourcePath || src.content
+      if (!seenDocs.has(docKey)) {
+        seenDocs.add(docKey)
+        result.push(src)
+      }
+    }
+    return result
+  }, [rawSources])
+
+  // raw source index -> 去重後卡片 index。
+  // citation [N] 對應 rawSources[N-1]，即使該文件有數個 chunk 被合併到同一張卡，
+  // 也會正確落在「第一張同文件卡」。
+  const rawToCardIndex = useMemo(() => {
+    const map: Record<number, number> = {}
+    const docToCard = new Map<string, number>()
+    let cardIdx = 0
+    rawSources.forEach((src, rawIdx) => {
+      const docKey = src.documentId || src.sourcePath || src.content
+      if (!docToCard.has(docKey)) {
+        docToCard.set(docKey, cardIdx)
+        cardIdx++
+      }
+      map[rawIdx] = docToCard.get(docKey)!
+    })
+    return map
+  }, [rawSources])
+
+  // Citation 點擊：平滑滾動到「本則訊息」的對應來源卡並套用高亮外框（3 秒後自動清除）
+  const handleCitationClick = useCallback(
+    (num: number) => {
+      const cardIndex = rawToCardIndex[num - 1]
+      if (cardIndex === undefined) return
+      setHighlightedSource(cardIndex)
+      document
+        .getElementById(`source-card-${message.id}-${cardIndex}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.setTimeout(() => setHighlightedSource((cur) => (cur === cardIndex ? null : cur)), 3000)
+    },
+    [rawToCardIndex, message.id],
+  )
 
   useEffect(() => {
     if (!selectedSource) return
@@ -26,18 +76,6 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedSource])
   const isUser = message.role === 'user'
-  const visibleSources = message.sources?.slice(0, 4) || []
-  
-  // Dedup visible sources by documentId/sourcePath to prevent duplicate cards for the same file
-  const dedupedSources: SearchResult[] = []
-  const seenDocs = new Set<string>()
-  for (const src of visibleSources) {
-    const docKey = src.documentId || src.sourcePath || src.content
-    if (!seenDocs.has(docKey)) {
-      seenDocs.add(docKey)
-      dedupedSources.push(src)
-    }
-  }
 
   const confidence = message.confidence?.score
   const bestSourceScore = dedupedSources.length > 0 ? Math.max(...dedupedSources.map((source) => source.score)) : undefined
@@ -45,96 +83,34 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
   const metricLabel = bestSourceScore !== undefined ? t('chat.evidenceMatch') : t('chat.confidence')
   const sourceHeading = selectedSource?.headingHierarchy?.join(' / ')
 
-  // Process content to add interactive citation tags
-  const processContent = (content: string) => {
-    // Replace citation patterns like [1], [2], [3] with interactive tags
-    const citationRegex = /\[(\d+)\]/g
-    const parts: (string | React.ReactElement)[] = []
-    let lastIndex = 0
-    let match
-
-    while ((match = citationRegex.exec(content)) !== null) {
-      const [fullMatch, numStr] = match
-      const index = parseInt(numStr) - 1 // Convert to 0-indexed
-
-      // Add text before the citation
-      if (match.index > lastIndex) {
-        parts.push(content.slice(lastIndex, match.index))
-      }
-
-      // Add interactive citation tag
-      if (index >= 0 && index < dedupedSources.length) {
-        const source = dedupedSources[index]
-        const tooltipText = `${source.sourcePath.split('/').pop() || source.sourcePath}\n\n${source.content.slice(0, 100)}${source.content.length > 100 ? '...' : ''}`
-        parts.push(
-          <button
-            key={`citation-${index}-${match.index}`}
-            className="inline-flex items-center justify-center mx-0.5 px-1.5 py-0.25 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer border border-blue-100 focus-visible:ring-2 focus-visible:ring-blue-200"
-            onClick={() => setSelectedSource(source)}
-            title={tooltipText}
-            // Enhanced accessibility attributes
-            aria-label={`${t('chat.citationPreview')} ${numStr} - ${source.sourcePath}`}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setSelectedSource(source)
-              }
-            }}
-          >
-            [{numStr}]
-          </button>
-        )
-      } else {
-        // Render invalid or out-of-bounds citations as styled spans for visibility
-        const isOutOfBounds = index >= dedupedSources.length
-        const isInvalid = isNaN(index) || numStr === ''
-        
-        let className = "inline-block mx-0.5 px-1.5 py-0.25 text-[11px] font-bold "
-        let title = ''
-        
-        if (isOutOfBounds) {
-          className += "text-orange-600 bg-orange-50 border border-orange-300"
-          title = `${t('chat.citationOutOfBounds')} ${numStr}`
-        } else if (isInvalid) {
-          className += "text-red-600 bg-red-50 border border-red-300"
-          title = `${t('chat.invalidCitation')} ${numStr}`
-        }
-        
-        parts.push(
-          <span
-            key={`invalid-citation-${index}-${match.index}`}
-            className={className + " rounded-md"}
-            title={title}
-          >
-            {fullMatch}
-          </span>
-        )
-      }
-
-      lastIndex = match.index + fullMatch.length
+  const renderCitation = useCallback((num: number): ReactNode => {
+    const cardIndex = rawToCardIndex[num - 1]
+    const source = cardIndex !== undefined ? dedupedSources[cardIndex] : undefined
+    if (source) {
+      const filename = source.sourcePath.split('/').pop() || source.sourcePath
+      const tooltipText = `${filename}\n\n${source.content.slice(0, 100)}${source.content.length > 100 ? '...' : ''}`
+      return (
+        <button
+          type="button"
+          className="mx-0.5 inline-flex items-center justify-center rounded-md border border-blue-100 bg-blue-50 px-1.5 py-0.5 align-baseline text-[11px] font-bold leading-none text-blue-600 transition-colors hover:bg-blue-100 focus-visible:ring-2 focus-visible:ring-blue-200"
+          onClick={() => handleCitationClick(num)}
+          title={tooltipText}
+          aria-label={`${tr(locale, 'chat.citationPreview')} ${num} - ${source.sourcePath}`}
+        >
+          [{num}]
+        </button>
+      )
     }
 
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push(content.slice(lastIndex))
-    }
-
-    // Convert to ReactNode array for rendering
-    return parts
-  }
-
-  const renderContent = () => {
-    const processed = processContent(message.content)
-    return processed.map((part, index) => {
-      if (typeof part === 'string') {
-        // 文字片段走 Markdown 渲染，citation 與 markdown 結構共存
-        return <Markdown key={`text-${index}`} content={part} />
-      }
-      return part
-    })
-  }
+    return (
+      <span
+        className="mx-0.5 inline-block rounded-md border border-orange-300 bg-orange-50 px-1.5 py-0.5 align-baseline text-[11px] font-bold leading-none text-orange-600"
+        title={`${tr(locale, 'chat.citationOutOfBounds')} ${num}`}
+      >
+        [{num}]
+      </span>
+    )
+  }, [dedupedSources, rawToCardIndex, handleCitationClick, locale])
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -149,7 +125,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
               <div className="min-w-0">
                 <p className="mb-2.5 text-[13px] font-medium text-blue-600">{t('chat.answer')}</p>
                 <div className="prose prose-sm max-w-none prose-slate text-[15px] leading-6 [&_p:first-child]:mt-0 [&_p:first-child]:font-semibold [&_p:first-child]:text-slate-950 [&_p]:my-2">
-                  {renderContent()}
+                  <Markdown content={message.content} citationRenderer={renderCitation} />
                 </div>
               </div>
               {metricScore !== undefined && (
@@ -168,7 +144,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
               )}
             </div>
 
-            {visibleSources.length > 0 && (
+            {dedupedSources.length > 0 && (
               <div className="mt-6 border-t border-slate-200 pt-5">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
@@ -180,12 +156,14 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                 </div>
                 <div className="grid gap-4 md:grid-cols-4">
                   {dedupedSources.map((source, i) => (
-                    <SourceCard
-                      key={`${source.chunkId}-${i}`}
-                      source={source}
-                      onOpen={setSelectedSource}
-                      openLabel={t('chat.openSource')}
-                    />
+                    <div key={`${source.chunkId}-${i}`} id={`source-card-${message.id}-${i}`} className="scroll-mt-6">
+                      <SourceCard
+                        source={source}
+                        onOpen={setSelectedSource}
+                        openLabel={t('chat.openSource')}
+                        highlighted={highlightedSource === i}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

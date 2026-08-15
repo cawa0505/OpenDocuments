@@ -1,6 +1,6 @@
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
-import { memo, useState, useCallback, type ReactNode } from 'react'
+import { memo, useState, useCallback, useContext, createContext, Fragment, type ReactNode } from 'react'
 import { Check, Copy } from 'lucide-react'
 import type { Components } from 'react-markdown'
 import { translate as tr } from '../../lib/i18n'
@@ -11,7 +11,16 @@ interface MarkdownProps {
   className?: string
   /** 自訂節點渲染器（例如 citation 互動標籤） */
   components?: Components
+  /**
+   * 全文 AST 層的 citation 注入（AGENTS.md 0.2：不切碎 markdown）。
+   * 給定 [N] 的數字，回傳要插入的節點；回傳 null 則保持原文 `[N]`。
+   * code/pre 內部的文字不會呼叫（避免 `vec[1]` 這類程式碼被誤判）。
+   */
+  citationRenderer?: (num: number) => ReactNode | null
 }
+
+/** code 內容的 context：內部文字不觸發 citation 轉換 */
+const CodeContext = createContext(false)
 
 /** 從 react-markdown 的 children 遞迴萃取純文字（code 內容為字串陣列） */
 function extractText(node: ReactNode): string {
@@ -76,7 +85,7 @@ function CodeBlock({ children }: { children: ReactNode }) {
  * - 預設不渲染 raw HTML（react-markdown 安全預設）
  * - memo：串流時僅在 content 實際變化才重解析，避免每 token 全量重掛載（§3708）
  */
-export const Markdown = memo(function Markdown({ content, className, components }: MarkdownProps) {
+export const Markdown = memo(function Markdown({ content, className, components, citationRenderer }: MarkdownProps) {
   return (
     <div className={`opendoc-markdown ${className ?? ''}`.trim()}>
       <ReactMarkdown
@@ -87,10 +96,36 @@ export const Markdown = memo(function Markdown({ content, className, components 
           // 避免無語言標記的 fenced block 被誤判為行內 code（黑底白框 bug）
           code({ className: cls, children, node: _node, ...props }) {
             return (
-              <code className={cls} {...props}>
-                {children}
-              </code>
+              <CodeContext.Provider value={true}>
+                <code className={cls} {...props}>
+                  {children}
+                </code>
+              </CodeContext.Provider>
             )
+          },
+          // AST 層 citation 注入：完整渲染 markdown，不切碎。
+          // react-markdown v9 會為每個 text node 呼叫 text override，
+          // 在 text 層把 [N] 換成互動節點，前後文仍是同一個段落。
+          text({ children }) {
+            if (!citationRenderer || typeof children !== 'string') return children
+            const inCode = useContext(CodeContext)
+            if (inCode) return children
+            const parts: ReactNode[] = []
+            let last = 0
+            const re = /\[(\d+)\]/g
+            let m: RegExpExecArray | null
+            let key = 0
+            while ((m = re.exec(children)) !== null) {
+              if (m.index > last) parts.push(children.slice(last, m.index))
+              const n = Number(m[1])
+              const node = citationRenderer(n)
+              parts.push(node ?? m[0])
+              last = m.index + m[0].length
+              key++
+            }
+            if (last < children.length) parts.push(children.slice(last))
+            if (parts.length <= 1) return children
+            return parts.map((p, i) => <Fragment key={i}>{p}</Fragment>)
           },
           pre({ children }) {
             return <CodeBlock>{children}</CodeBlock>

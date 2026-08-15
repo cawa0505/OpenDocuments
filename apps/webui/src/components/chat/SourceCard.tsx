@@ -5,9 +5,11 @@ interface Props {
   source: SearchResult
   onOpen: (source: SearchResult) => void
   openLabel: string
+  /** 由 citation 連結觸發的高亮狀態（smooth-scroll 後套用外框） */
+  highlighted?: boolean
 }
 
-export function SourceCard({ source, onOpen, openLabel }: Props) {
+export function SourceCard({ source, onOpen, openLabel, highlighted }: Props) {
   const filename = source.sourcePath.split('/').pop() || source.sourcePath
   const sourceHost = source.sourcePath.includes('://')
     ? source.sourcePath.split('://')[1]?.split('/')[0]
@@ -18,7 +20,11 @@ export function SourceCard({ source, onOpen, openLabel }: Props) {
     <button
       type="button"
       onClick={() => onOpen(source)}
-      className="flex min-w-0 items-center gap-2.5 rounded-md border border-transparent p-2 text-left transition-colors hover:border-blue-100 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200"
+      className={`flex min-w-0 items-center gap-2.5 rounded-md border p-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+        highlighted
+          ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-200'
+          : 'border-transparent hover:border-blue-100 hover:bg-blue-50'
+      }`}
       title={`${openLabel}: ${source.sourcePath}`}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-blue-200 bg-white text-blue-600">
