@@ -256,7 +256,8 @@ pub async fn chat_stream_handler(
 
     let results = state
         .search
-        .search_and_rerank_workspace(&expanded_query, top_k, threshold, &workspace);
+        .search_and_rerank_workspace(&expanded_query, top_k, threshold, &workspace)
+        .await;
     let limited: Vec<_> = results.into_iter().take(top_k).collect();
 
     let total_score = if limited.is_empty() {
@@ -637,7 +638,8 @@ pub async fn chat_handler(
 
     let results = state
         .search
-        .search_and_rerank_workspace(&expanded_query, top_k, threshold, &workspace);
+        .search_and_rerank_workspace(&expanded_query, top_k, threshold, &workspace)
+        .await;
 
     let limited: Vec<_> = results.into_iter().take(top_k).collect();
 

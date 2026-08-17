@@ -7,6 +7,8 @@ members = [
     "crates/opendoc-mcp",
     "crates/opendoc-cli",
     "crates/opendoc-engine-lancedb",
+    "crates/opendoc-task",
+    "crates/opendoc-ai",
 ]
 resolver = "2"
 

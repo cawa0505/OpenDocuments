@@ -1,0 +1,13 @@
+[package]
+name = "opendoc-task"
+version = "0.2.0"
+edition = "2021"
+description = "Task Execution Layer and envelope abstraction for OpenDocuments"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+async-trait = "0.1"
+uuid = { version = "1.0", features = ["v4"] }
+tokio = { version = "1.0", features = ["sync", "time"] }

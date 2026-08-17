@@ -32,6 +32,7 @@ pub struct DatabaseConfig {
 pub struct ModelConfig {
     pub default_workspace: String,
     pub active_workspace: Option<String>,
+    #[serde(default = "default_score_threshold")]
     pub score_threshold: f32,
     pub local_reranker_path: Option<String>,
     /// 向量維度。bge-m3 預設 1024。改 provider 時須同步（LanceDB 表 dim 固定）。
@@ -48,6 +49,9 @@ pub struct ModelConfig {
     pub embedding_table_name: String,
 }
 
+fn default_score_threshold() -> f32 {
+    0.60
+}
 fn default_embedding_dim() -> usize {
     1024
 }
@@ -61,12 +65,112 @@ fn default_embedding_table() -> String {
     "od_chunks".to_string()
 }
 
+fn default_task_executor() -> String {
+    "inprocess".to_string()
+}
+
+fn default_spur_controller_url() -> String {
+    "http://127.0.0.1:6817".to_string()
+}
+fn default_spur_partition() -> String {
+    "default".to_string()
+}
+fn default_spur_idle_timeout() -> u32 {
+    300
+}
+fn default_spur_daemon_port() -> u16 {
+    50051
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SpurConfig {
+    #[serde(default = "default_spur_controller_url")]
+    pub controller_url: String,
+    #[serde(default = "default_spur_partition")]
+    pub partition: String,
+    #[serde(default = "default_spur_idle_timeout")]
+    pub daemon_idle_timeout_seconds: u32,
+    #[serde(default = "default_spur_daemon_port")]
+    pub daemon_port: u16,
+}
+
+impl Default for SpurConfig {
+    fn default() -> Self {
+        Self {
+            controller_url: default_spur_controller_url(),
+            partition: default_spur_partition(),
+            daemon_idle_timeout_seconds: default_spur_idle_timeout(),
+            daemon_port: default_spur_daemon_port(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TaskConfig {
+    #[serde(default = "default_task_executor")]
+    pub executor: String,
+    #[serde(default)]
+    pub spur: Option<SpurConfig>,
+}
+
+impl Default for TaskConfig {
+    fn default() -> Self {
+        Self {
+            executor: default_task_executor(),
+            spur: None,
+        }
+    }
+}
+
+fn default_ai_preferred_backend() -> String {
+    "cpu".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AiModelEntryConfig {
+    pub name: String,
+    pub engine: String,
+    pub model_path: String,
+    #[serde(default = "default_ai_preferred_backend")]
+    pub backend: String,
+    pub dimensions: Option<usize>,
+    pub context_size: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct AiModelsConfig {
+    pub embedding: Option<AiModelEntryConfig>,
+    pub reranker: Option<AiModelEntryConfig>,
+    pub inference: Option<AiModelEntryConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AiConfig {
+    #[serde(default = "default_ai_preferred_backend")]
+    pub preferred_backend: String,
+    #[serde(default)]
+    pub models: Option<AiModelsConfig>,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            preferred_backend: default_ai_preferred_backend(),
+            models: None,
+        }
+    }
+}
+
 /// ~/.config/opendocuments/config.toml 對應的強型別結構
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub model: ModelConfig,
+    #[serde(default)]
+    pub task: TaskConfig,
+    #[serde(default)]
+    pub ai: AiConfig,
 }
 
 impl Default for AppConfig {
@@ -79,16 +183,18 @@ impl Default for AppConfig {
             database: DatabaseConfig {
                 path: "~/.opendocuments".to_string(),
             },
-model: ModelConfig {
-                     default_workspace: "default".to_string(),
-                     active_workspace: None,
-                     score_threshold: 0.60,
-                     local_reranker_path: Some("~/.opendocuments/models/bge-reranker-base.onnx".to_string()),
-                     embedding_dim: default_embedding_dim(),
-                     embedding_backend: default_embedding_backend(),
-                     embedding_provider_name: default_embedding_provider_name(),
-                     embedding_table_name: default_embedding_table(),
-                 },
+            model: ModelConfig {
+                default_workspace: "default".to_string(),
+                active_workspace: None,
+                score_threshold: 0.60,
+                local_reranker_path: Some("~/.opendocuments/models/bge-reranker-base.onnx".to_string()),
+                embedding_dim: default_embedding_dim(),
+                embedding_backend: default_embedding_backend(),
+                embedding_provider_name: default_embedding_provider_name(),
+                embedding_table_name: default_embedding_table(),
+            },
+            task: TaskConfig::default(),
+            ai: AiConfig::default(),
         }
     }
 }
@@ -505,5 +611,73 @@ mod tests {
         let manager = ConfigManager::load_or_init().unwrap();
         let results = manager.search_and_rerank("MCP", 0.60);
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_legacy_config_backward_compatibility() {
+        let legacy_toml = r#"
+[server]
+url = "http://127.0.0.1:3000"
+api_key = "test-key"
+
+[database]
+path = "~/.opendocuments"
+
+[model]
+default_workspace = "default"
+active_workspace = "OpenDocuments"
+score_threshold = 0.75
+"#;
+        let cfg: AppConfig = toml::from_str(legacy_toml).unwrap();
+        assert_eq!(cfg.server.url, "http://127.0.0.1:3000");
+        assert_eq!(cfg.model.default_workspace, "default");
+        assert_eq!(cfg.model.active_workspace.as_deref(), Some("OpenDocuments"));
+        assert_eq!(cfg.task.executor, "inprocess");
+        assert_eq!(cfg.ai.preferred_backend, "cpu");
+        assert!(cfg.ai.models.is_none());
+    }
+
+    #[test]
+    fn test_new_ai_task_config_parsing() {
+        let full_toml = r#"
+[server]
+url = "http://127.0.0.1:3000"
+api_key = ""
+
+[database]
+path = "~/.opendocuments"
+
+[model]
+default_workspace = "default"
+
+[task]
+executor = "spur_daemon"
+
+[task.spur]
+controller_url = "http://127.0.0.1:6817"
+partition = "gpu-nodes"
+daemon_idle_timeout_seconds = 600
+daemon_port = 50051
+
+[ai]
+preferred_backend = "vulkan"
+
+[ai.models.embedding]
+name = "bge-m3"
+engine = "llamacpp"
+model_path = "~/.opendocuments/models/bge-m3.gguf"
+backend = "vulkan"
+dimensions = 1024
+"#;
+        let cfg: AppConfig = toml::from_str(full_toml).unwrap();
+        assert_eq!(cfg.task.executor, "spur_daemon");
+        let spur = cfg.task.spur.unwrap();
+        assert_eq!(spur.partition, "gpu-nodes");
+        assert_eq!(spur.daemon_idle_timeout_seconds, 600);
+        assert_eq!(cfg.ai.preferred_backend, "vulkan");
+        let embedding = cfg.ai.models.unwrap().embedding.unwrap();
+        assert_eq!(embedding.name, "bge-m3");
+        assert_eq!(embedding.engine, "llamacpp");
+        assert_eq!(embedding.dimensions, Some(1024));
     }
 }

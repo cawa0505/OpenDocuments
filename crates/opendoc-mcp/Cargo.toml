@@ -24,6 +24,7 @@ walkdir = "2"
 rust-embed = "8.5"
 mime_guess = "2.0"
 sha2 = "0.10"
+async-trait = "0.1"
 
 [dev-dependencies]
 tower = "0.5"

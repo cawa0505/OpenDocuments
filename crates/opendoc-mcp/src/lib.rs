@@ -17,6 +17,7 @@ use handlers::conversations::{
 use handlers::admin::{
     get_admin_stats_handler, get_admin_plugins_handler, get_admin_search_quality_handler,
     get_admin_query_logs_handler, get_admin_benchmark_handler, get_admin_connectors_handler,
+    connect_github_connector_handler, sync_github_connector_handler,
     delete_query_log_handler
 };
 use handlers::documents::{
@@ -56,6 +57,7 @@ use axum::{
 use rust_embed::RustEmbed;
 use futures_util::stream::Stream;
 use serde_json::{json, Value}; // restored unused json/Value
+use async_trait::async_trait;
 use tokio::sync::{mpsc, RwLock};
 use tower_http::cors::CorsLayer;
 use uuid::Uuid;
@@ -67,10 +69,11 @@ use uuid::Uuid;
 /// 定義在 opendoc-storage，於此 re-export 統一型別。
 pub use opendoc_storage::retriever::SearchHit;
 
+#[async_trait]
 pub trait SearchBackend: Send + Sync {
-    fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk>;
+    async fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk>;
 
-    fn search_and_rerank_workspace(
+    async fn search_and_rerank_workspace(
         &self,
         query: &str,
         top_k: usize,
@@ -79,7 +82,7 @@ pub trait SearchBackend: Send + Sync {
     ) -> Vec<opendoc_types::DocumentChunk>;
 
     /// 工作區感知 + top_k 的結構化檢索（R1）。預設回空；LanceDbRetriever 覆寫。
-    fn search_hits(
+    async fn search_hits(
         &self,
         _query: &str,
         _top_k: usize,
@@ -91,10 +94,10 @@ pub trait SearchBackend: Send + Sync {
 
     /// 軟刪除文件時同步移除其 LanceDB chunks（spec 待討論 #2：排除已失效文件）。
     /// 預設 no-op；LanceDbRetriever 覆寫。
-    fn delete_document(&self, _workspace_id: &str, _document_id: &str) {}
+    async fn delete_document(&self, _workspace_id: &str, _document_id: &str) {}
 
     /// Index pipeline（R3）：embed chunks → LanceDB。預設回未支援；LanceDbRetriever 覆寫。
-    fn index_chunks(
+    async fn index_chunks(
         &self,
         _document_id: &str,
         _workspace_id: &str,
@@ -113,61 +116,43 @@ pub trait SearchBackend: Send + Sync {
 }
 
 /// `impl SearchBackend for opendoc_storage::retriever::SidecarRetriever`。
-/// 透過 `block_in_place` + `Handle::block_on` 從 sync trait 呼叫 async embedding，
-/// 與本 crate 既有慣例（sse/message handler）一致。
-/// ponytail: 單請求佔用一個 runtime worker；高併發升級為 async trait / 連線池。
+#[async_trait]
 impl SearchBackend for opendoc_storage::retriever::SidecarRetriever {
     fn engine_available(&self) -> bool {
         opendoc_storage::retriever::SidecarRetriever::engine_available(self)
     }
 
-    fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async { self.search_default(query, threshold).await })
-        })
+    async fn search_and_rerank(&self, query: &str, threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+        self.search_default(query, threshold).await
     }
 
-    fn search_and_rerank_workspace(
+    async fn search_and_rerank_workspace(
         &self,
         query: &str,
         top_k: usize,
         threshold: f32,
         workspace_id: &str,
     ) -> Vec<opendoc_types::DocumentChunk> {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async { self.search_workspace(query, top_k, threshold, workspace_id).await })
-        })
+        self.search_workspace(query, top_k, threshold, workspace_id).await
     }
 
-    fn search_hits(
+    async fn search_hits(
         &self,
         query: &str,
         top_k: usize,
         threshold: f32,
         workspace_id: &str,
     ) -> Vec<SearchHit> {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async {
-                    self.search(query, top_k, threshold, workspace_id)
-                        .await
-                        .unwrap_or_default()
-                })
-        })
+        self.search(query, top_k, threshold, workspace_id)
+            .await
+            .unwrap_or_default()
     }
 
-    fn delete_document(&self, workspace_id: &str, document_id: &str) {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async {
-                    let _ = self.delete_document(workspace_id, document_id).await;
-                })
-        });
+    async fn delete_document(&self, workspace_id: &str, document_id: &str) {
+        let _ = self.delete_document(workspace_id, document_id).await;
     }
 
-    fn index_chunks(
+    async fn index_chunks(
         &self,
         document_id: &str,
         workspace_id: &str,
@@ -175,13 +160,8 @@ impl SearchBackend for opendoc_storage::retriever::SidecarRetriever {
         source_path: &str,
         chunks: &[opendoc_types::DocumentChunk],
     ) -> Result<(), String> {
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current()
-                .block_on(async {
-                    self.index_chunks(document_id, workspace_id, collection_id, source_path, chunks)
-                        .await
-                })
-        })
+        self.index_chunks(document_id, workspace_id, collection_id, source_path, chunks)
+            .await
     }
 }
 
@@ -304,7 +284,7 @@ pub async fn message_handler(
                     let query_str = args["query"].as_str().unwrap_or("");
                     let limit = args["limit"].as_u64().unwrap_or(5) as usize;
 
-                    let results = state.search.search_and_rerank(query_str, 0.60);
+                    let results = state.search.search_and_rerank(query_str, 0.60).await;
                     let limited: Vec<_> = results.into_iter().take(limit).collect();
                     let text = serde_json::to_string_pretty(&limited).unwrap_or_else(|_| "[]".to_string());
 
@@ -558,7 +538,7 @@ pub async fn run_mcp_stdio_server(
                         let query_str = args["query"].as_str().unwrap_or("");
                         let limit = args["limit"].as_u64().unwrap_or(5) as usize;
 
-                        let results = mcp_state.search.search_and_rerank(query_str, 0.60);
+                        let results = mcp_state.search.search_and_rerank(query_str, 0.60).await;
                         let limited: Vec<_> = results.into_iter().take(limit).collect();
                         let text = serde_json::to_string_pretty(&limited).unwrap_or_else(|_| "[]".to_string());
 
@@ -818,6 +798,8 @@ pub async fn start_mcp_and_api_server(
         .route("/admin/search-quality", get(get_admin_search_quality_handler))
         .route("/admin/benchmark", get(get_admin_benchmark_handler))
         .route("/admin/connectors", get(get_admin_connectors_handler))
+        .route("/admin/connectors/github", post(connect_github_connector_handler))
+        .route("/admin/connectors/github/sync", post(sync_github_connector_handler))
         .route("/admin/query-logs", get(get_admin_query_logs_handler))
         .route("/admin/query-logs/:id", delete(delete_query_log_handler))
         .route("/admin/llm/providers", get(list_llm_providers_handler).post(upsert_llm_provider_handler))
@@ -952,7 +934,7 @@ mod tests {
         sqlx::query("INSERT INTO documents (id, title, source_type, source_path, status, chunk_count, workspace_id) VALUES ('doc1', 'test.md', 'markdown', 'docs/test.md', 'indexed', 5, ?)").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO query_logs (query, profile, confidence_score, response_time_ms, route, feedback, workspace_id) VALUES ('hello', 'hybrid', 0.85, 120, 'semantic', 'positive', ?)").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO dictionary (workspace_id, key, value) VALUES (?, 'domain', 'opendoc')").bind(&ws_id).execute(&db_pool).await.unwrap();
-        sqlx::query("INSERT INTO connectors (workspace_id, name, type, config) VALUES (?, 'github', 'git', '{}')").bind(&ws_id).execute(&db_pool).await.unwrap();
+        sqlx::query("INSERT INTO connectors (id, workspace_id, name, type, config) VALUES ('conn-1', ?, 'github', 'git', '{}')").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO collections (workspace_id, name, description) VALUES (?, 'default', 'default collection')").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO conversations (workspace_id, title) VALUES (?, 'First chat')").bind(&ws_id).execute(&db_pool).await.unwrap();
         sqlx::query("INSERT INTO benchmark_runs (workspace_id, model, metric_name, metric_value) VALUES (?, 'ollama', 'recall', 0.92)").bind(&ws_id).execute(&db_pool).await.unwrap();
@@ -1142,12 +1124,13 @@ mod tests {
 
     struct MockSearch;
 
+    #[async_trait]
     impl SearchBackend for MockSearch {
-        fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+        async fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
             vec![]
         }
 
-        fn search_and_rerank_workspace(
+        async fn search_and_rerank_workspace(
             &self,
             _query: &str,
             _top_k: usize,
@@ -1169,12 +1152,13 @@ mod tests {
         calls: Arc<Mutex<Vec<SearchCall>>>,
     }
 
+    #[async_trait]
     impl SearchBackend for RecordingSearch {
-        fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
+        async fn search_and_rerank(&self, _query: &str, _threshold: f32) -> Vec<opendoc_types::DocumentChunk> {
             Vec::new()
         }
 
-        fn search_and_rerank_workspace(
+        async fn search_and_rerank_workspace(
             &self,
             _query: &str,
             top_k: usize,
@@ -1246,6 +1230,8 @@ mod tests {
             .route("/admin/search-quality", get(get_admin_search_quality_handler))
             .route("/admin/benchmark", get(get_admin_benchmark_handler))
             .route("/admin/connectors", get(get_admin_connectors_handler))
+            .route("/admin/connectors/github", post(connect_github_connector_handler))
+            .route("/admin/connectors/github/sync", post(sync_github_connector_handler))
         .route("/admin/query-logs", get(get_admin_query_logs_handler))
         .route("/admin/query-logs/:id", delete(delete_query_log_handler))
             .route("/admin/llm/providers", get(list_llm_providers_handler).post(upsert_llm_provider_handler))
@@ -1601,6 +1587,122 @@ mod tests {
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let connectors = json.get("connectors").and_then(|v| v.as_array()).unwrap();
         assert!(!connectors.is_empty(), "connectors 應該包含測試資料");
+    }
+
+    #[tokio::test]
+    async fn test_connect_github_connector_success_and_workspace_isolation() {
+        let state = build_test_state().await;
+        let app = build_router(state.clone());
+
+        // 1. 連接 GitHub Connector (Workspace: homelab)
+        let payload = json!({
+            "repo": "cawa0505/OpenDocuments",
+            "branch": "main",
+            "token": "ghp_secret_test_token",
+            "paths": ["docs", "src"],
+            "syncInterval": 600
+        });
+
+        let res = app.clone().oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/admin/connectors/github")
+                .header("X-Workspace", "homelab")
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(payload.to_string()))
+                .unwrap()
+        ).await.unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json.get("health").and_then(|h| h.get("healthy")).and_then(|v| v.as_bool()), Some(true));
+        assert_eq!(json.get("connector").and_then(|c| c.get("repo")).and_then(|v| v.as_str()), Some("cawa0505/OpenDocuments"));
+
+        // 2. 驗證同 workspace 讀取可見
+        let res_list = app.clone().oneshot(
+            Request::builder()
+                .uri("/admin/connectors")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res_list.status(), StatusCode::OK);
+        let body_list = axum::body::to_bytes(res_list.into_body(), usize::MAX).await.unwrap();
+        let json_list: serde_json::Value = serde_json::from_slice(&body_list).unwrap();
+        let connectors = json_list.get("connectors").and_then(|v| v.as_array()).unwrap();
+        assert!(connectors.iter().any(|c| c.get("repo").and_then(|r| r.as_str()) == Some("cawa0505/OpenDocuments")));
+
+        // 3. 建立第二個 workspace 並驗證 workspace 嚴格物理隔離
+        let ws2_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO workspaces (id, name) VALUES (?, 'workspace-iso-test')")
+            .bind(&ws2_id)
+            .execute(&state.db_pool)
+            .await
+            .unwrap();
+
+        let res_ws2 = app.clone().oneshot(
+            Request::builder()
+                .uri("/admin/connectors")
+                .header("X-Workspace", "workspace-iso-test")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res_ws2.status(), StatusCode::OK);
+        let body_ws2 = axum::body::to_bytes(res_ws2.into_body(), usize::MAX).await.unwrap();
+        let json_ws2: serde_json::Value = serde_json::from_slice(&body_ws2).unwrap();
+        let connectors_ws2 = json_ws2.get("connectors").and_then(|v| v.as_array()).unwrap();
+        assert!(!connectors_ws2.iter().any(|c| c.get("repo").and_then(|r| r.as_str()) == Some("cawa0505/OpenDocuments")), "其他 workspace 不得看到 homelab 的 connector");
+    }
+
+    #[tokio::test]
+    async fn test_connect_github_connector_validation_and_sync() {
+        let state = build_test_state().await;
+        let app = build_router(state);
+
+        // 1. 空 repo 驗證失敗 (HTTP 400)
+        let bad_payload = json!({
+            "repo": "   "
+        });
+        let res_bad = app.clone().oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/admin/connectors/github")
+                .header("X-Workspace", "homelab")
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(bad_payload.to_string()))
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res_bad.status(), StatusCode::BAD_REQUEST);
+
+        // 2. 正常 connect
+        let good_payload = json!({
+            "repo": "owner/repo"
+        });
+        let res_good = app.clone().oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/admin/connectors/github")
+                .header("X-Workspace", "homelab")
+                .header("Content-Type", "application/json")
+                .body(axum::body::Body::from(good_payload.to_string()))
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res_good.status(), StatusCode::OK);
+
+        // 3. 觸發 sync
+        let res_sync = app.clone().oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/admin/connectors/github/sync")
+                .header("X-Workspace", "homelab")
+                .body(axum::body::Body::empty())
+                .unwrap()
+        ).await.unwrap();
+        assert_eq!(res_sync.status(), StatusCode::OK);
+        let body_sync = axum::body::to_bytes(res_sync.into_body(), usize::MAX).await.unwrap();
+        let json_sync: serde_json::Value = serde_json::from_slice(&body_sync).unwrap();
+        assert_eq!(json_sync.get("result").and_then(|r| r.get("connectorName")).and_then(|v| v.as_str()), Some("github"));
     }
 
     #[tokio::test]
@@ -2191,6 +2293,180 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         .await
         .unwrap();
         assert_eq!(count, 0, "413 時不得寫入任何列");
+    }
+
+    #[tokio::test]
+    async fn test_cli_index_sync_integration_empty_nested_cross_workspace() {
+        use sha2::Digest;
+        let state = build_test_state().await;
+        let db_pool = state.db_pool.clone();
+        let ws1_id = seed_workspace_id(&db_pool).await;
+
+        // 1. 建立第二個 Workspace: "workspace-b"
+        let ws2_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO workspaces (id, name) VALUES (?, 'workspace-b')")
+            .bind(&ws2_id)
+            .execute(&db_pool)
+            .await
+            .unwrap();
+
+        // 2. 模擬 CLI 遍歷巢狀目錄並上傳多個檔案至 Workspace 1
+        let root_dir = "/repo/project-alpha";
+        let path1 = format!("{root_dir}/nested/deep/mod.rs");
+        let path2 = format!("{root_dir}/nested/deep/util.rs");
+        let path3 = format!("{root_dir}/docs/guide.md");
+
+        for (path, content) in [
+            (&path1, b"fn main() {}" as &[u8]),
+            (&path2, b"fn helper() {}"),
+            (&path3, b"# Project Guide"),
+        ] {
+            let mut hasher = sha2::Sha256::new();
+            hasher.update(content);
+            let hash = format!("{:x}", sha2::Digest::finalize(hasher));
+
+            let filename = path.split('/').last().unwrap();
+            let body = multipart_upload_body(filename, content);
+            let req = Request::builder()
+                .method("POST")
+                .uri("/documents/upload")
+                .header("X-Workspace", "homelab")
+                .header("x-source-path", path)
+                .header("x-content-hash", hash)
+                .header("content-type", format!("multipart/form-data; boundary={TEST_BOUNDARY}"))
+                .body(axum::body::Body::from(body))
+                .unwrap();
+
+            let res = build_router(state.clone()).oneshot(req).await.unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+
+        // 3. 同時上傳一個同名路徑至 Workspace 2（跨 Workspace 測試）
+        {
+            let content = b"# Workspace 2 Shared Project Guide";
+            let mut hasher = sha2::Sha256::new();
+            hasher.update(content);
+            let hash = format!("{:x}", sha2::Digest::finalize(hasher));
+
+            let body = multipart_upload_body("guide.md", content);
+            let req = Request::builder()
+                .method("POST")
+                .uri("/documents/upload")
+                .header("X-Workspace", "workspace-b")
+                .header("x-source-path", &path3)
+                .header("x-content-hash", hash)
+                .header("content-type", format!("multipart/form-data; boundary={TEST_BOUNDARY}"))
+                .body(axum::body::Body::from(body))
+                .unwrap();
+
+            let res = build_router(state.clone()).oneshot(req).await.unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+
+        // 驗證 Workspace 1 包含 3 個巢狀文件，Workspace 2 包含 1 個文件
+        let ws1_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND source_path LIKE '/repo/project-alpha/%' AND deleted_at IS NULL"
+        )
+        .bind(&ws1_id)
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(ws1_count, 3, "Workspace 1 應成功索引 3 個巢狀文件");
+
+        let ws2_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND source_path = ? AND deleted_at IS NULL"
+        )
+        .bind(&ws2_id)
+        .bind(&path3)
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(ws2_count, 1, "Workspace 2 應獨立擁有對應文件");
+
+        // 4. 模擬 CLI 同步刪除行為（部分本地刪除：刪除 path2 util.rs）
+        let rows = sqlx::query_as::<_, (String, String)>(
+            "SELECT id, source_path FROM documents WHERE workspace_id = ? AND deleted_at IS NULL"
+        )
+        .bind(&ws1_id)
+        .fetch_all(&db_pool)
+        .await
+        .unwrap();
+
+        let processed_paths: std::collections::HashSet<String> = vec![path1.clone(), path3.clone()].into_iter().collect();
+        for (doc_id, source_path) in rows {
+            if source_path.starts_with(root_dir) && !processed_paths.contains(&source_path) {
+                let del_res = build_router(state.clone())
+                    .oneshot(
+                        Request::builder()
+                            .method("DELETE")
+                            .uri(format!("/documents/{}", doc_id))
+                            .header("X-Workspace", "homelab")
+                            .body(axum::body::Body::empty())
+                            .unwrap()
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(del_res.status(), StatusCode::OK);
+            }
+        }
+
+        // 驗證 Workspace 1 的 util.rs 已被 prune，其餘兩個保留
+        let ws1_remaining: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND source_path LIKE '/repo/project-alpha/%' AND deleted_at IS NULL"
+        )
+        .bind(&ws1_id)
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(ws1_remaining, 2, "Workspace 1 應剩餘 2 個文件");
+
+        // 5. 模擬空目錄同步（本地整個 project-alpha 目錄清空）
+        let empty_processed_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let rows_after = sqlx::query_as::<_, (String, String)>(
+            "SELECT id, source_path FROM documents WHERE workspace_id = ? AND deleted_at IS NULL"
+        )
+        .bind(&ws1_id)
+        .fetch_all(&db_pool)
+        .await
+        .unwrap();
+
+        for (doc_id, source_path) in rows_after {
+            if source_path.starts_with(root_dir) && !empty_processed_paths.contains(&source_path) {
+                let del_res = build_router(state.clone())
+                    .oneshot(
+                        Request::builder()
+                            .method("DELETE")
+                            .uri(format!("/documents/{}", doc_id))
+                            .header("X-Workspace", "homelab")
+                            .body(axum::body::Body::empty())
+                            .unwrap()
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(del_res.status(), StatusCode::OK);
+            }
+        }
+
+        // 驗證 Workspace 1 在空目錄同步後，該目錄下的文件全數被 prune
+        let ws1_final: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND source_path LIKE '/repo/project-alpha/%' AND deleted_at IS NULL"
+        )
+        .bind(&ws1_id)
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(ws1_final, 0, "空目錄同步後 Workspace 1 底下該路徑文件應全數清理");
+
+        // 6. 核心驗證：Workspace 2 的文件絕對不受 Workspace 1 空目錄同步與 pruning 影響！
+        let ws2_final: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM documents WHERE workspace_id = ? AND source_path = ? AND deleted_at IS NULL"
+        )
+        .bind(&ws2_id)
+        .bind(&path3)
+        .fetch_one(&db_pool)
+        .await
+        .unwrap();
+        assert_eq!(ws2_final, 1, "跨 Workspace 隔離保證：Workspace 1 的清空操作不得影響 Workspace 2");
     }
 
     #[tokio::test]

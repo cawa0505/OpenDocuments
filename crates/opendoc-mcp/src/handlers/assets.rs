@@ -94,7 +94,7 @@ pub async fn extract_asset_handler(
 
                 if let Some(r) = doc_row {
                     let doc_title = sqlx::Row::get::<String, _>(&r, 0);
-                    let chunks = state.search.search_and_rerank(&doc_title, 0.0);
+                    let chunks = state.search.search_and_rerank(&doc_title, 0.0).await;
                     for (i, chunk) in chunks.iter().enumerate() {
                         context_text.push_str(&format!(
                             "--- Chunk {} ---\n{}\n",
@@ -105,7 +105,7 @@ pub async fn extract_asset_handler(
                     source_chunks = json!([doc_id]);
                 }
             } else {
-                let chunks = state.search.search_and_rerank(&payload.title, 0.0);
+                let chunks = state.search.search_and_rerank(&payload.title, 0.0).await;
                 for (i, chunk) in chunks.iter().enumerate() {
                     context_text.push_str(&format!("--- Chunk {} ---\n{}\n", i + 1, chunk.content));
                 }

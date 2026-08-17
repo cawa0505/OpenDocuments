@@ -26,6 +26,14 @@ default_workspace = "default"  # Default workspace created on system startup
 active_workspace = "MyWorkspace"    # Active workspace (managed by `opendoc workspace switch`)
 score_threshold = 0.60             # RAG retrieval similarity cutoff threshold (0.0 to 1.0)
 local_reranker_path = "~/.opendocuments/models/bge-reranker-base.onnx" # Path to ONNX local reranker model
+
+# Task Execution Layer abstraction
+[task]
+executor = "inprocess"             # "inprocess" | "spur_daemon" | "spur_batch"
+
+# Native AI Engine selection
+[ai]
+preferred_backend = "cpu"          # "cpu" | "vulkan" | "hip"
 ```
 
 ---

@@ -147,7 +147,7 @@ pub async fn delete_document_handler(
 
     // 同步移除 LanceDB chunks（待討論 #2：排除已失效文件，避免已刪文件仍被搜尋命中）。
     // Best-effort：索引失敗不影響文件刪除本身。
-    state.search.delete_document(&workspace, &id);
+    state.search.delete_document(&workspace, &id).await;
 
     Ok((StatusCode::OK, Json(json!({ "deleted": true }))))
 }

@@ -23,9 +23,12 @@ OpenDocuments/ (儲存庫根目錄)
 │                                    # ─ 對齊 ChatGPT/Gemini 聊天流，Markdown 渲染與預設 Light Mode
 │
 ├── crates/                          # 高度隔離之模組化 Rust Cargo Workspace
-│   ├── opendoc-cli/                 # 主控伺服器 CLI 與進入點 (main.rs)，整合服務背景啟動
+│   ├── opendoc-cli/                 # 主控 CLI 與進入點 (main.rs)，整合背景服務管理與單二進位啟動
 │   ├── opendoc-mcp/                 # Axum 路由、SSE 串流、MCP 協議及 API 控制器核心，內嵌前端 WebUI
-│   ├── opendoc-storage/             # SQLite 與 LanceDB 向量儲存、LanceDB 全文搜尋與 RAG 混合檢索
+│   ├── opendoc-storage/             # SQLite 關聯儲存與 LanceDB Sidecar 隔離客戶端
+│   ├── opendoc-engine-lancedb/      # LanceDB 向量引擎 Sidecar 進程，隔離 heavy arrow/lance 相依
+│   ├── opendoc-task/                # 任務執行層 (TaskEnvelope, TaskResult, TaskExecutor, InProcessExecutor)
+│   ├── opendoc-ai/                  # 原生 AI 引擎抽象層 (AiEngine, EngineConfig, HardwareBackend)
 │   ├── opendoc-llm/                 # OpenAI-compatible BYOK 客戶端與漸進式 SSE 串流解析
 │   ├── opendoc-types/               # 跨模組共享之強型別數據模型 (DocumentChunk, Tag, etc.)
 │   └── opendoc-parser-*/            # 獨立沙盒化之各式文件格式解析器 (PDF, DOCX, XLSX, HTML, Email, Jupyter)

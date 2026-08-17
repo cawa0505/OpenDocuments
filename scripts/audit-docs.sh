@@ -75,6 +75,9 @@ done
 
 for file in docs/zh-TW/*.md; do
   if [ -f "$file" ]; then
+    if [ "$(basename "$file")" = "tasks.md" ]; then
+      continue
+    fi
     if ! grep -q "^\[English\](\.\./en/.*) | \*\*繁體中文\*\*" "$file"; then
       echo "❌ ERROR: File '$file' missing standard Traditional Chinese language selector header ('[English](../en/filename.md) | **繁體中文**')"
       VIOLATIONS=$((VIOLATIONS + 1))

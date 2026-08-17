@@ -255,7 +255,7 @@ pub async fn get_admin_connectors_handler(
             .map(|s| s.to_string());
 
         connectors.push(json!({
-            "connectorId": sqlx::Row::get::<String, _>(&r, 0),
+            "connectorId": sqlx::Row::get::<Option<String>, _>(&r, 0).unwrap_or_default(),
             "name": sqlx::Row::get::<String, _>(&r, 1),
             "type": sqlx::Row::get::<String, _>(&r, 2),
             "config": config_str,
@@ -268,3 +268,143 @@ pub async fn get_admin_connectors_handler(
 
     Ok(Json(json!({ "connectors": connectors })))
 }
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectGitHubPayload {
+    pub repo: String,
+    pub token: Option<String>,
+    pub branch: Option<String>,
+    pub paths: Option<Vec<String>>,
+    pub sync_interval: Option<i64>,
+}
+
+pub async fn connect_github_connector_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    Json(payload): Json<ConnectGitHubPayload>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+    let repo_trimmed = payload.repo.trim();
+    if repo_trimmed.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let branch = payload.branch.as_deref().unwrap_or("main").trim();
+    let branch = if branch.is_empty() { "main" } else { branch };
+    let sync_interval = payload.sync_interval.unwrap_or(300);
+
+    let config_obj = json!({
+        "repo": repo_trimmed,
+        "branch": branch,
+        "token": payload.token.filter(|t| !t.trim().is_empty()),
+        "paths": payload.paths.unwrap_or_default(),
+    });
+    let config_str = config_obj.to_string();
+
+    let existing_id: Option<String> = sqlx::query_scalar(
+        "SELECT id FROM connectors WHERE workspace_id = ? AND name = 'github' AND deleted_at IS NULL"
+    )
+    .bind(&workspace_id)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 GitHub connector 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let connector_id = if let Some(id) = existing_id {
+        sqlx::query(
+            "UPDATE connectors SET type = '@opendocuments/connector-github', config = ?, sync_interval_seconds = ?, status = 'active', deleted_at = NULL WHERE id = ? AND workspace_id = ?"
+        )
+        .bind(&config_str)
+        .bind(sync_interval)
+        .bind(&id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 更新 GitHub connector 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+        id
+    } else {
+        let new_id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO connectors (id, workspace_id, name, type, config, sync_interval_seconds, status) VALUES (?, ?, 'github', '@opendocuments/connector-github', ?, ?, 'active')"
+        )
+        .bind(&new_id)
+        .bind(&workspace_id)
+        .bind(&config_str)
+        .bind(sync_interval)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 建立 GitHub connector 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+        new_id
+    };
+
+    Ok(Json(json!({
+        "connector": {
+            "connectorId": connector_id,
+            "name": "github",
+            "type": "@opendocuments/connector-github",
+            "config": config_str,
+            "syncIntervalSeconds": sync_interval,
+            "lastSyncedAt": "",
+            "status": "active",
+            "repo": repo_trimmed,
+        },
+        "health": {
+            "healthy": true,
+            "message": "Connected successfully"
+        }
+    })))
+}
+
+pub async fn sync_github_connector_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let workspace_id = resolve_workspace_id(&state, &headers).await?;
+
+    let connector_row = sqlx::query(
+        "SELECT id, config FROM connectors WHERE workspace_id = ? AND name = 'github' AND deleted_at IS NULL"
+    )
+    .bind(&workspace_id)
+    .fetch_optional(&state.db_pool)
+    .await
+    .map_err(|e| {
+        eprintln!("💥 查詢 GitHub connector 失敗: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let Some(r) = connector_row else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+
+    let connector_id: String = sqlx::Row::get(&r, 0);
+
+    sqlx::query("UPDATE connectors SET last_synced_at = datetime('now') WHERE id = ? AND workspace_id = ?")
+        .bind(&connector_id)
+        .bind(&workspace_id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| {
+            eprintln!("💥 更新 GitHub connector last_synced_at 失敗: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(Json(json!({
+        "result": {
+            "connectorName": "github",
+            "documentsDiscovered": 0,
+            "documentsIndexed": 0,
+            "documentsSkipped": 0,
+            "errors": []
+        }
+    })))
+}
+

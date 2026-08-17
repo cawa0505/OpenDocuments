@@ -61,8 +61,9 @@
 v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → 真實搜尋 → WebUI 中 chat 來回驗證，以下每個 feature 都要過。
 
 - [x] **活動日誌契約**：修正總數／分頁／DTO、feedback workspace 隔離，並補齊刪除 API 與 UI。
-- [ ] **GitHub connector 契約**：補齊 WebUI 已呼叫但 Rust router 尚未提供的建立與同步 route，所有操作均依 workspace 隔離。
-- [ ] **CLI index 同步整合測試**：驗證空目錄、巢狀路徑與跨 workspace 不互刪；程式碼層的 hash 去重、變更重傳與刪除同步已完成稽核。
+- [x] **GitHub connector 契約**：補齊 WebUI 已呼叫但 Rust router 尚未提供的建立與同步 route，所有操作均依 workspace 隔離。
+- [x] **CLI index 同步整合測試**：驗證空目錄、巢狀路徑與跨 workspace 不互刪；程式碼層的 hash 去重、變更重傳與刪除同步已完成稽核。
+- [x] **TaskExecutor 抽象層解耦**：完成 `opendoc-task`、`opendoc-ai`、`SearchBackend` 非同步化重構與向後相容的 `[ai]`/`[task]` 設定解析。
 
 ---
 
@@ -72,6 +73,7 @@ v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → �
 
 | 功能 | 規格 | 備註 |
 | :--- | :--- | :--- |
+| **WebUI 文件管理階層樹狀視圖** | — | 將 WebUI 文件管理介面支援分階層（目錄樹 / Hierarchy Tree 視圖）瀏覽與展開，提升大規模文檔的組織可視性。 |
 | **目標混合檢索 — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | 核心擁有的稀疏詞法路徑；engine 不可用時可提供純詞法 fallback。在此之前 LanceDB FTS 仍是現行詞法路徑。 |
 | **Phase 2 — 任務執行層與原生 AI 引擎** | [`task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md) | llama.cpp (Vulkan/HIP) embed/rerank/infer、`opendoc-ai-fastembed` 進程邊界、`[ai.models.inference]` 生成切換。 |
 | **Spur 整合與 server/worker 模式** | deferred note #33 | `SpurDaemonExecutor` (Mode 1)、`opendoc-worker daemon` + scale-to-zero (Mode 3)、批次 ETL (Mode 2)；私有網路 LAN worker。stdio JSON-RPC 保持 transport 無關（未來 TCP/unix socket）；engine 設定獨立於 core。注意：#2039 禁止 Docker 部署 — server/worker 是未來方向，非容器。 |

@@ -5365,6 +5365,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "opendoc-ai"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "opendoc-llm",
+ "opendoc-types",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
+]
+
+[[package]]
 name = "opendoc-engine-lancedb"
 version = "0.2.0"
 dependencies = [
@@ -5397,6 +5410,7 @@ name = "opendoc-mcp"
 version = "0.2.0"
 dependencies = [
  "async-stream",
+ "async-trait",
  "axum",
  "chrono",
  "futures",
@@ -5548,6 +5562,18 @@ dependencies = [
  "sqlx",
  "tokio",
  "toml",
+ "uuid",
+]
+
+[[package]]
+name = "opendoc-task"
+version = "0.2.0"
+dependencies = [
+ "async-trait",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "tokio",
  "uuid",
 ]
 

@@ -217,7 +217,7 @@ pub async fn upload_handler(
         Some(&collection_id),
         &source_path,
         &chunks,
-    ) {
+    ).await {
         eprintln!("⚠️ 向量索引寫入失敗（文件已入庫但搜尋暫時查不到）: {e}");
     }
 

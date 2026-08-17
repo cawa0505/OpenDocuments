@@ -49,6 +49,7 @@ pub async fn search_handler(
     let threshold = body.threshold.unwrap_or(cfg.model.score_threshold);
     let hits = state
         .search
-        .search_hits(query, top_k, threshold, &workspace_id);
+        .search_hits(query, top_k, threshold, &workspace_id)
+        .await;
     Ok(Json(SearchResponse { hits }))
 }

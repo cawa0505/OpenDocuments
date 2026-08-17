@@ -6,11 +6,14 @@ OpenDocuments is a modular, high-performance RAG platform written in Rust.
 
 ```
 apps/
-  webui/      - React SPA (Vite + Tailwind) frontend
+  webui/      - React SPA (Vite + Tailwind CSS) frontend
 crates/
   opendoc-cli - Main CLI and terminal interface (opendoc)
   opendoc-mcp - Axum API server, SSE streaming, and MCP protocol core
-  opendoc-storage - SQLite metadata and LanceDB vector mixed retrieval store
+  opendoc-storage - SQLite relational storage and LanceDB Sidecar client
+  opendoc-engine-lancedb - LanceDB vector engine Sidecar daemon
+  opendoc-task - Task Execution Layer (TaskEnvelope, TaskResult, TaskExecutor)
+  opendoc-ai - Native AI Engine abstraction (AiEngine, EngineConfig, HardwareBackend)
   opendoc-llm - OpenAI-compatible LLM client and progressively-parsed streaming
   opendoc-types - Shared strong types (DocumentChunk, Tag, etc.)
   opendoc-parser-* - Standalone sandboxed document format parsers (PDF, DOCX, XLSX, etc.)

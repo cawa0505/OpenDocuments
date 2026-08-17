@@ -61,8 +61,9 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 The acceptance bar for v1.0.0: `cargo check` zero warnings → install → real upload → real search → chat round-trip verified in the WebUI, for every listed feature below.
 
 - [x] **Activity-log contract**: fix total/pagination/DTO alignment, workspace-scope feedback updates, and add delete API/UI.
-- [ ] **GitHub connector contract**: implement the create and sync routes already called by the WebUI, with workspace isolation for every operation.
-- [ ] **CLI index sync integration tests**: verify empty directories, nested paths, and cross-workspace deletion isolation; hash deduplication, changed-file re-upload, and deletion pruning have passed code audit.
+- [x] **GitHub connector contract**: implement the create and sync routes already called by the WebUI, with workspace isolation for every operation.
+- [x] **CLI index sync integration tests**: verify empty directories, nested paths, and cross-workspace deletion isolation; hash deduplication, changed-file re-upload, and deletion pruning have passed code audit.
+- [x] **TaskExecutor abstraction layer decoupling**: introduce `opendoc-task`, `opendoc-ai`, async `SearchBackend` refactoring, and backward-compatible `[ai]`/`[task]` configuration parsing.
 
 ---
 
@@ -72,6 +73,7 @@ Features explicitly deferred past the v1.0.0 release, tracked here so they are n
 
 | Feature | Spec | Notes |
 | :--- | :--- | :--- |
+| **WebUI Document Hierarchy Tree View** | — | Support nested hierarchy / folder directory tree view for document management in WebUI, optimizing visibility for large document repositories. |
 | **Target Hybrid Retrieval — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | Core-owned sparse lexical path; enables pure-lexical fallback when the engine is unavailable. LanceDB FTS remains the active lexical path until then. |
 | **Phase 2 — Task Execution Layer & Native AI Engines** | [`task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md) | llama.cpp (Vulkan/HIP) embed/rerank/infer, `opendoc-ai-fastembed` process boundary, generation switch via `[ai.models.inference]`. |
 | **Spur integration & server/worker mode** | deferred note #33 | `SpurDaemonExecutor` (Mode 1), `opendoc-worker daemon` + scale-to-zero (Mode 3), batch ETL (Mode 2); LAN workers on private networks. Transport-agnostic stdio JSON-RPC (future TCP/unix socket); engine config independent from core. NOTE: #2039 forbids Docker deployment — server/worker is the future direction, not containers. |

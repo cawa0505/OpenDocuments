@@ -25,7 +25,10 @@ OpenDocuments/ (Repository Root)
 ├── crates/                          # Modular Rust Workspace (Cargo Workspace)
 │   ├── opendoc-cli/                 # Main CLI binary entry point (main.rs) with background daemon
 │   ├── opendoc-mcp/                 # Axum routes, SSE streaming, MCP protocol, and embedded WebUI assets
-│   ├── opendoc-storage/             # SQLite & LanceDB vector storage, LanceDB FTS & RAG retrieval engine
+│   ├── opendoc-storage/             # SQLite relational storage and LanceDB Sidecar client
+│   ├── opendoc-engine-lancedb/      # LanceDB vector engine Sidecar daemon, isolating heavy Arrow/Lance dependencies
+│   ├── opendoc-task/                # Task Execution Layer (TaskEnvelope, TaskResult, TaskExecutor, InProcessExecutor)
+│   ├── opendoc-ai/                  # Native AI Engine abstraction (AiEngine, EngineConfig, HardwareBackend)
 │   ├── opendoc-llm/                 # OpenAI-compatible BYOK client with SSE stream parsing
 │   ├── opendoc-types/               # Shared strongly-typed data models (DocumentChunk, Tag, etc.)
 │   └── opendoc-parser-*/            # Sandboxed file parsers (PDF, DOCX, XLSX, HTML, Email, Jupyter)

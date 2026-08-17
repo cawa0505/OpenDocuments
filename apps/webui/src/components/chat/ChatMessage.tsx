@@ -113,18 +113,18 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
   }, [dedupedSources, rawToCardIndex, handleCitationClick, locale])
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`${isUser ? 'max-w-[78%]' : 'w-full'}`}>
+    <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div className={`${isUser ? 'max-w-[78%]' : 'min-w-0 max-w-full flex-1'}`}>
         {isUser ? (
           <div className="rounded-lg bg-blue-600 px-4 py-3 text-[15px] leading-relaxed text-white">
-            <p>{message.content}</p>
+            <p className="break-words [overflow-wrap:anywhere]">{message.content}</p>
           </div>
         ) : (
-          <article className="rounded-lg border border-slate-200 bg-white px-6 py-6 shadow-sm">
+          <article className="min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-6 py-6 shadow-sm">
             <div className="flex items-start justify-between gap-6">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="mb-2.5 text-[13px] font-medium text-blue-600">{t('chat.answer')}</p>
-                <div className="prose prose-sm max-w-none prose-slate text-[15px] leading-6 [&_p:first-child]:mt-0 [&_p:first-child]:font-semibold [&_p:first-child]:text-slate-950 [&_p]:my-2">
+                <div className="prose prose-sm max-w-none prose-slate text-[15px] leading-6 [&_p:first-child]:mt-0 [&_p:first-child]:font-semibold [&_p:first-child]:text-slate-950 [&_p]:my-2 [overflow-wrap:anywhere]">
                   <Markdown content={message.content} citationRenderer={renderCitation} />
                 </div>
               </div>
@@ -145,7 +145,7 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
             </div>
 
             {dedupedSources.length > 0 && (
-              <div className="mt-6 border-t border-slate-200 pt-5">
+              <div className="mt-6 min-w-0 max-w-full border-t border-slate-200 pt-5">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-semibold text-slate-900">{t('chat.sources')}</span>
@@ -154,9 +154,9 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                     </span>
                   </div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {dedupedSources.map((source, i) => (
-                    <div key={`${source.chunkId}-${i}`} id={`source-card-${message.id}-${i}`} className="scroll-mt-6">
+                    <div key={`${source.chunkId}-${i}`} id={`source-card-${message.id}-${i}`} className="min-w-0 max-w-full overflow-hidden scroll-mt-6">
                       <SourceCard
                         source={source}
                         onOpen={setSelectedSource}
@@ -196,9 +196,9 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                 <div className="min-w-0">
                   <p className="text-[12px] font-semibold text-blue-600">{t('chat.sourcePreview')}</p>
                   <h3 className="mt-1 truncate text-[17px] font-semibold text-slate-950">
-                    {selectedSource.sourcePath.split('/').pop() || selectedSource.sourcePath}
+                    {selectedSource.sourcePath.split(/[/\\]/).pop() || selectedSource.sourcePath}
                   </h3>
-                  <p className="mt-1 break-words text-[12px] text-slate-500">{selectedSource.sourcePath}</p>
+                  <p className="mt-1 break-words [overflow-wrap:anywhere] text-[12px] text-slate-500">{selectedSource.sourcePath}</p>
                 </div>
                 <button
                   type="button"
