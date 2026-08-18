@@ -10,8 +10,8 @@ This roadmap tracks the development progress of the OpenDocuments open-source pr
 
 | Phase | Title | Focus Area | Status | Target |
 | :--- | :--- | :--- | :---: | :---: |
-| **Phase 0** | **Core MVP & BYOK Gateway** | Axum server, BYOK LLM, current LanceDB retrieval, Tags, CLI | ⏳ In Progress | Q3 2026 |
-| **Phase 1** | **ChatGPT-Aligned WebUI & Streaming** | React 19 WebUI, Typewriter SSE, Citation linking, Markdown code highlighting | ⏳ In Progress | Q3 2026 |
+| **Phase 0** | **Core MVP & BYOK Gateway** | Axum server, BYOK LLM, current LanceDB retrieval, Tags, CLI | ✅ Completed | Q3 2026 |
+| **Phase 1** | **ChatGPT-Aligned WebUI & Streaming** | React 19 WebUI, Typewriter SSE, Citation linking, Markdown code highlighting | ✅ Completed | Q3 2026 |
 | **Phase 2** | **Task Execution Layer & Native AI Engines** | Decouple parse/embed/rerank/infer via `TaskExecutor`; llama.cpp (Vulkan/HIP) + fastembed (CPU); optional Spur batch compute | 📋 Planned | Q4 2026 |
 
 ---
@@ -29,7 +29,7 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 ---
 
-## 🚀 Phase 0: Core MVP & BYOK Gateway (In Progress)
+## 🚀 Phase 0: Core MVP & BYOK Gateway (Completed)
 
 - [x] **Single-Binary Axum Architecture**: Unified server embedding React WebUI assets via `rust-embed`.
 - [x] **BYOK LLM Layer**: Encrypted SQLite storage for OpenAI-compatible API keys with health-check diagnostics.
@@ -41,7 +41,7 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 ---
 
-## 🎨 Phase 1: ChatGPT-Aligned WebUI & Streaming (Active)
+## 🎨 Phase 1: ChatGPT-Aligned WebUI & Streaming (Completed)
 
 - [x] **BYOK Provider Configuration UI**: Full provider management UI in `SettingsPage.tsx`.
 - [x] **Light Mode Visual Optimization**: Standardized clean Light Mode UI.
@@ -51,9 +51,9 @@ Reference: [`docs/ref/en/task-execution-ai-engines-verification.md`](../ref/en/t
 
 ---
 
-## 🎯 v1.0.0 Scope
+## 🎯 v1.0.0 Scope ✅
 
-**v1.0.0 = Phase 0 (Core MVP) + Phase 1 (WebUI) completion.** Single-machine deployment only.
+**v1.0.0 = Phase 0 (Core MVP) + Phase 1 (WebUI) ✅ RELEASED.** Single-machine deployment only.
 
 - **Primary focus: WebUI + API.** Every chat feature must actually work — correct end-to-end search from the WebUI is the release gate, not compilation.
 - **File identity: reference full paths.** Documents are located by absolute `source_path` (no relative-name or virtual-file indirection); future multi-machine storage extends this, it does not replace it.

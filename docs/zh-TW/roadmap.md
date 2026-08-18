@@ -10,8 +10,8 @@
 
 | 階段 | 名稱 | 核心焦點 | 狀態 | 目標時程 |
 | :--- | :--- | :--- | :--- | :---: |
-| **Phase 0** | **核心 MVP 與 BYOK 網關** | Axum 服務、BYOK 金鑰管理、現行 LanceDB 檢索、標籤系統、CLI | ⏳ 進行中 | 2026 Q3 |
-| **Phase 1** | **對齊 ChatGPT 流暢 WebUI** | React 19 WebUI、打字機 SSE 串流、互動 Citation 出處、代碼高亮 | ⏳ 進行中 | 2026 Q3 |
+| **Phase 0** | **核心 MVP 與 BYOK 網關** | Axum 服務、BYOK 金鑰管理、現行 LanceDB 檢索、標籤系統、CLI | ✅ 已完成 | 2026 Q3 |
+| **Phase 1** | **對齊 ChatGPT 流暢 WebUI** | React 19 WebUI、打字機 SSE 串流、互動 Citation 出處、代碼高亮 | ✅ 已完成 | 2026 Q3 |
 | **Phase 2** | **任務執行層與原生 AI 引擎** | 以 `TaskExecutor` 解耦 parse/embed/rerank/infer；llama.cpp (Vulkan/HIP) + fastembed (CPU)；可選 Spur 批次運算 | 📋 規劃中 | 2026 Q4 |
 
 ---

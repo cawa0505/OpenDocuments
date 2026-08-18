@@ -10,6 +10,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="授權條款"></a>
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/Rust-1.80%2B-orange.svg" alt="Rust 語言"></a>
+  <a href="https://github.com/cawa0505/OpenDocuments/releases"><img src="https://img.shields.io/badge/Release-v1.0.0-brightgreen.svg" alt="v1.0.0"></a>
 </p>
 
 ---
