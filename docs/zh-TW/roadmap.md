@@ -75,6 +75,7 @@ v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → �
 | :--- | :--- | :--- |
 | **WebUI 文件管理階層樹狀視圖** | — | 將 WebUI 文件管理介面支援分階層（目錄樹 / Hierarchy Tree 視圖）瀏覽與展開，提升大規模文檔的組織可視性。 |
 | **目標混合檢索 — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | 核心擁有的稀疏詞法路徑；engine 不可用時可提供純詞法 fallback。在此之前 LanceDB FTS 仍是現行詞法路徑。 |
+| **候選技術 — DuckDB FTS** | — | 不納入目前實作，也不取代 SQLite FTS5。僅在超大 corpus、批次分析或全量重建成為實際瓶頸，且同條件 benchmark 證明效能收益高於增量更新、資料同步、binary 體積與跨平台建置成本時重新評估。 |
 | **Phase 2 — 任務執行層與原生 AI 引擎** | [`task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md) | llama.cpp (Vulkan/HIP) embed/rerank/infer、`opendoc-ai-fastembed` 進程邊界、`[ai.models.inference]` 生成切換。 |
 | **Spur 整合與 server/worker 模式** | deferred note #33 | `SpurDaemonExecutor` (Mode 1)、`opendoc-worker daemon` + scale-to-zero (Mode 3)、批次 ETL (Mode 2)；私有網路 LAN worker。stdio JSON-RPC 保持 transport 無關（未來 TCP/unix socket）；engine 設定獨立於 core。注意：#2039 禁止 Docker 部署 — server/worker 是未來方向，非容器。 |
 | **WebUI 重新設計** | — | 不排除重新設計 WebUI，但只在 v1.0.0 GA 之後評估。現行 WebUI 即 v1.0.0 交付物 — 每個 chat 功能都必須端到端真正可用（見範圍定義）。 |
