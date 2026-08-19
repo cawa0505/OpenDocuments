@@ -22,3 +22,8 @@ docs/local/
 
 # TypeScript build info (build artifact)
 *.tsbuildinfo
+# Code Relay (local state)
+.relay/
+relay.json
+RESUME.md
+next_step.md

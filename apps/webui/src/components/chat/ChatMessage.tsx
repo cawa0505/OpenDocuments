@@ -221,9 +221,15 @@ export function ChatMessage({ message, isStreaming, onFeedback }: Props) {
                   </div>
                 </div>
                 <p className="mb-2 text-[12px] font-semibold text-slate-500">{t('chat.chunkContent')}</p>
+                {selectedSource.sourcePath.endsWith('.md') ? (
                 <div className="prose prose-sm max-w-none min-w-0 px-4 py-3 text-[13px] leading-6 text-slate-800 [overflow-wrap:anywhere] dark:text-slate-200">
                   <Markdown content={selectedSource.content} />
                 </div>
+                ) : (
+                <pre className="overflow-x-auto rounded-md bg-slate-50 p-4 text-[13px] leading-6 text-slate-800">
+                  <code>{selectedSource.content}</code>
+                </pre>
+                )}
               </div>
             </div>
           </div>

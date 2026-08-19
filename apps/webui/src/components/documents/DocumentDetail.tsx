@@ -33,7 +33,7 @@ function statusTone(status: string) {
 
 function Field({ label, value, mono }: { label: string; value: ReactNode; mono?: boolean }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-white px-4 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
       <div className={`mt-1 min-w-0 max-w-full break-words [overflow-wrap:anywhere] text-[13px] text-slate-800 ${mono ? 'font-mono' : ''}`}>{value}</div>
     </div>
@@ -192,13 +192,13 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
           </div>
         </section>
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2">
+        <div className="grid gap-5 md:grid-cols-2">
+          <section className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-5">
               <Hash size={17} className="text-slate-500" />
               <h3 className="text-[15px] font-semibold text-slate-950">{t('docDetail.integrity')}</h3>
             </div>
-            <div className="mt-4 grid gap-3">
+            <div className="grid min-w-0 gap-3 p-5">
               <Field label={t('docDetail.documentId')} value={document.id} mono />
               <Field label={t('docDetail.contentHash')} value={document.content_hash || t('common.notRecorded')} mono />
               {document.error_message && (
@@ -210,33 +210,35 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
             </div>
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2">
+          <section className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-5">
               <FolderPlus size={17} className="text-blue-600" />
               <h3 className="text-[15px] font-semibold text-slate-950">{t('docDetail.collectionAssignment')}</h3>
             </div>
-            <p className="mt-2 text-[13px] leading-5 text-slate-500">
-              {t('docDetail.collectionHelp')}
-            </p>
-            <div className="mt-4 space-y-3">
-              <select
-                value={selectedCollectionId}
-                onChange={(event) => setSelectedCollectionId(event.target.value)}
-                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-blue-300"
-              >
-                <option value="">{t('docDetail.selectCollection')}</option>
-                {collections.map((collection) => (
-                  <option key={collection.id} value={collection.id}>{collection.name}</option>
-                ))}
-              </select>
-              <button
-                onClick={handleAddToCollection}
-                disabled={busy || !selectedCollectionId}
-                className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-blue-600 text-[13px] font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Database size={15} />
-                {t('docDetail.addToCollection')}
-              </button>
+            <div className="p-5">
+              <p className="text-[13px] leading-5 text-slate-500">
+                {t('docDetail.collectionHelp')}
+              </p>
+              <div className="mt-4 space-y-3">
+                <select
+                  value={selectedCollectionId}
+                  onChange={(event) => setSelectedCollectionId(event.target.value)}
+                  className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-blue-300"
+                >
+                  <option value="">{t('docDetail.selectCollection')}</option>
+                  {collections.map((collection) => (
+                    <option key={collection.id} value={collection.id}>{collection.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddToCollection}
+                  disabled={busy || !selectedCollectionId}
+                  className="flex h-9 w-full items-center justify-center gap-2 rounded-md bg-blue-600 text-[13px] font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Database size={15} />
+                  {t('docDetail.addToCollection')}
+                </button>
+              </div>
             </div>
           </section>
         </div>
