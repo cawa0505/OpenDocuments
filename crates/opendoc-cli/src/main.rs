@@ -17,7 +17,7 @@ use opendoc_storage::{AppConfig, retriever::SidecarRetriever};
 use opendoc_types::EmbeddingProvider;
 use walkdir::WalkDir;
 use reqwest::multipart;
-use std::io;
+use std::io::{self, BufRead};
 use sha2::{Digest, Sha256};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use std::collections::HashMap;
@@ -124,10 +124,11 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum DocumentSubcommands {
-    /// 索引/上傳一個新的本地檔案或整個目錄到伺服器 (整合自原 Python Ingester)
+    /// 索引/上傳檔案到伺服器（支援路徑或標準輸入管道）
+    #[command(alias = "add")]
     Index {
-        /// 本地檔案或目錄路徑
-        path: PathBuf,
+        /// 本地檔案或目錄路徑（省略時從標準輸入讀取檔案路徑列表）
+        path: Option<PathBuf>,
         /// 工作空間
         #[arg(short, long)]
         workspace: Option<String>,
@@ -327,35 +328,14 @@ Commands::Search { query, workspace, threshold, limit } => {
             match sub {
 DocumentSubcommands::Index { path, workspace } => {
             let resolved_workspace = resolve_ws(workspace);
-            let canon_path = match path.canonicalize() {
-                Ok(p) => p,
-                Err(e) => {
-                    eprintln!("💥 無法解析路徑: {e}");
-                    std::process::exit(1);
-                }
-            };
 
-            println!("🚀 啟動高效目錄索引:");
+            println!("🚀 啟動高效索引:");
             println!("📦 目標工作空間: {resolved_workspace}");
-            println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
             println!("{}", "-".repeat(50));
 
-            // Load .opendocignore if exists
-            let ignore_file = canon_path.join(".opendocignore");
-            let mut ignore_matcher: Option<Gitignore> = None;
-            if ignore_file.exists() {
-                let mut builder = GitignoreBuilder::new(&canon_path);
-                if builder.add(&ignore_file).is_none() {
-                    ignore_matcher = builder.build().ok();
-                    if ignore_matcher.is_some() {
-                        println!("📄 已載入 .opendocignore 規則");
-                    }
-                }
-            }
-
             let supported_extensions = [
-                ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
-                ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx"
+                ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml",
+                ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx",
             ];
 
             let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
@@ -365,7 +345,8 @@ DocumentSubcommands::Index { path, workspace } => {
 
             // Fetch existing documents to build source_path -> (id, content_hash) map
             let mut existing_docs: HashMap<String, (String, Option<String>)> = HashMap::new();
-            match client.get(&list_url)
+            match client
+                .get(&list_url)
                 .header("X-Workspace", &resolved_workspace)
                 .send()
                 .await
@@ -379,7 +360,10 @@ DocumentSubcommands::Index { path, workspace } => {
                                         doc.get("id").and_then(|v| v.as_str()),
                                         doc.get("source_path").and_then(|v| v.as_str()),
                                     ) {
-                                        let hash = doc.get("content_hash").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        let hash = doc
+                                            .get("content_hash")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
                                         existing_docs.insert(path.to_string(), (id.to_string(), hash));
                                     }
                                 }
@@ -396,187 +380,329 @@ DocumentSubcommands::Index { path, workspace } => {
             let mut success_count = 0;
             let mut fail_count = 0;
             let mut processed_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
-            let is_directory = canon_path.is_dir();
 
-            let walk = WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
-                // Check .opendocignore first
-                if let Some(ref matcher) = ignore_matcher {
-                    let path = entry.path();
-                    let is_dir = entry.file_type().is_dir();
-                    let rel_path = path.strip_prefix(&canon_path).unwrap_or(path);
-                    if matcher.matched_path_or_any_parents(rel_path, is_dir).is_ignore() {
-                        return false;
+            if let Some(path) = path {
+                let canon_path = match path.canonicalize() {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("💥 無法解析路徑: {e}");
+                        std::process::exit(1);
+                    }
+                };
+
+                println!("🌐 伺服器 API 端點: {}", app_cfg.server.url);
+
+                // Load .opendocignore if exists
+                let ignore_file = canon_path.join(".opendocignore");
+                let mut ignore_matcher: Option<Gitignore> = None;
+                if ignore_file.exists() {
+                    let mut builder = GitignoreBuilder::new(&canon_path);
+                    if builder.add(&ignore_file).is_none() {
+                        ignore_matcher = builder.build().ok();
+                        if ignore_matcher.is_some() {
+                            println!("📄 已載入 .opendocignore 規則");
+                        }
                     }
                 }
-                // Default ignore for hidden files and common dirs
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.starts_with('.') {
-                        return false;
+
+                let is_directory = canon_path.is_dir();
+
+                let walk = WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
+                    if let Some(ref matcher) = ignore_matcher {
+                        let path = entry.path();
+                        let is_dir = entry.file_type().is_dir();
+                        let rel_path = path.strip_prefix(&canon_path).unwrap_or(path);
+                        if matcher.matched_path_or_any_parents(rel_path, is_dir).is_ignore() {
+                            return false;
+                        }
                     }
-                    // Default ignores (always ignore these to avoid indexing system/dependency files)
-                    let default_ignored = [
-                        "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
-                        "__pycache__", "venv", ".env", "out", "target", "target-state"
-                    ];
-                    if default_ignored.contains(&name) {
-                        return false;
+                    if let Some(name) = entry.file_name().to_str() {
+                        if name.starts_with('.') {
+                            return false;
+                        }
+                        let default_ignored = [
+                            "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache",
+                            "__pycache__", "venv", ".env", "out", "target", "target-state",
+                        ];
+                        if default_ignored.contains(&name) {
+                            return false;
+                        }
                     }
-                }
-                true
-            });
+                    true
+                });
 
-                    for entry in walk {
-                        let Ok(entry) = entry else { continue };
+                for entry in walk {
+                    let Ok(entry) = entry else { continue };
 
-                        if !entry.file_type().is_file() {
-                            continue;
-                        }
+                    if !entry.file_type().is_file() {
+                        continue;
+                    }
 
-                        let file_path = entry.path();
-                        let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) else { continue };
-                        // 真實絕對路徑（對齊 Node resolve(inputPath)），做為 x-source-path header 值
-                        let abs_source_path = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
+                    let file_path = entry.path();
+                    let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) else { continue };
+                    let abs_source_path = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
 
-                        if file_name.starts_with('.') {
-                            continue;
-                        }
+                    if file_name.starts_with('.') {
+                        continue;
+                    }
 
-                        let ext = file_path.extension()
-                            .and_then(|e| e.to_str())
-                            .map(|e| format!(".{}", e.to_lowercase()))
-                            .unwrap_or_default();
+                    let ext = file_path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map(|e| format!(".{}", e.to_lowercase()))
+                        .unwrap_or_default();
 
-                        if !supported_extensions.contains(&ext.as_str()) {
-                            continue;
-                        }
+                    if !supported_extensions.contains(&ext.as_str()) {
+                        continue;
+                    }
 
-                        let rel_path = match file_path.strip_prefix(&canon_path) {
-                            Ok(p) => p.to_string_lossy().into_owned(),
-                            Err(_) => file_name.to_string(),
+                    let rel_path = match file_path.strip_prefix(&canon_path) {
+                        Ok(p) => p.to_string_lossy().into_owned(),
+                        Err(_) => file_name.to_string(),
+                    };
+
+                    let abs_path_str = abs_source_path.to_string_lossy().into_owned();
+                    processed_paths.insert(abs_path_str.clone());
+
+                    print!("[..] 上傳中: {rel_path} ..");
+                    if let Err(e) = io::Write::flush(&mut io::stdout()) {
+                        eprintln!("\r[!!] 無法刷新終端: {e}");
+                    }
+
+                    let max_retries = 3;
+                    let mut attempt = 0;
+
+                    while attempt < max_retries {
+                        attempt += 1;
+
+                        let file_bytes = match std::fs::read(file_path) {
+                            Ok(b) => b,
+                            Err(e) => {
+                                eprintln!("\r[!!] 讀取檔案失敗: {rel_path} - {e}");
+                                break;
+                            }
                         };
 
-                        print!("[..] 上傳中: {rel_path} ..");
-                        if let Err(e) = io::Write::flush(&mut io::stdout()) {
-                            eprintln!("\r[!!] 無法刷新終端: {e}");
+                        let mut hasher = Sha256::new();
+                        hasher.update(&file_bytes);
+                        let content_hash = format!("{:x}", hasher.finalize());
+
+                        if let Some((_id, Some(existing_hash))) = existing_docs.get(&abs_path_str) {
+                            if existing_hash == &content_hash {
+                                print!("\r[skip] 已索引且無變更: {rel_path}\n");
+                                success_count += 1;
+                                break;
+                            }
                         }
 
-                        let max_retries = 3;
-                        let mut attempt = 0;
+                        let part = match multipart::Part::bytes(file_bytes)
+                            .file_name(file_name.to_string())
+                            .mime_str("application/octet-stream")
+                        {
+                            Ok(p) => p,
+                            Err(e) => {
+                                eprintln!("\r[!!] 建立請求體失敗: {rel_path} - {e}");
+                                break;
+                            }
+                        };
 
-                        while attempt < max_retries {
-                            attempt += 1;
-                            
-                            let file_bytes = match std::fs::read(file_path) {
-                                Ok(b) => b,
-                                Err(e) => {
-                                    eprintln!("\r[!!] 讀取檔案失敗: {rel_path} - {e}");
+                        let form = multipart::Form::new().part("file", part);
+
+                        match client
+                            .post(&upload_url)
+                            .header("X-Workspace", &resolved_workspace)
+                            .header("x-source-path", &abs_path_str)
+                            .header("x-content-hash", &content_hash)
+                            .multipart(form)
+                            .timeout(Duration::from_secs(180))
+                            .send()
+                            .await
+                        {
+                            Ok(resp) => {
+                                if resp.status().is_success() {
+                                    let res_json: serde_json::Value = resp.json().await.unwrap_or_default();
+                                    let chunks = res_json.get("chunks").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                                    print!("\r[ok] 已索引: {rel_path} ({chunks} 區塊)\n");
+                                    success_count += 1;
+                                    tokio::time::sleep(Duration::from_millis(500)).await;
                                     break;
+                                } else if attempt == max_retries {
+                                    print!("\r[!!] 失敗: {rel_path} - HTTP {}\n", resp.status());
+                                    fail_count += 1;
+                                } else {
+                                    tokio::time::sleep(Duration::from_millis(1500)).await;
                                 }
-                            };
-
-                            // Calculate SHA-256 hash
-                            let mut hasher = Sha256::new();
-                            hasher.update(&file_bytes);
-                            let content_hash = format!("{:x}", hasher.finalize());
-
-                            let abs_path_str = abs_source_path.to_string_lossy().into_owned();
-                            processed_paths.insert(abs_path_str.clone());
-
-                             // Compare with existing hash
-                             if let Some((_id, Some(existing_hash))) = existing_docs.get(&abs_path_str) {
-                                 if existing_hash == &content_hash {
-                                     print!("\r[skip] 已索引且無變更: {rel_path}\n");
-                                     success_count += 1;
-                                     break;
-                                 }
-                             }
-
-                            let part = match multipart::Part::bytes(file_bytes)
-                                .file_name(file_name.to_string())
-                                .mime_str("application/octet-stream") 
-                            {
-                                Ok(p) => p,
-                                Err(e) => {
-                                    eprintln!("\r[!!] 建立請求體失敗: {rel_path} - {e}");
-                                    break;
-                                }
-                            };
-
-                            let form = multipart::Form::new().part("file", part);
-
-                            let req_res = client.post(&upload_url)
-                                 .header("X-Workspace", &resolved_workspace)
-                                 .header("x-source-path", &abs_path_str)
-                                 .header("x-content-hash", &content_hash)
-                                 .multipart(form)
-                                 .timeout(Duration::from_secs(180)) // 3 mins timeout
-                                 .send()
-                                 .await;
-
-                            match req_res {
-                                Ok(resp) => {
-                                    if resp.status().is_success() {
-                                        let res_json: serde_json::Value = resp.json().await.unwrap_or_default();
-                                        let chunks = res_json.get("chunks").and_then(serde_json::Value::as_u64).unwrap_or(0);
-                                        print!("\r[ok] 已索引: {rel_path} ({chunks} 區塊)\n");
-                                        success_count += 1;
-                                        tokio::time::sleep(Duration::from_millis(500)).await;
-                                        break;
-                                    } else if attempt == max_retries {
-                                        print!("\r[!!] 失敗: {rel_path} - HTTP {}\n", resp.status());
-                                        fail_count += 1;
-                                    } else {
-                                        tokio::time::sleep(Duration::from_millis(1500)).await;
-                                    }
-                                }
-                                Err(e) => {
-                                    if attempt == max_retries {
-                                        print!("\r[!!] 失敗: {rel_path} - 錯誤: {e}\n");
-                                        fail_count += 1;
-                                    } else {
-                                        tokio::time::sleep(Duration::from_millis(1500)).await;
-                                    }
+                            }
+                            Err(e) => {
+                                if attempt == max_retries {
+                                    print!("\r[!!] 失敗: {rel_path} - 錯誤: {e}\n");
+                                    fail_count += 1;
+                                } else {
+                                    tokio::time::sleep(Duration::from_millis(1500)).await;
                                 }
                             }
                         }
                     }
-
-                    if is_directory {
-                        let canon_path_str = canon_path.to_string_lossy().into_owned();
-                        let mut pruned_count = 0;
-                        for (source_path, (id, _)) in &existing_docs {
-                            if source_path.starts_with(&canon_path_str) && !processed_paths.contains(source_path) {
-                                print!("[..] 本地已刪除，同步刪除雲端記錄: {source_path} ..");
-                                if let Err(e) = io::Write::flush(&mut io::stdout()) {
-                                    eprintln!("\r[!!] 無法刷新終端: {e}");
-                                }
-                                let del_url = format!("{}/{}", delete_url_base, id);
-                                match client.delete(&del_url)
-                                    .header("X-Workspace", &resolved_workspace)
-                                    .send()
-                                    .await
-                                {
-                                    Ok(resp) if resp.status().is_success() => {
-                                        print!("\r[prune] 同步刪除雲端記錄: {source_path}\n");
-                                        pruned_count += 1;
-                                    }
-                                    Ok(resp) => {
-                                        print!("\r[!!] 刪除雲端記錄失敗: {source_path} - HTTP {}\n", resp.status());
-                                    }
-                                    Err(e) => {
-                                        print!("\r[!!] 無法連接伺服器刪除記錄: {source_path} - {e}\n");
-                                    }
-                                }
-                            }
-                        }
-                        if pruned_count > 0 {
-                            println!("🗑️  同步清理完成，共刪除 {} 個失效雲端檔案", pruned_count);
-                        }
-                    }
-
-                    println!("{}", "-".repeat(50));
-                    println!("🎉 索引完成! 成功: {success_count}, 失敗: {fail_count}");
                 }
+
+                if is_directory {
+                    let canon_path_str = canon_path.to_string_lossy().into_owned();
+                    let mut pruned_count = 0;
+                    for (source_path, (id, _)) in &existing_docs {
+                        if source_path.starts_with(&canon_path_str) && !processed_paths.contains(source_path) {
+                            print!("[..] 本地已刪除，同步刪除雲端記錄: {source_path} ..");
+                            if let Err(e) = io::Write::flush(&mut io::stdout()) {
+                                eprintln!("\r[!!] 無法刷新終端: {e}");
+                            }
+                            let del_url = format!("{}/{}", delete_url_base, id);
+                            match client
+                                .delete(&del_url)
+                                .header("X-Workspace", &resolved_workspace)
+                                .send()
+                                .await
+                            {
+                                Ok(resp) if resp.status().is_success() => {
+                                    print!("\r[prune] 同步刪除雲端記錄: {source_path}\n");
+                                    pruned_count += 1;
+                                }
+                                Ok(resp) => {
+                                    print!("\r[!!] 刪除雲端記錄失敗: {source_path} - HTTP {}\n", resp.status());
+                                }
+                                Err(e) => {
+                                    print!("\r[!!] 無法連接伺服器刪除記錄: {source_path} - {e}\n");
+                                }
+                            }
+                        }
+                    }
+                    if pruned_count > 0 {
+                        println!("🗑️  同步清理完成，共刪除 {} 個失效雲端檔案", pruned_count);
+                    }
+                }
+            } else {
+                // Stdin mode: read file paths from pipe
+                println!("📥 從標準輸入讀取檔案路徑...");
+                let stdin = io::stdin();
+                for line in stdin.lock().lines() {
+                    let line = match line {
+                        Ok(l) => l,
+                        Err(e) => {
+                            eprintln!("[!!] 讀取標準輸入失敗: {e}");
+                            fail_count += 1;
+                            continue;
+                        }
+                    };
+                    let line = line.trim().to_string();
+                    if line.is_empty() {
+                        continue;
+                    }
+
+                    let file_path = std::path::Path::new(&line);
+                    if !file_path.exists() {
+                        eprintln!("\r[!!] 檔案不存在: {line}");
+                        fail_count += 1;
+                        continue;
+                    }
+                    let abs_source_path = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
+                    let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) else { continue };
+
+                    let ext = file_path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map(|e| format!(".{}", e.to_lowercase()))
+                        .unwrap_or_default();
+                    if !supported_extensions.contains(&ext.as_str()) {
+                        eprintln!("\r[skip] 不支援的檔案類型: {line}");
+                        continue;
+                    }
+
+                    let abs_path_str = abs_source_path.to_string_lossy().into_owned();
+                    processed_paths.insert(abs_path_str.clone());
+
+                    print!("[..] 上傳中: {line} ..");
+                    if let Err(e) = io::Write::flush(&mut io::stdout()) {
+                        eprintln!("\r[!!] 無法刷新終端: {e}");
+                    }
+
+                    let max_retries = 3;
+                    let mut attempt = 0;
+
+                    while attempt < max_retries {
+                        attempt += 1;
+
+                        let file_bytes = match std::fs::read(&file_path) {
+                            Ok(b) => b,
+                            Err(e) => {
+                                eprintln!("\r[!!] 讀取檔案失敗: {line} - {e}");
+                                break;
+                            }
+                        };
+
+                        let mut hasher = Sha256::new();
+                        hasher.update(&file_bytes);
+                        let content_hash = format!("{:x}", hasher.finalize());
+
+                        if let Some((_id, Some(existing_hash))) = existing_docs.get(&abs_path_str) {
+                            if existing_hash == &content_hash {
+                                print!("\r[skip] 已索引且無變更: {line}\n");
+                                success_count += 1;
+                                break;
+                            }
+                        }
+
+                        let part = match multipart::Part::bytes(file_bytes)
+                            .file_name(file_name.to_string())
+                            .mime_str("application/octet-stream")
+                        {
+                            Ok(p) => p,
+                            Err(e) => {
+                                eprintln!("\r[!!] 建立請求體失敗: {line} - {e}");
+                                break;
+                            }
+                        };
+
+                        let form = multipart::Form::new().part("file", part);
+
+                        match client
+                            .post(&upload_url)
+                            .header("X-Workspace", &resolved_workspace)
+                            .header("x-source-path", &abs_path_str)
+                            .header("x-content-hash", &content_hash)
+                            .multipart(form)
+                            .timeout(Duration::from_secs(180))
+                            .send()
+                            .await
+                        {
+                            Ok(resp) => {
+                                if resp.status().is_success() {
+                                    let res_json: serde_json::Value = resp.json().await.unwrap_or_default();
+                                    let chunks = res_json.get("chunks").and_then(serde_json::Value::as_u64).unwrap_or(0);
+                                    print!("\r[ok] 已索引: {line} ({chunks} 區塊)\n");
+                                    success_count += 1;
+                                    tokio::time::sleep(Duration::from_millis(500)).await;
+                                    break;
+                                } else if attempt == max_retries {
+                                    print!("\r[!!] 失敗: {line} - HTTP {}\n", resp.status());
+                                    fail_count += 1;
+                                } else {
+                                    tokio::time::sleep(Duration::from_millis(1500)).await;
+                                }
+                            }
+                            Err(e) => {
+                                if attempt == max_retries {
+                                    print!("\r[!!] 失敗: {line} - 錯誤: {e}\n");
+                                    fail_count += 1;
+                                } else {
+                                    tokio::time::sleep(Duration::from_millis(1500)).await;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            println!("{}", "-".repeat(50));
+            println!("🎉 索引完成! 成功: {success_count}, 失敗: {fail_count}");
+        }
                 DocumentSubcommands::List { workspace } => {
                     let ws = resolve_ws(workspace);
                     println!("正在列出 '{ws}' 空間下的文件..");
