@@ -21,8 +21,8 @@
 規格：[`openspec/specs/task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md)
 參考：[`docs/ref/zh-TW/task-execution-ai-engines-verification.md`](../ref/zh-TW/task-execution-ai-engines-verification.md)
 
-- [ ] **Phase 0 — 基線強化**：async `SearchBackend` 簽名、`[ai]`/`[task]` 設定解析、call-site 稽核。
-- [ ] **Phase 1 — Task 與 AI 抽象層（CPU）**：`opendoc-task`/`opendoc-ai`/`opendoc-ai-fastembed`；upload→embed→LanceDB；真實 `LanceDbRetriever`。
+- [x] **Phase 0 — 基線強化**：async `SearchBackend` 簽名、`[ai]`/`[task]` 設定解析、call-site 稽核。
+- [x] **Phase 1 — Task 與 AI 抽象層（CPU）**：`opendoc-task`/`opendoc-ai`/`opendoc-ai-fastembed`；upload→embed→LanceDB；真實 `LanceDbRetriever`。
 - [ ] **Phase 2 — llama.cpp GPU backend**：`opendoc-ai-llamacpp`（feature-gated，Vulkan/HIP）；embed/rerank/infer；執行期備援。
 - [ ] **Phase 3 — Spur 整合（選用）**：`SpurDaemonExecutor`（Mode 1）、`opendoc-worker daemon` + scale-to-zero（Mode 3）、批次 ETL（Mode 2）。
 - [ ] **Phase 4 — 生成切換**：設定 `[ai.models.inference]` 時以 llama.cpp 原生 SLM；否則 BYOK 不變。
@@ -34,7 +34,7 @@
 - [x] **單一二進位 Axum 架構**：整合 `rust-embed` 內嵌前端 WebUI 靜態資產。
 - [x] **BYOK LLM 層**：SQLite 加密儲存自備 API 金鑰，支援 OpenAI 格式並具備連線健康診斷。
 - [x] **現行檢索引擎**：LanceDB 稠密向量搜尋 + LanceDB FTS，搭配 RRF 重排。
-- [ ] **目標混合檢索**：新增由核心管理的 SQLite FTS5 稀疏文字路徑；不可將 LanceDB FTS 誤寫成 SQLite FTS5。
+- [x] **目標混合檢索**：新增由核心管理的 SQLite FTS5 稀疏文字路徑；不可將 LanceDB FTS 誤寫成 SQLite FTS5。（FTS5-only hits 依既有多列表語意只參與 RRF 排名，不過 cosine gate）
 - [x] **LanceDB Engine 邊界**：LanceDB／Arrow／DataFusion 已移至由核心管理的私有 sidecar（spec Approved / Production）。
 - [x] **標籤與複合條件過濾**：標籤 CRUD、文件狀態/類型過濾，以及動態升降冪排序。
 - [x] **跨平台發布**：一鍵安裝腳本 (`install.sh`) 與 GitHub Release 自動化建置。
@@ -74,7 +74,7 @@ v1.0.0 驗收門檻：`cargo check` 零警告 → 安裝 → 真實上傳 → �
 | 功能 | 規格 | 備註 |
 | :--- | :--- | :--- |
 | **WebUI 文件管理階層樹狀視圖** | — | 將 WebUI 文件管理介面支援分階層（目錄樹 / Hierarchy Tree 視圖）瀏覽與展開，提升大規模文檔的組織可視性。 |
-| **目標混合檢索 — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | 核心擁有的稀疏詞法路徑；engine 不可用時可提供純詞法 fallback。在此之前 LanceDB FTS 仍是現行詞法路徑。 |
+| **目標混合檢索 — SQLite FTS5** | [`hybrid-rag-retrieval`](../../openspec/specs/hybrid-rag-retrieval/spec.md) | ✅ 已完成：核心擁有的稀疏詞法路徑（`opendoc-storage/src/fts5.rs`），第三個 RRF list；engine 不可用時查詢降級跳過，LLM 端既有 fallback 不變。 |
 | **候選技術 — DuckDB FTS** | — | 不納入目前實作，也不取代 SQLite FTS5。僅在超大 corpus、批次分析或全量重建成為實際瓶頸，且同條件 benchmark 證明效能收益高於增量更新、資料同步、binary 體積與跨平台建置成本時重新評估。 |
 | **Phase 2 — 任務執行層與原生 AI 引擎** | [`task-execution-ai-engines`](../../openspec/specs/task-execution-ai-engines/spec.md) | llama.cpp (Vulkan/HIP) embed/rerank/infer、`opendoc-ai-fastembed` 進程邊界、`[ai.models.inference]` 生成切換。 |
 | **Spur 整合與 server/worker 模式** | deferred note #33 | `SpurDaemonExecutor` (Mode 1)、`opendoc-worker daemon` + scale-to-zero (Mode 3)、批次 ETL (Mode 2)；私有網路 LAN worker。stdio JSON-RPC 保持 transport 無關（未來 TCP/unix socket）；engine 設定獨立於 core。注意：#2039 禁止 Docker 部署 — server/worker 是未來方向，非容器。 |

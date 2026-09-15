@@ -69,16 +69,16 @@
 
 ### 2.0 Phase 0 — 基線強化（不改變行為）
 
-- [ ] **2.0.1 稽核 `search_and_rerank` call sites**：在 async 簽名變更前，列出所有同步 `SearchBackend` trait 的呼叫點（mcp `lib.rs:187`/`:441`、CLI `SearchWrapper` main.rs:30、storage stub `lib.rs:394`）。
-- [ ] **2.0.2 async `SearchBackend` 失敗測試**：撰寫 trait 方法由 `fn search_and_rerank(...) -> Vec<DocumentChunk>` 改為 `async fn ... -> Vec<DocumentChunk>` 的失敗單元測試（所有 call sites 改為 `.await`）。
-- [ ] **2.0.3 `[ai]`/`[task]` 設定解析**：以 `#[serde(default)]` 在 `AppConfig` 新增段落，使既有 `config.toml` 檔案原樣載入（向後相容）。
+- [x] **2.0.1 稽核 `search_and_rerank` call sites**：在 async 簽名變更前，列出所有同步 `SearchBackend` trait 的呼叫點（mcp `lib.rs:187`/`:441`、CLI `SearchWrapper` main.rs:30、storage stub `lib.rs:394`）。
+- [x] **2.0.2 async `SearchBackend` 失敗測試**：撰寫 trait 方法由 `fn search_and_rerank(...) -> Vec<DocumentChunk>` 改為 `async fn ... -> Vec<DocumentChunk>` 的失敗單元測試（所有 call sites 改為 `.await`）。
+- [x] **2.0.3 `[ai]`/`[task]` 設定解析**：以 `#[serde(default)]` 在 `AppConfig` 新增段落，使既有 `config.toml` 檔案原樣載入（向後相容）。
   - *驗證方式*：`cargo check` 零警告；既有設定可載入；含 `[ai]`/`[task]` 的新設定可解析。
 
 ### 2.1 Phase 1 — Task 與 AI 抽象層（純 Rust，CPU）
 
-- [ ] **2.1.1 `opendoc-task` crate**：`TaskEnvelope`/`TaskResult`/`TaskType`、`TaskExecutor` trait、`InProcessExecutor`。
-- [ ] **2.1.2 `opendoc-ai` crate**：`AiEngine` trait、`EngineConfig`、`HardwareBackend` probe（Vulkan→HIP→CPU）。
-- [ ] **2.1.3 `opendoc-ai-fastembed` crate**：bge-m3 embed + reranker 於 ONNX CPU（dim 1024）。
-- [ ] **2.1.4 上傳管線**：parse → embed（fastembed CPU）→ LanceDB 寫入（compat schema）。
-- [ ] **2.1.5 真實 `LanceDbRetriever`**：向量 + FTS5 + RRF + threshold 取代 stub `search_and_rerank`。
+- [x] **2.1.1 `opendoc-task` crate**：`TaskEnvelope`/`TaskResult`/`TaskType`、`TaskExecutor` trait、`InProcessExecutor`。
+- [x] **2.1.2 `opendoc-ai` crate**：`AiEngine` trait、`EngineConfig`、`HardwareBackend` probe（Vulkan→HIP→CPU）。
+- [x] **2.1.3 `opendoc-ai-fastembed` crate**：bge-m3 embed + reranker 於 ONNX CPU（dim 1024）。
+- [x] **2.1.4 上傳管線**：parse → embed（fastembed CPU）→ LanceDB 寫入（compat schema）。
+- [x] **2.1.5 真實 `LanceDbRetriever`**：向量 + FTS5 + RRF + threshold 取代 stub `search_and_rerank`。
   - *驗證方式*：真實文件往返——索引後查詢回傳實際 chunks；無匹配時回傳空 `Vec::new()`。
