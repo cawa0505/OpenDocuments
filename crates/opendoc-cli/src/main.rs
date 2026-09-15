@@ -210,7 +210,7 @@ async fn build_search_backend(
         let dim = provider.dim();
         let embed = Arc::new(provider) as Arc<dyn EmbeddingProvider>;
         let retriever =
-            SidecarRetriever::connect(&engine_path(), &lance_uri, &table, dim, &default_ws_name, embed).await?;
+            SidecarRetriever::connect(&engine_path(), &lance_uri, &table, dim, &default_ws_name, embed, pool.clone()).await?;
         return Ok(Arc::new(retriever) as Arc<dyn SearchBackend>);
     }
 
@@ -277,7 +277,7 @@ async fn build_search_backend(
     let db_dir = ConfigManager::resolve_db_dir(&app_cfg.database.path)?;
     let lance_uri = db_dir.to_string_lossy().to_string();
     let retriever =
-        SidecarRetriever::connect(&engine_path(), &lance_uri, &table, dim, &default_ws_name, embed).await?;
+        SidecarRetriever::connect(&engine_path(), &lance_uri, &table, dim, &default_ws_name, embed, pool.clone()).await?;
     Ok(Arc::new(retriever) as Arc<dyn SearchBackend>)
 }
 

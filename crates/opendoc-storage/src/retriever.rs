@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use opendoc_types::{ChunkType, DocumentChunk, EmbeddingProvider};
 use serde_json::Value;
+use sqlx::SqlitePool;
 
 use crate::sidecar_client::SidecarClient;
 
@@ -28,10 +29,13 @@ pub struct SidecarRetriever {
     embed: Arc<dyn EmbeddingProvider>,
     /// chat 既有 sync `search_and_rerank`（無 workspace 參數）使用。
     default_workspace: String,
+    /// Core-owned SQLite FTS5 稀疏路徑（hybrid-rag-retrieval §2.2）。
+    pool: SqlitePool,
 }
 
 impl SidecarRetriever {
     /// Spawn 引擎子程序並完成 handshake。`engine_path` 為執行檔路徑（config 或 PATH）。
+    /// 同時初始化 core-owned FTS5 虛擬表（production 與 CLI 共用單一 DDL 入口）。
     pub async fn connect(
         engine_path: &str,
         lance_uri: &str,
@@ -39,6 +43,7 @@ impl SidecarRetriever {
         dim: usize,
         default_workspace: &str,
         embed: Arc<dyn EmbeddingProvider>,
+        pool: SqlitePool,
     ) -> Result<Self, String> {
         let embed_dim = embed.dim();
         if embed_dim != 0 && embed_dim != dim {
@@ -47,6 +52,7 @@ impl SidecarRetriever {
                 embed_dim, dim
             ));
         }
+        crate::fts5::init(&pool).await?;
         let mut client = SidecarClient::spawn(engine_path, lance_uri, table_name)?;
         client.handshake(dim)?;
         Ok(Self {
@@ -54,6 +60,7 @@ impl SidecarRetriever {
             dim,
             embed,
             default_workspace: default_workspace.to_string(),
+            pool,
         })
     }
 
@@ -126,7 +133,8 @@ impl SidecarRetriever {
         }
     }
 
-    /// Index：embed chunks → 送引擎寫入 LanceDB（引擎內先刪該 document 舊 chunks，reindex 冪等）。
+    /// Index：FTS5 全文寫入（本地、先寫——embedding 失敗仍保留詞法索引）
+    /// → embed chunks → 送引擎寫入 LanceDB（引擎內先刪該 document 舊 chunks，reindex 冪等）。
     pub async fn index_chunks(
         &self,
         document_id: &str,
@@ -137,6 +145,10 @@ impl SidecarRetriever {
     ) -> Result<(), String> {
         if chunks.is_empty() {
             return Ok(());
+        }
+        // FTS5 寫入失敗不阻塞向量索引（與引擎 FTS 同為 best-effort 詞法路徑）。
+        if let Err(e) = crate::fts5::index_document(&self.pool, workspace_id, document_id, source_path, chunks).await {
+            eprintln!("⚠️ FTS5 索引寫入失敗（僅詞法路徑缺此文件）: {e}");
         }
         let texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
         let vectors = self.embed.embed(&texts).await?;
@@ -183,11 +195,36 @@ impl SidecarRetriever {
 
         let result = self.with_client(|client| client.search(workspace_id, &qvec, query, top_k))?;
 
+        // Core-owned SQLite FTS5 稀疏路徑（hybrid-rag-retrieval §2.2）：第三個 RRF list。
+        // 查詢失敗時降級跳過（僅少一個排名名單）；FTS5-only hits 依既有多列表「只參與排名」
+        // 語意，無真實 cosine distance → 仍過不了 threshold gate（行為與 LanceDB FTS 一致）。
+        let mut fts5_rows: Vec<opendoc_types::protocol::RawSearchRow> = Vec::new();
+        match crate::fts5::search(&self.pool, workspace_id, query, top_k).await {
+            Ok(rows) => {
+                for (rank, r) in rows.into_iter().enumerate() {
+                    fts5_rows.push(opendoc_types::protocol::RawSearchRow {
+                        document_id: r.document_id,
+                        content: r.content,
+                        metadata_json: serde_json::json!({
+                            "doc_path": r.doc_path,
+                            "headers": serde_json::from_str::<Vec<String>>(&r.headers_json).unwrap_or_default(),
+                            "chunk_idx": r.chunk_idx,
+                        })
+                        .to_string(),
+                        cosine_distance: 0.0,
+                        rank,
+                    });
+                }
+            }
+            Err(e) => eprintln!("⚠️ FTS5 查詢失敗（略過稀疏名單）: {e}"),
+        }
+
         // RRF：以 (document_id, chunk_idx) 為 key 融合 vector + FTS rank。
         let mut fused: HashMap<String, RankedRow> = HashMap::new();
         for (k, rows, is_vector) in [
             (60u32, result.vector_rows, true),
             (60u32, result.fts_rows, false),
+            (60u32, fts5_rows, false),
         ] {
             for r in rows {
                 let (doc_path, headers, chunk_idx) = parse_metadata(&r.metadata_json, &r.document_id);
@@ -227,12 +264,16 @@ impl SidecarRetriever {
         Ok(out)
     }
 
-    /// 軟刪除文件時移除其引擎內 chunks（避免已刪文件仍被搜尋命中）。
+    /// 軟刪除文件時移除其引擎內 chunks 與 FTS5 全文列（避免已刪文件仍被搜尋命中）。
     pub async fn delete_document(
         &self,
         workspace_id: &str,
         document_id: &str,
     ) -> Result<(), String> {
+        // FTS5 為本地衍生索引，刪除失敗僅告警（重索引會自行覆蓋）。
+        if let Err(e) = crate::fts5::delete_document(&self.pool, document_id).await {
+            eprintln!("⚠️ FTS5 列刪除失敗（可由重索引自癒）: {e}");
+        }
         self.with_client(|client| client.delete_document(workspace_id, document_id))
     }
 

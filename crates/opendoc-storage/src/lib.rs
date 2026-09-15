@@ -2,6 +2,7 @@
 
 pub mod retriever;
 pub mod sidecar_client;
+pub mod fts5;
 #[cfg(feature = "embedding-fastembed")]
 pub mod embeddings;
 

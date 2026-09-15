@@ -11,10 +11,16 @@
 
 This specification defines the dual-retrieval hybrid RAG architecture of OpenDocuments. To achieve high recall and exact keyword precision, the system combines LanceDB dense vector similarity search with SQLite FTS5 sparse text search, merged via Reciprocal Rank Fusion (RRF) reranking.
 
-**Implementation status (2026-08-10):** dense vector search, LanceDB FTS, and RRF are
-implemented. The SQLite FTS5 sparse path required by this target architecture is not
-implemented. SQLite FTS5 is not a vector database, and LanceDB FTS MUST NOT be counted
-as completion of the SQLite FTS5 requirement.
+**Implementation status (2026-09-15):** dense vector search, LanceDB FTS, RRF, and the
+core-owned SQLite FTS5 sparse path are implemented. SQLite FTS5 lives in
+`opendoc-storage/src/fts5.rs` (single source: DDL via `SidecarRetriever::connect`,
+index/search/delete), fused as a third RRF list in `SidecarRetriever::search`.
+FTS5-only hits participate in RRF ranking only — lacking a real cosine distance they
+do not pass the threshold gate, consistent with the LanceDB-FTS-only behavior.
+Legacy `chunks_fts` tables (removed pre-GA FTS5 implementation, unicode61 + chunk_id
+schema) are auto-renamed to `chunks_fts_legacy` on init. Existing corpora are not
+backfilled; documents enter the FTS5 index on upload/reindex. LanceDB FTS MUST NOT be
+counted as the SQLite FTS5 requirement — that requirement is now met by this core path.
 
 ---
 
