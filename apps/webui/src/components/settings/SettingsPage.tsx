@@ -279,7 +279,7 @@ export function SettingsPage() {
               {checkingVersion && (
                 <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
                   <RefreshCw className="h-3 w-3 animate-spin text-blue-500" />
-                  <span>正在向 GitHub 檢測最新核心版本...</span>
+                  <span>正在偵測 GitHub 最新核心版本...</span>
                 </div>
               )}
               {versionData?.has_update && !checkingVersion && (
@@ -322,7 +322,7 @@ export function SettingsPage() {
               {llmLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                  <span className="ml-2 text-sm text-slate-500">正在加載 LLM Provider...</span>
+                  <span className="ml-2 text-sm text-slate-500">正在載入 LLM Provider...</span>
                 </div>
               ) : llmError ? (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

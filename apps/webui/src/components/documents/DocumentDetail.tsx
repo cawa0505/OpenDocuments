@@ -4,6 +4,7 @@ import { ArrowLeft, Database, FileText, FolderPlus, Hash, RefreshCw, Trash2 } fr
 import { addDocumentToCollection, deleteDocument, getDocument, listCollections } from '../../lib/api'
 import type { Collection, Document } from '../../lib/types'
 import { useAppStore } from '../../stores/appStore'
+import { describeSourcePath, documentStatusLabel } from '../../lib/display'
 import { translate as tr, type Locale } from '../../lib/i18n'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 
@@ -153,7 +154,7 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
                 <div className="flex items-center gap-2">
                   <FileText size={20} className="shrink-0 text-blue-600" />
                   <span className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${statusTone(document.status)}`}>
-                    {document.status}
+                    {documentStatusLabel(locale, document.status)}
                   </span>
                 </div>
                 <h2 className="mt-3 truncate text-[26px] font-semibold tracking-normal text-slate-950">{document.title}</h2>
@@ -246,7 +247,13 @@ export function DocumentDetail({ documentId, onBack, onDeleted }: Props) {
       <ConfirmDialog
         open={confirmOpen}
         title={t('common.delete')}
-        description={document ? t('documents.deleteConfirm', { title: document.title }) : undefined}
+        description={document
+          ? t('documents.deleteConfirm', {
+              title: document.title,
+              source: describeSourcePath(document.source_path),
+              date: formatDate(document.updated_at || document.indexed_at || document.created_at, locale),
+            })
+          : undefined}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
         busyLabel={t('common.deleting')}

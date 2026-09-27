@@ -173,11 +173,11 @@ export function HealthPage() {
             <div className="grid gap-5 lg:grid-cols-3">
               <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-[15px] font-semibold text-slate-950">{t('activity.sourceDistribution')}</h3>
-                <div className="mt-4"><Distribution values={stats.sourceDistribution} emptyText={t('dashboard.noIndexedData')} /></div>
+                <div className="mt-4"><Distribution values={stats.sourceDistribution} emptyText={t('activity.noSourceData')} /></div>
               </section>
               <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-[15px] font-semibold text-slate-950">{t('activity.routeDistribution')}</h3>
-                <div className="mt-4"><Distribution values={quality.routeDistribution} emptyText={t('dashboard.noIndexedData')} /></div>
+                <div className="mt-4"><Distribution values={quality.routeDistribution} emptyText={t('activity.noRouteData')} /></div>
               </section>
               <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-[15px] font-semibold text-slate-950">{t('activity.feedback')}</h3>
@@ -239,6 +239,9 @@ export function HealthPage() {
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${plugin.health.healthy ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 </div>
               ))}
+              {(plugins?.plugins || []).length === 0 && (
+                <div className="px-5 py-12 text-center text-[14px] text-slate-400">{t('activity.noPlugins')}</div>
+              )}
             </div>
           </section>
         ) : (

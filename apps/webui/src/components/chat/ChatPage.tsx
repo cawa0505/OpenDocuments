@@ -5,8 +5,8 @@ import { useAppStore } from '../../stores/appStore'
 import { ChatInput } from './ChatInput'
 import { ChatMessage } from './ChatMessage'
 import { streamChat } from '../../lib/sse'
+import type { WorkbenchResponse, SearchResult, ConfidenceResult } from '../../lib/types'
 import { getWorkbench, listConversations, submitFeedback, updateConversation, uploadDocument } from '../../lib/api'
-import type { WorkbenchResponse } from '../../lib/types'
 import { translate as tr } from '../../lib/i18n'
 
 export function ChatPage() {
@@ -19,6 +19,7 @@ export function ChatPage() {
     conversationId,
     conversations,
     activeError,
+    lastQuery,
   } = useChatStore()
   const { profile, locale } = useAppStore()
   const t = (key: string, values?: Record<string, string | number>) => tr(locale, key, values)
@@ -31,6 +32,7 @@ export function ChatPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
+  const streamTimedOutRef = useRef(false)
 
   const healthStatus = workbenchError ? 'offline' : 'ready'
   const showPreview = messages.length === 0 && !isStreaming
@@ -72,50 +74,94 @@ export function ChatPage() {
     void refreshWorkbench()
   }, [])
 
+  // 產生本輪串流的逾時監看：任何事件到達都重掛零事件窗口；逾時則中止等待、解鎖 composer（spec: webui-ux-hardening）
+  const makeActivityMonitor = (startingConversationId: string | null, query: string) => {
+    const store = useChatStore.getState()
+    const rearm = () => store.armStreamTimeout(() => {
+      streamTimedOutRef.current = true
+      abortRef.current?.abort()
+    })
+    rearm()
+    return {
+      onChunk: (text: string) => { rearm(); useChatStore.getState().appendStreamChunk(text) },
+      onSources: (sources: SearchResult[]) => { rearm(); useChatStore.getState().setSources(sources) },
+      onConfidence: (confidence: ConfidenceResult) => { rearm(); useChatStore.getState().setConfidence(confidence) },
+      onDone: (data: { queryId: string; route: string; profile: string; conversationId?: string }) => {
+        useChatStore.getState().clearStreamTimeout()
+        if (data.conversationId) useChatStore.getState().setConversationId(data.conversationId)
+        useChatStore.getState().finishStreaming(data.profile || profile, data.queryId)
+        if (!startingConversationId && data.conversationId) {
+          const title = query.trim().replace(/\s+/g, ' ').slice(0, 72)
+          void updateConversation(data.conversationId, { title })
+            .catch(() => {})
+            .finally(() => void refreshConversations())
+        } else {
+          void refreshConversations()
+        }
+        void refreshWorkbench()
+      },
+      onError: (error: string) => {
+        useChatStore.getState().clearStreamTimeout()
+        useChatStore.getState().failStreaming(`${t('common.error')}: ${error}`, profile)
+      },
+    }
+  }
+
   const handleSend = async (query: string) => {
     const store = useChatStore.getState()
     const startingConversationId = store.conversationId
     store.addUserMessage(query)
+    store.setLastQuery(query)
     store.startStreaming()
+    streamTimedOutRef.current = false
+    useChatStore.getState().armStreamTimeout(() => {
+      streamTimedOutRef.current = true
+      abortRef.current?.abort()
+    })
 
     abortRef.current = new AbortController()
 
     try {
-      await streamChat(query, profile, conversationId, {
-        onChunk: (text) => useChatStore.getState().appendStreamChunk(text),
-        onSources: (sources) => useChatStore.getState().setSources(sources),
-        onConfidence: (confidence) => useChatStore.getState().setConfidence(confidence),
-        onDone: (data) => {
-          if (data.conversationId) useChatStore.getState().setConversationId(data.conversationId)
-          useChatStore.getState().finishStreaming(data.profile || profile, data.queryId)
-          if (!startingConversationId && data.conversationId) {
-            const title = query.trim().replace(/\s+/g, ' ').slice(0, 72)
-            void updateConversation(data.conversationId, { title })
-              .catch(() => {})
-              .finally(() => void refreshConversations())
-          } else {
-            void refreshConversations()
-          }
-          void refreshWorkbench()
-        },
-        onError: (error) => {
-          useChatStore.getState().failStreaming(`${t('common.error')}: ${error}`, profile)
-        },
-      }, abortRef.current.signal)
+      await streamChat(query, profile, startingConversationId, makeActivityMonitor(startingConversationId, query), abortRef.current.signal)
+      // 逾時中止：流未完成且非使用者主動取消 → 顯式逾時錯誤態，提供 retry 出口（不重發）
+      if (streamTimedOutRef.current && useChatStore.getState().isStreaming) {
+        useChatStore.getState().clearStreamTimeout()
+        useChatStore.getState().failStreaming(t('chat.errorStreamTimeout'), profile)
+      }
     } catch (error) {
+      useChatStore.getState().clearStreamTimeout()
       if (error instanceof DOMException && error.name === 'AbortError') {
-        useChatStore.getState().failStreaming(t('chat.cancelled'), profile)
+        // 逾時中止與使用者取消共用 Abort；僅逾時時落錯誤態
+        if (streamTimedOutRef.current) {
+          useChatStore.getState().failStreaming(t('chat.errorStreamTimeout'), profile)
+        }
+        // 使用者主動取消：靜默結束（訊息保留、composer 解鎖），不重發
         return
       }
       useChatStore.getState().failStreaming(error instanceof Error ? error.message : t('chat.errorStream'), profile)
     }
   }
 
+  // retry：重發「同一則」提問；先移除上一次失敗的錯誤佔位回覆（單一出口）
+  const handleRetry = () => {
+    const store = useChatStore.getState()
+    const query = store.lastQuery
+    if (!query) return
+    store.dropFailedTurn()
+    void handleSend(query)
+  }
+
+  // cancel：停止在途等待，不重發（spec: webui-ux-hardening）
+  const handleCancel = () => {
+    streamTimedOutRef.current = false
+    useChatStore.getState().clearStreamTimeout()
+    abortRef.current?.abort()
+  }
+
   const handleNewChat = () => {
     abortRef.current?.abort()
     useChatStore.getState().clearMessages()
   }
-
   const handleAttach = async (file: File) => {
     setUploading(true)
     useChatStore.getState().setActiveError(null)
@@ -170,9 +216,9 @@ export function ChatPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-y-3 overflow-hidden bg-white px-4 pb-6 pt-3 text-slate-950">
-      {(activeError || workbenchError) && (
+      {(workbenchError || (!lastQuery && activeError)) && (
         <div className="mx-auto max-w-[860px] rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {activeError || workbenchError}
+          {workbenchError || (!lastQuery && activeError)}
         </div>
       )}
 
@@ -303,6 +349,28 @@ export function ChatPage() {
                   <div role="status" aria-live="polite" className="flex items-center gap-3 text-slate-500">
                     <LoaderCircle className="h-5 w-5 animate-spin text-slate-400" />
                     <span className="text-[14px]">{t('chat.thinking')}</span>
+                    {/* 思考中亦提供取消出口，避免無出口的永久等待（spec: webui-ux-hardening） */}
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      className="rounded-md border border-slate-200 px-2.5 py-1 text-[12px] font-medium text-slate-600 hover:bg-slate-50 whitespace-nowrap"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                )}
+                {!isStreaming && lastQuery && activeError && (
+                  <div className="flex flex-col items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="min-w-0 text-[13px] text-amber-800 [overflow-wrap:anywhere]">{activeError}</p>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRetry}
+                        className="rounded-md bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+                      >
+                        {t('chat.retry')}
+                      </button>
+                    </div>
                   </div>
                 )}
                 <div ref={bottomRef} />

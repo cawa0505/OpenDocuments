@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Briefcase, Database, RefreshCw, Shield, Trash2 } from "lucide-react";
+import { Briefcase, Copy, Check, Database, Eye, EyeOff, RefreshCw, Shield, Trash2 } from "lucide-react";
+import { shortenIdentifier } from "../../lib/display";
 import { getWorkbench, listWorkspaces, deleteWorkspace } from "../../lib/api";
 import type { WorkbenchResponse, Workspace } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import { translate as tr, type Locale } from "../../lib/i18n";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
-
 function formatDate(value: string | null | undefined, locale: Locale) {
   if (!value) return tr(locale, "common.notRecorded");
   return new Date(value).toLocaleString(locale === "ko" ? "ko-KR" : "en-US");
@@ -25,8 +25,10 @@ export function WorkspacesPage() {
   const [workbench, setWorkbench] = useState<WorkbenchResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Workspace | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+  const [cliRevealed, setCliRevealed] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Workspace | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -207,13 +209,48 @@ export function WorkspacesPage() {
                               )}
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
-                              <span className="font-mono break-all">{workspace.id}</span>
+                              <span className="font-mono">{shortenIdentifier(workspace.id, 8)}</span>
                               <span>·</span>
                               <span>
                                 {t("docDetail.created")}{" "}
                                 {formatDate(workspace.createdAt, locale)}
                               </span>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRevealedIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(workspace.id)) {
+                                    next.delete(workspace.id);
+                                  } else {
+                                    next.add(workspace.id);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                              aria-label={revealedIds.has(workspace.id) ? t("workspaces.hideIdentity") : t("workspaces.showIdentity")}
+                            >
+                              {revealedIds.has(workspace.id) ? <EyeOff size={12} /> : <Eye size={12} />}
+                            </button>
+                            {revealedIds.has(workspace.id) && (
+                              <span className="font-mono break-all [overflow-wrap:anywhere]">{workspace.id}</span>
+                            )}
+                            {revealedIds.has(workspace.id) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void navigator.clipboard?.writeText(workspace.id).catch(() => {});
+                                }}
+                                className="inline-flex items-center gap-1 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                aria-label={t("common.copy")}
+                              >
+                                <Copy size={12} />
+                              </button>
+                            )}
+                          </div>
                           </div>
                           <span
                             className={`w-fit rounded-md border px-2 py-0.5 text-[11px] font-medium ${modeTone(
@@ -222,13 +259,13 @@ export function WorkspacesPage() {
                           >
                             {workspace.mode}
                           </span>
-
-                          <div className="flex justify-end">
+                          <div className="flex justify-end pl-2">
                             {!workspace.isDefault && (
                               <button
                                 onClick={(e) => handleDelete(e, workspace)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+                                className="ml-2 p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/80 transition-colors"
                                 title={t("workspaces.delete")}
+                                aria-label={t("workspaces.delete")}
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -279,13 +316,24 @@ export function WorkspacesPage() {
                   <p className="mt-3 text-[13px] leading-5 text-slate-500">
                     {t("workspaces.managementDesc")}
                   </p>
-                  <div className="mt-4 rounded-md bg-slate-950 px-3 py-2 font-mono text-[12px] leading-5 text-slate-100">
-                    opendoc workspace create
-                    <br />
-                    opendoc workspace switch
-                    <br />
-                    opendoc workspace delete
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCliRevealed((v) => !v)}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-slate-50 whitespace-nowrap"
+                    aria-expanded={cliRevealed}
+                  >
+                    {cliRevealed ? <EyeOff size={13} /> : <Eye size={13} />}
+                    {cliRevealed ? t("workspaces.hideCli") : t("workspaces.showCli")}
+                  </button>
+                  {cliRevealed && (
+                    <div className="mt-3 rounded-md bg-slate-950 px-3 py-2 font-mono text-[12px] leading-5 text-slate-100 [overflow-wrap:anywhere]">
+                      opendoc workspace create
+                      <br />
+                      opendoc workspace switch
+                      <br />
+                      opendoc workspace delete
+                    </div>
+                  )}
                 </section>
               </aside>
             </div>

@@ -30,13 +30,23 @@ if (typeof document !== 'undefined') {
   document.documentElement.classList.remove('dark')
 }
 
+const RAG_PROFILES: readonly RAGProfile[] = ['fast', 'balanced', 'precise']
+
+// 檢索偏好單一狀態源（spec: webui-ux-hardening）：僅此 store slice 為唯一來源，
+// localStorage 僅作為持久化載體；啟動時驗證，避免持久化髒值形成第二狀態源。
+function readStoredProfile(): RAGProfile {
+  if (typeof localStorage === 'undefined') return 'fast'
+  const stored = localStorage.getItem('opendocuments-profile')
+  return RAG_PROFILES.includes(stored as RAGProfile) ? (stored as RAGProfile) : 'fast'
+}
+
 export const useAppStore = create<AppState>((set) => ({
   theme: initialTheme,
   effectiveTheme: initialEffective,
   locale: (typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-locale') : null)
     ? normalizeLocale(localStorage.getItem('opendocuments-locale'))
     : detectLocale(),
-  profile: ((typeof localStorage !== 'undefined' ? localStorage.getItem('opendocuments-profile') as RAGProfile : 'fast') || 'fast'),
+  profile: readStoredProfile(),
   currentPage: 'chat',
   sidebarOpen: true,
   workspaceName: '',

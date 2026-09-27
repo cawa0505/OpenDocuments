@@ -227,7 +227,7 @@ export default function DictionaryPage() {
               </svg>
             </div>
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-slate-900">Empty Terminology</h4>
+              <h4 className="text-sm font-semibold text-slate-900">{tr('settings.glossary.emptyTitle')}</h4>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {tr('settings.glossary.noTerms')}
               </p>

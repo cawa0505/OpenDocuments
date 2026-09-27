@@ -5,6 +5,7 @@ import { UploadZone } from './UploadZone'
 import { DocumentDetail } from './DocumentDetail'
 import type { Document } from '../../lib/types'
 import { useAppStore } from '../../stores/appStore'
+import { describeSourcePath, documentStatusLabel } from '../../lib/display'
 import { translate as tr, type Locale } from '../../lib/i18n'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 
@@ -72,6 +73,13 @@ export function DocumentsPage() {
 
   const statusTypes = useMemo(() => {
     return Array.from(new Set(docs.map((doc) => doc.status).filter(Boolean))).sort()
+  }, [docs])
+
+  // 同名文件列級辨識（spec: webui-ux-hardening）：同一檔名出現多次時，各列需可區分
+  const duplicateTitleCount = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const doc of docs) counts.set(doc.title, (counts.get(doc.title) || 0) + 1)
+    return counts
   }, [docs])
 
   const filteredDocs = useMemo(() => {
@@ -225,7 +233,7 @@ export function DocumentsPage() {
                 className="h-10 rounded-md border border-slate-200 bg-white px-3 text-[13px] outline-none focus:border-blue-300"
               >
                 <option value="all">{t('documents.allStatuses')}</option>
-                {statusTypes.map((status) => <option key={status} value={status}>{status}</option>)}
+                {statusTypes.map((status) => <option key={status} value={status}>{documentStatusLabel(locale, status)}</option>)}
               </select>
               <select
                 value={sourceFilter}
@@ -308,13 +316,20 @@ export function DocumentsPage() {
                     className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-blue-600"
                   />
                   <button className="min-w-0 text-left" onClick={() => setSelectedDocId(doc.id)}>
-                    <p className="truncate text-[14px] font-semibold text-slate-900 hover:text-blue-600">{doc.title}</p>
-                    <p className="mt-1 truncate text-[12px] text-slate-400">{doc.source_path}</p>
+                    <p className="flex items-center gap-2 truncate text-[14px] font-semibold text-slate-900 hover:text-blue-600">
+                      <span className="truncate">{doc.title}</span>
+                      {(duplicateTitleCount.get(doc.title) || 0) > 1 && (
+                        <span className="shrink-0 whitespace-nowrap rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                          {t('documents.sameNameBadge')} · {describeSourcePath(doc.source_path)}
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 truncate text-[12px] text-slate-400">{describeSourcePath(doc.source_path)}</p>
                   </button>
                   <span className="truncate text-[13px] text-slate-600">{doc.source_type}</span>
                   <span>
                     <span className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${statusTone(doc.status)}`}>
-                      {doc.status}
+                      {documentStatusLabel(locale, doc.status)}
                     </span>
                   </span>
                   <span className="text-[12px] text-slate-500">
@@ -340,7 +355,11 @@ export function DocumentsPage() {
         description={
           deleteTarget
             ? deleteTarget.kind === 'single'
-              ? t('documents.deleteConfirm', { title: deleteTarget.doc.title })
+              ? t('documents.deleteConfirm', {
+                  title: deleteTarget.doc.title,
+                  source: describeSourcePath(deleteTarget.doc.source_path),
+                  date: formatDate(deleteTarget.doc.updated_at || deleteTarget.doc.indexed_at || deleteTarget.doc.created_at, locale),
+                })
               : t('documents.batchDeleteConfirm', { count: deleteTarget.ids.length })
             : undefined
         }

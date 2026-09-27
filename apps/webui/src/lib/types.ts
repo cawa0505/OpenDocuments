@@ -1,6 +1,7 @@
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
+  error?: boolean
   content: string
   sources?: SearchResult[]
   confidence?: ConfidenceResult

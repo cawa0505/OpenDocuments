@@ -77,7 +77,7 @@ export function ChatInput({ onSend, onAttach, disabled, uploading, className = '
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={!onAttach || disabled || uploading}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed"
               aria-label={t('chat.uploadSource')}
               title={uploading ? t('chat.uploadingSource') : t('chat.uploadSource')}
             >
@@ -91,7 +91,7 @@ export function ChatInput({ onSend, onAttach, disabled, uploading, className = '
                   onClick={() => setProfile(value)}
                   disabled={disabled}
                   title={t(`settings.profile.${value}Desc`)}
-                  className={`h-6 rounded px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`h-6 rounded px-2 text-[12px] font-medium transition-colors disabled:cursor-not-allowed ${
                     profile === value
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-slate-500 hover:text-slate-900'
@@ -105,7 +105,7 @@ export function ChatInput({ onSend, onAttach, disabled, uploading, className = '
           <button
             onClick={handleSubmit}
             disabled={disabled || !input.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-[0_6px_14px_rgba(37,99,235,0.28)] transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-[0_6px_14px_rgba(37,99,235,0.28)] transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600 disabled:shadow-none"
             aria-label={t('chat.sendQuestion')}
           >
             <Send size={19} strokeWidth={2.1} />
