@@ -9,6 +9,7 @@ members = [
     "crates/opendoc-engine-lancedb",
     "crates/opendoc-task",
     "crates/opendoc-ai",
+    "crates/opendoc-connector-clouddrive",
 ]
 resolver = "2"
 

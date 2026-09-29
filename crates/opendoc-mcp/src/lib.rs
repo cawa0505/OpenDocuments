@@ -58,6 +58,7 @@ use rust_embed::RustEmbed;
 use futures_util::stream::Stream;
 use serde_json::{json, Value}; // restored unused json/Value
 use async_trait::async_trait;
+use opendoc_connector_clouddrive::CloudDrive;
 use tokio::sync::{mpsc, RwLock};
 use tower_http::cors::CorsLayer;
 use uuid::Uuid;
@@ -228,6 +229,47 @@ fn mcp_tools_response(id: Value) -> Value {
                     "name": "opendocuments_healthz",
                     "description": "Check OpenDocuments server status",
                     "inputSchema": { "type": "object", "properties": {} }
+                },
+                {
+                    "name": "clouddrive_list",
+                    "description": "List cloud-drive files available for indexing (reads only; token is used for this call and never stored or logged)",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "provider": { "type": "string", "enum": ["google_drive"], "description": "Cloud provider" },
+                            "token": { "type": "string", "description": "OAuth access token (per-call; not persisted)" },
+                            "folder_id": { "type": "string", "description": "Folder to list (omit for all non-trashed files)" },
+                            "page_token": { "type": "string", "description": "Pagination token from a previous call" }
+                        },
+                        "required": ["provider", "token"]
+                    }
+                },
+                {
+                    "name": "clouddrive_index",
+                    "description": "Download cloud-drive files inside OpenDocuments and index them in one step (bytes never leave the service; single-file failures are skipped with reasons)",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "provider": { "type": "string", "enum": ["google_drive"], "description": "Cloud provider" },
+                            "token": { "type": "string", "description": "OAuth access token (per-call; not persisted)" },
+                            "files": {
+                                "type": "array",
+                                "description": "Files to index",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": { "type": "string" },
+                                        "name": { "type": "string" },
+                                        "mime": { "type": "string" },
+                                        "size": { "type": "integer", "nullable": true }
+                                    },
+                                    "required": ["id", "name", "mime"]
+                                }
+                            },
+                            "workspace": { "type": "string", "description": "Workspace name to index into (optional)" }
+                        },
+                        "required": ["provider", "token", "files"]
+                    }
                 }
             ]
         }
@@ -384,6 +426,106 @@ async fn mcp_tool_call(
             let available = state.search.engine_available();
             let status = if available { "healthy" } else { "degraded" };
             Ok(format!(r#"{{"status":"{status}","engine":"OpenDocuments Rust Core"}}"#))
+        }
+        "clouddrive_list" => {
+            let token = args["token"].as_str().unwrap_or("");
+            if token.is_empty() {
+                return Err((-32602, "token 不可為空".to_string()));
+            }
+            if args["provider"].as_str() != Some("google_drive") {
+                return Err((-32602, "provider 僅支援 google_drive".to_string()));
+            }
+            let connector = opendoc_connector_clouddrive::GoogleDriveConnector::new();
+            let page = connector
+                .list_files(
+                    token,
+                    args["folder_id"].as_str(),
+                    args["page_token"].as_str(),
+                )
+                .await
+                .map_err(|e| (-32000, e.to_string()))?;
+            Ok(serde_json::to_string_pretty(&page).unwrap_or_else(|_| "{}".to_string()))
+        }
+        "clouddrive_index" => {
+            let token = args["token"].as_str().unwrap_or("");
+            if token.is_empty() {
+                return Err((-32602, "token 不可為空".to_string()));
+            }
+            if args["provider"].as_str() != Some("google_drive") {
+                return Err((-32602, "provider 僅支援 google_drive".to_string()));
+            }
+            let files = args["files"]
+                .as_array()
+                .ok_or_else(|| (-32602, "files 必須為陣列".to_string()))?;
+            if files.is_empty() {
+                return Err((-32602, "files 不可為空".to_string()));
+            }
+            let cfg = state.config_manager.get_config().await;
+            let workspace = args["workspace"].as_str()
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| {
+                    cfg.model.active_workspace.clone()
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or_else(|| cfg.model.default_workspace.clone())
+                });
+            let connector = opendoc_connector_clouddrive::GoogleDriveConnector::new();
+            let mut indexed: Vec<Value> = Vec::new();
+            let mut skipped: Vec<Value> = Vec::new();
+            for f in files {
+                // 逐檔解析；形狀錯誤記 skipped（不中斷整批）
+                let id = f["id"].as_str().unwrap_or("");
+                let name = f["name"].as_str().unwrap_or("").to_string();
+                let mime = f["mime"].as_str().unwrap_or("");
+                if id.is_empty() || mime.is_empty() {
+                    skipped.push(json!({ "id": id, "reason": "missing id or mime" }));
+                    continue;
+                }
+                let cloud_file = opendoc_connector_clouddrive::CloudFile {
+                    id: id.to_string(),
+                    name: name.clone(),
+                    mime: mime.to_string(),
+                    size: f["size"].as_u64(),
+                };
+                // 不可索引的原生格式（Sheets/Slides 等）先擋，不發網路請求
+                if opendoc_connector_clouddrive::is_google_native(mime)
+                    && opendoc_connector_clouddrive::native_export_mime(mime).is_none()
+                {
+                    skipped.push(json!({ "id": id, "reason": format!("unsupported mime: {mime}") }));
+                    continue;
+                }
+                let bytes = match connector.fetch_bytes(token, &cloud_file).await {
+                    Ok(b) => b,
+                    Err(e) => {
+                        skipped.push(json!({ "id": id, "reason": e.to_string() }));
+                        continue;
+                    }
+                };
+                match crate::handlers::upload::index_file_bytes(
+                    state,
+                    bytes,
+                    Some(name),
+                    workspace.clone(),
+                    "default".to_string(),
+                    None,
+                )
+                .await
+                {
+                    Ok(resp) => {
+                        let document_id = resp.document_id;
+                        let chunks = resp.chunks;
+                        indexed.push(json!({ "id": id, "document_id": document_id, "chunks": chunks }));
+                    }
+                    Err(e) => skipped.push(json!({ "id": id, "reason": e.1 })),
+                }
+            }
+            Ok(serde_json::to_string_pretty(&json!({
+                "workspace": workspace,
+                "indexed": indexed,
+                "skipped": skipped
+            }))
+            .unwrap_or_else(|_| "{}".to_string()))
         }
         _ => Err((-32601, format!("Unknown tool: {tool_name}"))),
     }
@@ -3943,5 +4085,61 @@ assert!(json.get("success").is_none(), "不應該有 success 欄位（前端不�
         let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
         let assets = json.get("assets").and_then(|v| v.as_array()).unwrap();
         assert!(assets.is_empty());
+    }
+
+    // ── clouddrive tools：分派層整合測試 ──
+
+    #[tokio::test]
+    async fn clouddrive_tools_registered_in_tools_list() {
+        let res = mcp_tools_response(json!(1));
+        let names: Vec<&str> = res["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|t| t["name"].as_str())
+            .collect();
+        assert!(names.contains(&"clouddrive_list"), "clouddrive_list 未註冊");
+        assert!(names.contains(&"clouddrive_index"), "clouddrive_index 未註冊");
+    }
+
+    #[tokio::test]
+    async fn clouddrive_list_rejects_unsupported_provider() {
+        let state = build_test_state().await;
+        let res = mcp_tool_call(
+            &state,
+            "clouddrive_list",
+            &json!({ "provider": "dropbox", "token": "tok" }),
+        )
+        .await;
+        let (code, msg) = res.unwrap_err();
+        assert_eq!(code, -32602);
+        assert!(msg.contains("provider"), "錯誤訊息應點名 provider：{msg}");
+    }
+
+    #[tokio::test]
+    async fn clouddrive_index_skips_unsupported_native_mime_without_network() {
+        let state = build_test_state().await;
+        let res = mcp_tool_call(
+            &state,
+            "clouddrive_index",
+            &json!({
+                "provider": "google_drive",
+                "token": "tok",
+                "files": [
+                    { "id": "sheet1", "name": "成績統計", "mime": "application/vnd.google-apps.spreadsheet" }
+                ]
+            }),
+        )
+        .await
+        .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&res).unwrap();
+        let skipped = v["skipped"].as_array().unwrap();
+        assert_eq!(skipped.len(), 1);
+        assert!(
+            skipped[0]["reason"].as_str().unwrap().contains("unsupported mime"),
+            "skipped 理由應為 unsupported mime：{:?}",
+            skipped[0]
+        );
+        assert!(v["indexed"].as_array().unwrap().is_empty());
     }
 }

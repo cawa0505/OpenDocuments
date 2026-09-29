@@ -5378,6 +5378,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "opendoc-connector-clouddrive"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "opendoc-engine-lancedb"
 version = "1.0.0"
 dependencies = [
@@ -5416,6 +5428,7 @@ dependencies = [
  "futures",
  "futures-util",
  "mime_guess",
+ "opendoc-connector-clouddrive",
  "opendoc-llm",
  "opendoc-parser",
  "opendoc-storage",
