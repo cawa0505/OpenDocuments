@@ -176,6 +176,219 @@ pub struct McpState {
     pub db_pool: sqlx::SqlitePool,
 }
 
+// ── Shared MCP tool layer ────────────────────────────────────
+// 單一來源：stdio 與 HTTP-SSE 兩種 transport 共用同一份 tools/list 與 tools/call
+// 分派邏輯，避免兩份副本漂移。所有工具在此實作，transport 只負責包裝 JSON-RPC 信封。
+
+/// 工具清單（新增工具時在此登記，並於 `mcp_tool_call` 補分派分支）。
+fn mcp_tools_response(id: Value) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": {
+            "tools": [
+                {
+                    "name": "opendocuments_search",
+                    "description": "Search documents in OpenDocuments RAG knowledge base",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "query": { "type": "string", "description": "Search query" },
+                            "workspace": { "type": "string", "description": "Workspace name or UUID id (falls back to config default workspace)" },
+                            "limit": { "type": "integer", "description": "Max results to return", "default": 5 }
+                        },
+                        "required": ["query"]
+                    }
+                },
+                {
+                    "name": "opendocuments_index_path",
+                    "description": "Index a local file or directory into the document store",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "path": { "type": "string", "description": "Absolute path to a file or directory to index" },
+                            "workspace": { "type": "string", "description": "Workspace/project name to index into (optional)" }
+                        },
+                        "required": ["path"]
+                    }
+                },
+                {
+                    "name": "opendocuments_read_document",
+                    "description": "Read a document's indexed chunks by doc_path",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "doc_path": { "type": "string", "description": "Index-time source_path (doc_path from search results)" },
+                            "workspace": { "type": "string", "description": "Workspace name or UUID id (falls back to config default workspace)" }
+                        },
+                        "required": ["doc_path"]
+                    }
+                },
+                {
+                    "name": "opendocuments_healthz",
+                    "description": "Check OpenDocuments server status",
+                    "inputSchema": { "type": "object", "properties": {} }
+                }
+            ]
+        }
+    })
+}
+
+#[derive(Default)]
+struct IndexSummary {
+    success: usize,
+    failed: usize,
+}
+
+/// 依路徑收集可索引檔案（單檔或目錄遞迴），過濾忽略目錄與不支援副檔名。
+fn collect_index_files(canon_path: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let ignored_dirs = [
+        "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
+        "__pycache__", "venv", ".env", "out"
+    ];
+    let supported_extensions = [
+        ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
+        ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx"
+    ];
+
+    let mut files = Vec::new();
+    if canon_path.is_file() {
+        files.push(canon_path.to_path_buf());
+        return files;
+    }
+    for entry in walkdir::WalkDir::new(canon_path).into_iter().filter_entry(|entry| {
+        if let Some(name) = entry.file_name().to_str() {
+            !ignored_dirs.contains(&name) && !name.starts_with('.')
+        } else {
+            false
+        }
+    }) {
+        if let Ok(entry) = entry {
+            if entry.file_type().is_file() {
+                let file_path = entry.path();
+                if let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) {
+                    if !file_name.starts_with('.') {
+                        let ext = file_path.extension()
+                            .and_then(|e| e.to_str())
+                            .map(|e| format!(".{}", e.to_lowercase()))
+                            .unwrap_or_default();
+                        if supported_extensions.contains(&ext.as_str()) {
+                            files.push(file_path.to_path_buf());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    files
+}
+
+/// 工具分派：回傳 tool result 的 text 內容（OK）或 JSON-RPC error（Err）。
+/// 四項修正：
+/// 1. `opendocuments_search` 尊重 workspace 參數並使用 config threshold（不再寫死 0.60 / 忽略工作區）。
+/// 2. `opendocuments_read_document` 依 doc_path 撈回單一文件的全部 chunks（讀取文檔原文）。
+/// 3. `opendocuments_index_path` 改 in-process 索引（不再 self-HTTP 迴圈，`--mcp-only` 下可用）。
+/// 4. `opendocuments_healthz` 回報真實 engine 狀態（不再硬編碼 healthy）。
+async fn mcp_tool_call(
+    state: &Arc<McpState>,
+    tool_name: &str,
+    args: &Value,
+) -> Result<String, (i64, String)> {
+    match tool_name {
+        "opendocuments_search" => {
+            let query_str = args["query"].as_str().unwrap_or("").trim();
+            if query_str.is_empty() {
+                return Err((-32602, "query 不可為空".to_string()));
+            }
+            let ws_id = crate::utils::resolve_workspace_arg(state, args["workspace"].as_str())
+                .await
+                .map_err(|sc| (sc.as_u16() as i64, format!("workspace 解析失敗: {sc}")))?;
+            if !state.search.engine_available() {
+                return Err((-32000, "engine_unavailable: LanceDB 引擎未啟動或已崩潰".to_string()));
+            }
+            let cfg = state.config_manager.get_config().await;
+            let limit = args["limit"].as_u64().unwrap_or(5) as usize;
+            let threshold = cfg.model.score_threshold;
+            let chunks = state
+                .search
+                .search_and_rerank_workspace(query_str, limit, threshold, &ws_id)
+                .await;
+            Ok(serde_json::to_string_pretty(&chunks).unwrap_or_else(|_| "[]".to_string()))
+        }
+        "opendocuments_read_document" => {
+            let doc_path = args["doc_path"].as_str().unwrap_or("").trim();
+            if doc_path.is_empty() {
+                return Err((-32602, "doc_path 不可為空".to_string()));
+            }
+            let ws_id = crate::utils::resolve_workspace_arg(state, args["workspace"].as_str())
+                .await
+                .map_err(|sc| (sc.as_u16() as i64, format!("workspace 解析失敗: {sc}")))?;
+            let rows = opendoc_storage::fts5::document_chunks(&state.db_pool, &ws_id, doc_path)
+                .await
+                .map_err(|e| (-32603, e))?;
+            let chunks: Vec<Value> = rows
+                .iter()
+                .map(|r| json!({ "chunk_idx": r.chunk_idx, "content": r.content }))
+                .collect();
+            Ok(serde_json::to_string_pretty(&json!({ "doc_path": doc_path, "chunks": chunks }))
+                .unwrap_or_else(|_| "[]".to_string()))
+        }
+        "opendocuments_index_path" => {
+            let path_str = args["path"].as_str().unwrap_or("");
+            let path_buf = std::path::PathBuf::from(path_str);
+            if !path_buf.exists() {
+                return Err((-32602, format!("Path not found: {path_str}")));
+            }
+            let canon_path = path_buf.canonicalize().unwrap_or_else(|_| path_buf.clone());
+            let cfg = state.config_manager.get_config().await;
+            let workspace = args["workspace"].as_str()
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| {
+                    cfg.model.active_workspace.clone()
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or_else(|| cfg.model.default_workspace.clone())
+                });
+
+            let mut summary = IndexSummary::default();
+            for file_path in collect_index_files(&canon_path) {
+                let file_name = file_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                let file_bytes = match std::fs::read(&file_path) {
+                    Ok(b) => b,
+                    Err(_) => {
+                        summary.failed += 1;
+                        continue;
+                    }
+                };
+                match crate::handlers::upload::index_file_bytes(
+                    state,
+                    file_bytes,
+                    Some(file_name),
+                    workspace.clone(),
+                    "default".to_string(),
+                    None,
+                )
+                .await
+                {
+                    Ok(_) => summary.success += 1,
+                    Err(_) => summary.failed += 1,
+                }
+            }
+            Ok(format!(
+                "Success: Indexed {} files, failed: {} files in workspace '{}'",
+                summary.success, summary.failed, workspace
+            ))
+        }
+        "opendocuments_healthz" => {
+            let available = state.search.engine_available();
+            let status = if available { "healthy" } else { "degraded" };
+            Ok(format!(r#"{{"status":"{status}","engine":"OpenDocuments Rust Core"}}"#))
+        }
+        _ => Err((-32601, format!("Unknown tool: {tool_name}"))),
+    }
+}
+
 // ── Remaining State ──────────────────────────────────────────
 
 // ── MCP SSE endpoint ────────────────────────────────────────
@@ -236,196 +449,24 @@ pub async fn message_handler(
 
         "notifications/initialized" => return Json(json!({})),
 
-        "tools/list" => json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "result": {
-                "tools": [
-                    {
-                        "name": "opendocuments_search",
-                        "description": "Search documents in OpenDocuments RAG knowledge base",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "query": { "type": "string", "description": "Search query" },
-                                "workspace": { "type": "string", "description": "Workspace name or UUID id（省略時使用 config 預設 workspace）" },
-                                "limit": { "type": "integer", "description": "Max results to return", "default": 5 }
-                            },
-                            "required": ["query"]
-                        }
-                    },
-                    {
-                        "name": "opendocuments_index_path",
-                        "description": "Index a local file or directory into the document store",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "path": { "type": "string", "description": "Absolute path to a file or directory to index" },
-                                "workspace": { "type": "string", "description": "Workspace/project name to index into (optional)" }
-                            },
-                            "required": ["path"]
-                        }
-                    },
-                    {
-                        "name": "opendocuments_healthz",
-                        "description": "Check OpenDocuments server status",
-                        "inputSchema": { "type": "object", "properties": {} }
-                    }
-                ]
-            }
-        }),
+        "tools/list" => mcp_tools_response(id),
 
         "tools/call" => {
             let tool_name = request["params"]["name"].as_str().unwrap_or("");
             let args = &request["params"]["arguments"];
 
-            match tool_name {
-                "opendocuments_search" => {
-                    let query_str = args["query"].as_str().unwrap_or("");
-                    let limit = args["limit"].as_u64().unwrap_or(5) as usize;
-
-                    let results = state.search.search_and_rerank(query_str, 0.60).await;
-                    let limited: Vec<_> = results.into_iter().take(limit).collect();
-                    let text = serde_json::to_string_pretty(&limited).unwrap_or_else(|_| "[]".to_string());
-
-                    json!({
-                        "jsonrpc": "2.0",
-                        "id": id,
-                        "result": {
-                            "content": [{ "type": "text", "text": text }]
-                        }
-                    })
-                }
-                "opendocuments_index_path" => {
-                    let path_str = args["path"].as_str().unwrap_or("");
-
-                    let path_buf = std::path::PathBuf::from(path_str);
-                    let results = if path_buf.exists() {
-                        let canon_path = path_buf.canonicalize().unwrap_or_else(|_| path_buf.clone());
-                        let ignored_dirs = [
-                            "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
-                            "__pycache__", "venv", ".env", "out"
-                        ];
-                        let supported_extensions = [
-                            ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
-                            ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx"
-                        ];
-
-                        let app_cfg = match tokio::task::block_in_place(|| {
-                            tokio::runtime::Handle::current().block_on(async {
-                                state.config_manager.get_config().await
-                            })
-                        }) {
-                            c => c,
-                        };
-
-                        // 省略 workspace 參數時：active_workspace 優先、回退 default_workspace（取「名稱」，server 端解析層會做 name→id）
-                        let workspace = args["workspace"].as_str()
-                            .map(|s| s.trim())
-                            .filter(|s| !s.is_empty())
-                            .map(|s| s.to_string())
-                            .unwrap_or_else(|| {
-                                app_cfg.model.active_workspace.clone()
-                                    .filter(|s| !s.is_empty())
-                                    .unwrap_or_else(|| app_cfg.model.default_workspace.clone())
-                            });
-
-                        let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
-                        let client = reqwest::Client::new();
-                        let mut success_count = 0;
-                        let mut fail_count = 0;
-
-                        let mut files = Vec::new();
-                        if canon_path.is_file() {
-                            files.push(canon_path.clone());
-                        } else {
-                            for entry in walkdir::WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
-                                if let Some(name) = entry.file_name().to_str() {
-                                    !ignored_dirs.contains(&name) && !name.starts_with('.')
-                                } else {
-                                    false
-                                }
-                            }) {
-                                if let Ok(entry) = entry {
-                                    if entry.file_type().is_file() {
-                                        let file_path = entry.path();
-                                        if let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) {
-                                            if !file_name.starts_with('.') {
-                                                let ext = file_path.extension()
-                                                    .and_then(|e| e.to_str())
-                                                    .map(|e| format!(".{}", e.to_lowercase()))
-                                                    .unwrap_or_default();
-                                                if supported_extensions.contains(&ext.as_str()) {
-                                                    files.push(file_path.to_path_buf());
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        for file_path in files {
-                            let file_name = file_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-                            let file_bytes = match std::fs::read(&file_path) {
-                                Ok(b) => b,
-                                Err(_) => continue,
-                            };
-                            let part = match reqwest::multipart::Part::bytes(file_bytes)
-                                .file_name(file_name.clone())
-                                .mime_str("application/octet-stream") 
-                            {
-                                Ok(p) => p,
-                                Err(_) => continue,
-                            };
-                            let form = reqwest::multipart::Form::new().part("file", part);
-
-                            let req_res = tokio::task::block_in_place(|| {
-                                tokio::runtime::Handle::current().block_on(async {
-                                    client.post(&upload_url)
-                                        .header("X-Workspace", workspace.clone())
-                                        .multipart(form)
-                                        .timeout(std::time::Duration::from_secs(180))
-                                        .send()
-                                        .await
-                                })
-                            });
-
-                            match req_res {
-                                Ok(resp) if resp.status().is_success() => {
-                                    success_count += 1;
-                                }
-                                _ => {
-                                    fail_count += 1;
-                                }
-                            }
-                        }
-                        format!("Success: Indexed {success_count} files, failed: {fail_count} files in workspace '{workspace}'")
-                    } else {
-                        format!("Error: Path not found: {path_str}")
-                    };
-
-                    json!({
-                        "jsonrpc": "2.0",
-                        "id": id,
-                        "result": {
-                            "content": [{ "type": "text", "text": results }]
-                        }
-                    })
-                }
-                "opendocuments_healthz" => {
-                    json!({
-                        "jsonrpc": "2.0",
-                        "id": id,
-                        "result": {
-                            "content": [{ "type": "text", "text": "{\"status\":\"healthy\",\"engine\":\"OpenDocuments Rust Core\"}" }]
-                        }
-                    })
-                }
-                _ => json!({
+            match mcp_tool_call(&state, tool_name, args).await {
+                Ok(text) => json!({
                     "jsonrpc": "2.0",
                     "id": id,
-                    "error": { "code": -32601, "message": format!("Unknown tool: {tool_name}") }
+                    "result": {
+                        "content": [{ "type": "text", "text": text }]
+                    }
+                }),
+                Err((code, message)) => json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": { "code": code, "message": message }
                 }),
             }
         }
@@ -490,196 +531,24 @@ pub async fn run_mcp_stdio_server(
 
             "notifications/initialized" => continue,
 
-            "tools/list" => json!({
-                "jsonrpc": "2.0",
-                "id": id,
-                "result": {
-                    "tools": [
-                        {
-                            "name": "opendocuments_search",
-                            "description": "Search documents in OpenDocuments RAG knowledge base",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "query": { "type": "string", "description": "Search query" },
-                                    "workspace": { "type": "string", "description": "Workspace name or UUID id（省略時使用 config 預設 workspace）" },
-                                    "limit": { "type": "integer", "description": "Max results to return", "default": 5 }
-                                },
-                                "required": ["query"]
-                            }
-                        },
-                        {
-                            "name": "opendocuments_index_path",
-                            "description": "Index a local file or directory into the document store",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "path": { "type": "string", "description": "Absolute path to a file or directory to index" },
-                                    "workspace": { "type": "string", "description": "Workspace/project name to index into (optional)" }
-                                },
-                                "required": ["path"]
-                            }
-                        },
-                        {
-                            "name": "opendocuments_healthz",
-                            "description": "Check OpenDocuments server status",
-                            "inputSchema": { "type": "object", "properties": {} }
-                        }
-                    ]
-                }
-            }),
+            "tools/list" => mcp_tools_response(id),
 
             "tools/call" => {
                 let tool_name = request["params"]["name"].as_str().unwrap_or("");
                 let args = &request["params"]["arguments"];
 
-                match tool_name {
-                    "opendocuments_search" => {
-                        let query_str = args["query"].as_str().unwrap_or("");
-                        let limit = args["limit"].as_u64().unwrap_or(5) as usize;
-
-                        let results = mcp_state.search.search_and_rerank(query_str, 0.60).await;
-                        let limited: Vec<_> = results.into_iter().take(limit).collect();
-                        let text = serde_json::to_string_pretty(&limited).unwrap_or_else(|_| "[]".to_string());
-
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": id,
-                            "result": {
-                                "content": [{ "type": "text", "text": text }]
-                            }
-                        })
-                    }
-                    "opendocuments_index_path" => {
-                        let path_str = args["path"].as_str().unwrap_or("");
-
-                        let path_buf = std::path::PathBuf::from(path_str);
-                        let results = if path_buf.exists() {
-                            let canon_path = path_buf.canonicalize().unwrap_or_else(|_| path_buf.clone());
-                            let ignored_dirs = [
-                                "node_modules", ".git", "dist", "build", ".turbo", ".next", ".cache", 
-                                "__pycache__", "venv", ".env", "out"
-                            ];
-                            let supported_extensions = [
-                                ".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".mdx", ".json", ".yaml", ".yml", 
-                                ".toml", ".css", ".html", ".htm", ".sh", ".sql", ".pdf", ".docx", ".xlsx"
-                            ];
-
-                            let app_cfg = match tokio::task::block_in_place(|| {
-                                tokio::runtime::Handle::current().block_on(async {
-                                    mcp_state.config_manager.get_config().await
-                                })
-                            }) {
-                                c => c,
-                            };
-
-                            // 省略 workspace 參數時：active_workspace 優先、回退 default_workspace（取「名稱」，server 端解析層會做 name→id）
-                            let workspace = args["workspace"].as_str()
-                                .map(|s| s.trim())
-                                .filter(|s| !s.is_empty())
-                                .map(|s| s.to_string())
-                                .unwrap_or_else(|| {
-                                    app_cfg.model.active_workspace.clone()
-                                        .filter(|s| !s.is_empty())
-                                        .unwrap_or_else(|| app_cfg.model.default_workspace.clone())
-                                });
-
-                            let upload_url = format!("{}/api/v1/documents/upload", app_cfg.server.url);
-                            let client = reqwest::Client::new();
-                            let mut success_count = 0;
-                            let mut fail_count = 0;
-
-                            let mut files = Vec::new();
-                            if canon_path.is_file() {
-                                files.push(canon_path.clone());
-                            } else {
-                                for entry in walkdir::WalkDir::new(&canon_path).into_iter().filter_entry(|entry| {
-                                    if let Some(name) = entry.file_name().to_str() {
-                                        !ignored_dirs.contains(&name) && !name.starts_with('.')
-                                    } else {
-                                        false
-                                    }
-                                }) {
-                                    if let Ok(entry) = entry {
-                                        if entry.file_type().is_file() {
-                                            let file_path = entry.path();
-                                            if let Some(file_name) = file_path.file_name().and_then(|n| n.to_str()) {
-                                                if !file_name.starts_with('.') {
-                                                    let ext = file_path.extension()
-                                                        .and_then(|e| e.to_str())
-                                                        .map(|e| format!(".{}", e.to_lowercase()))
-                                                        .unwrap_or_default();
-                                                    if supported_extensions.contains(&ext.as_str()) {
-                                                        files.push(file_path.to_path_buf());
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            for file_path in files {
-                                let file_name = file_path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-                                let file_bytes = match std::fs::read(&file_path) {
-                                    Ok(b) => b,
-                                    Err(_) => continue,
-                                };
-                                let part = match reqwest::multipart::Part::bytes(file_bytes)
-                                    .file_name(file_name.clone())
-                                    .mime_str("application/octet-stream") 
-                                {
-                                    Ok(p) => p,
-                                    Err(_) => continue,
-                                };
-                                let form = reqwest::multipart::Form::new().part("file", part);
-
-                                 let req_res = tokio::task::block_in_place(|| {
-                                     tokio::runtime::Handle::current().block_on(async {
-                                         client.post(&upload_url)
-                                             .header("X-Workspace", workspace.clone())
-                                             .multipart(form)
-                                             .timeout(std::time::Duration::from_secs(180))
-                                             .send()
-                                             .await
-                                     })
-                                 });
-
-                                match req_res {
-                                    Ok(resp) if resp.status().is_success() => {
-                                        success_count += 1;
-                                    }
-                                    _ => {
-                                        fail_count += 1;
-                                    }
-                                }
-                            }
-                            format!("Success: Indexed {success_count} files, failed: {fail_count} files in workspace '{workspace}'")
-                        } else {
-                            format!("Error: Path not found: {path_str}")
-                        };
-
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": id,
-                            "result": {
-                                "content": [{ "type": "text", "text": results }]
-                            }
-                        })
-                    }
-                    "opendocuments_healthz" => {
-                        json!({
-                            "jsonrpc": "2.0",
-                            "id": id,
-                            "result": {
-                                "content": [{ "type": "text", "text": "{\"status\":\"healthy\",\"engine\":\"OpenDocuments Rust Core\"}" }]
-                            }
-                        })
-                    }
-                    _ => json!({
+                match mcp_tool_call(&mcp_state, tool_name, args).await {
+                    Ok(text) => json!({
                         "jsonrpc": "2.0",
                         "id": id,
-                        "error": { "code": -32601, "message": format!("Unknown tool: {tool_name}") }
+                        "result": {
+                            "content": [{ "type": "text", "text": text }]
+                        }
+                    }),
+                    Err((code, message)) => json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "error": { "code": code, "message": message }
                     }),
                 }
             }

@@ -13,27 +13,24 @@ pub struct UploadResponse {
     pub status: String,
 }
 
-pub async fn upload_handler(
-    State(state): State<Arc<McpState>>,
-    headers: axum::http::HeaderMap,
-    mut multipart: axum::extract::Multipart,
-) -> Result<Json<UploadResponse>, (StatusCode, String)> {
-    // 1. 取得 Header 中的工作空間（id 或 name 雙查）與集合識別碼 (預設 "default")
-    let raw_ws = match headers
-        .get("x-workspace")
-        .and_then(|h| h.to_str().ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-    {
-        Some(s) => s,
-        None => state
-            .config_manager
-            .get_config()
-            .await
-            .model
-            .default_workspace
-            .clone(),
-    };
+/// 索引單一檔案 bytes → SQLite documents 表 + FTS5/LanceDB chunks。
+/// HTTP `upload_handler` 與 MCP `opendocuments_index_path` 共用
+/// （後者 in-process 呼叫，`--mcp-only` 下不再 self-HTTP）。
+/// `source_path_opt` 優先採用 x-source-path 或呼叫端提供的真實路徑；
+/// 省略時回退 `{workspace_id}/{original_name}`。
+/// workspace 解析為 lenient：id 或 name 命中即用，未命中 auto-create。
+#[allow(clippy::too_many_arguments)]
+pub async fn index_file_bytes(
+    state: &Arc<McpState>,
+    file_bytes: Vec<u8>,
+    original_name: Option<String>,
+    raw_ws: String,
+    collection_id: String,
+    source_path_opt: Option<String>,
+) -> Result<UploadResponse, (StatusCode, String)> {
+    if file_bytes.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "上傳檔案內容不可為空".to_string()));
+    }
 
     // lenient upload: auto-create if missing
     let workspace_id: String = match sqlx::query_scalar(
@@ -59,38 +56,6 @@ pub async fn upload_handler(
             new_id
         }
     };
-
-    let collection_id = headers
-        .get("x-collection")
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or("default")
-        .to_string();
-
-    let mut original_name = None;
-    let mut file_bytes = Vec::new();
-
-    // 2. 讀取 multipart 欄位
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
-    {
-        let name = field.name().unwrap_or_default().to_string();
-        if name == "file" {
-            if let Some(filename) = field.file_name() {
-                original_name = Some(filename.to_string());
-            }
-            file_bytes = field
-                .bytes()
-                .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
-                .to_vec();
-        }
-    }
-
-    if file_bytes.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "上傳檔案內容不可為空".to_string()));
-    }
 
     // Calculate SHA-256 hash of file content
     let mut hasher = Sha256::new();
@@ -155,9 +120,7 @@ pub async fn upload_handler(
 
     // 寫入 documents 資料庫
     let ext_display = ext_suffix.trim_start_matches('.').to_uppercase();
-    let source_path = headers
-        .get("x-source-path")
-        .and_then(|h| h.to_str().ok())
+    let source_path = source_path_opt
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| format!("{}/{}", workspace_id, file_path_str));
@@ -221,9 +184,76 @@ pub async fn upload_handler(
         eprintln!("⚠️ 向量索引寫入失敗（文件已入庫但搜尋暫時查不到）: {e}");
     }
 
-    Ok(Json(UploadResponse {
+    Ok(UploadResponse {
         document_id,
         chunks: chunks_count,
         status: "indexed".to_string(),
-    }))
+    })
+}
+
+/// HTTP 上傳端點：解析 multipart 與 x-* headers 後轉交 `index_file_bytes`。
+pub async fn upload_handler(
+    State(state): State<Arc<McpState>>,
+    headers: axum::http::HeaderMap,
+    mut multipart: axum::extract::Multipart,
+) -> Result<Json<UploadResponse>, (StatusCode, String)> {
+    let raw_ws = match headers
+        .get("x-workspace")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    {
+        Some(s) => s,
+        None => state
+            .config_manager
+            .get_config()
+            .await
+            .model
+            .default_workspace
+            .clone(),
+    };
+
+    let collection_id = headers
+        .get("x-collection")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("default")
+        .to_string();
+
+    let source_path_opt = headers
+        .get("x-source-path")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.to_string());
+
+    let mut original_name = None;
+    let mut file_bytes = Vec::new();
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+    {
+        let name = field.name().unwrap_or_default().to_string();
+        if name == "file" {
+            if let Some(filename) = field.file_name() {
+                original_name = Some(filename.to_string());
+            }
+            file_bytes = field
+                .bytes()
+                .await
+                .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+                .to_vec();
+        }
+    }
+
+    let response = index_file_bytes(
+        &state,
+        file_bytes,
+        original_name,
+        raw_ws,
+        collection_id,
+        source_path_opt,
+    )
+    .await?;
+
+    Ok(Json(response))
 }

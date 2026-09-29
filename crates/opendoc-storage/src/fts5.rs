@@ -145,6 +145,35 @@ pub async fn search(
         .collect())
 }
 
+/// 依 doc_path（索引時的 source_path）撈單一文件的全部 chunks，依 chunk_idx 排序。
+/// 為 `opendocuments_read_document` MCP 工具的資料源（還原文件全文）。
+/// 零 mock：無匹配回空 `Vec`。doc_path 在 workspace 內為去重鍵，理論唯一。
+pub async fn document_chunks(
+    pool: &SqlitePool,
+    workspace_id: &str,
+    doc_path: &str,
+) -> Result<Vec<FtsRow>, String> {
+    let rows = sqlx::query(
+        "SELECT document_id, content, doc_path, headers_json, chunk_idx FROM chunks_fts \
+         WHERE workspace_id = ? AND doc_path = ? ORDER BY chunk_idx",
+    )
+    .bind(workspace_id)
+    .bind(doc_path)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(rows
+        .into_iter()
+        .map(|r| FtsRow {
+            document_id: Row::get::<String, _>(&r, "document_id"),
+            content: Row::get::<String, _>(&r, "content"),
+            doc_path: Row::get::<String, _>(&r, "doc_path"),
+            headers_json: Row::get::<String, _>(&r, "headers_json"),
+            chunk_idx: Row::get::<i64, _>(&r, "chunk_idx") as usize,
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

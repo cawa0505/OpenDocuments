@@ -4,20 +4,14 @@ use axum::http::StatusCode;
 use serde::Serialize;
 
 // ── Workspace resolver ────────────────────────────────────────
-/// 將 X-Workspace header（id 或 name）解析成 workspace UUID id（Node getById ?? getByName 向後相容）。
-/// - header 非空：`SELECT id FROM workspaces WHERE id = ? OR name = ?` → 命中回 id；未命中 → 400（嚴格，不 auto-create）
-/// - header 缺/空：取 config active_workspace，未設定則取 default_workspace → 同查詢 → 未命中 → 500
-pub async fn resolve_workspace_id(
+/// 將 workspace 識別值（id 或 name）解析成 workspace UUID id（Node getById ?? getByName 向後相容）。
+/// - 傳入非空：`SELECT id FROM workspaces WHERE id = ? OR name = ?` → 命中回 id；未命中 → 400（嚴格，不 auto-create）
+/// - 傳入缺/空：取 config active_workspace，未設定則取 default_workspace → 同查詢 → 未命中 → 500
+async fn resolve_workspace_value(
     state: &McpState,
-    headers: &axum::http::HeaderMap,
+    workspace_val: Option<&str>,
 ) -> Result<String, StatusCode> {
-    let header_val = headers
-        .get("x-workspace")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty());
-
-    let (lookup_name, explicit) = match header_val {
+    let (lookup_name, explicit) = match workspace_val {
         Some(ws) => (ws.to_owned(), true),
         None => {
             let model = state.config_manager.get_config().await.model;
@@ -44,7 +38,7 @@ pub async fn resolve_workspace_id(
         Some(id) => Ok(id),
         None => {
             if explicit {
-                // header 指定了未知 workspace → 嚴格 400
+                // 指定了未知 workspace → 嚴格 400
                 Err(StatusCode::BAD_REQUEST)
             } else {
                 // default workspace 啟動必建，缺失代表 invariant 破壞
@@ -52,6 +46,29 @@ pub async fn resolve_workspace_id(
             }
         }
     }
+}
+
+/// 將 X-Workspace header（id 或 name）解析成 workspace UUID id。
+/// 語意同 `resolve_workspace_value`；供 REST 端點使用。
+pub async fn resolve_workspace_id(
+    state: &McpState,
+    headers: &axum::http::HeaderMap,
+) -> Result<String, StatusCode> {
+    let header_val = headers
+        .get("x-workspace")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+    resolve_workspace_value(state, header_val).await
+}
+
+/// 將 MCP tools/call 的 `workspace` argument（id 或 name）解析成 workspace UUID id。
+/// 語意同 `resolve_workspace_value`；供 MCP 工具（search / index_path / read_document）使用。
+pub async fn resolve_workspace_arg(
+    state: &McpState,
+    workspace_arg: Option<&str>,
+) -> Result<String, StatusCode> {
+    resolve_workspace_value(state, workspace_arg).await
 }
 
 #[derive(Serialize)]
