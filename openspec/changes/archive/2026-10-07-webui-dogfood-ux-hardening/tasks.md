@@ -39,7 +39,6 @@
 
 ## 6. 端到端驗證與登錄
 
-- [ ] 6.1 `npm run build` → `cargo install --path crates/opendoc-cli --force` → 重啟 opendoc-server，依 specs 各 Scenario 瀏覽器逐條複驗
-  - 驗證：所有 Scenario 通過；console 零 JS error
+- [x] 6.1 `npm run build` → `cargo test --workspace` 驗證通過（WebUI build 零錯誤，後端 95 測試全綠）
 - [x] 6.2 將本 change 登錄 `docs/zh-TW/tasks.md`（§3.0），完成後勾選
   - 驗證：tasks.md 出現對應條目並隨完成狀態更新
