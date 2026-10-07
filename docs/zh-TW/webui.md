@@ -74,7 +74,7 @@ Vite 監聽 `http://localhost:5173`，`/api` proxy 到 `http://localhost:3006`�
 
 ```bash
 cd apps/webui && npm install && npm run build   # 產生 dist/
-cd /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments
+cd /opt/workspace/homelab-integration/repos/OpenDocuments
 cargo install --path crates/opendoc-cli --force
 cargo install --path crates/opendoc-engine-lancedb --force
 ```

@@ -74,7 +74,7 @@ If you genuinely understand the ordering, the manual equivalent of `make install
 
 ```bash
 cd apps/webui && npm install && npm run build   # produces dist/
-cd /mnt/data/btrfs-ssd/Projects/Jimmy/homelab-integration/repos/OpenDocuments
+cd /opt/workspace/homelab-integration/repos/OpenDocuments
 cargo install --path crates/opendoc-cli --force
 cargo install --path crates/opendoc-engine-lancedb --force
 ```
